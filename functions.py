@@ -70,8 +70,7 @@ def V_g(g,params):          #g is a integer from 0 to 5
 #####
 #Here I put all together to form the giga-Hamiltonian matrix by considering momentum space neighbors up to the cutoff N
 def total_H(K_,N,params_H,params_V,a_M):
-    params_H[0] = a_M
-    G = [4*np.pi/np.sqrt(3)/a_M*np.array([0,1])]
+    G = [4*np.pi/np.sqrt(3)/a_M*np.array([0,1])]    #Moiré reciprocal lattice vectors
     for i in range(1,6):
         G.append(np.tensordot(R_z(np.pi/3*i),G[0],1))
     n_cells = int(1+3*N*(N+1))*6
@@ -119,27 +118,31 @@ def R_z(t):
     return R
 
 #path in BZ
-def pathBZ(path_name,a_M,pts_ps):
-    G = [4*np.pi/np.sqrt(3)/a_M*np.array([0,1])]
+def pathBZ(path_name,a_monolayer,a,pts_ps):
+    G = [4*np.pi/np.sqrt(3)/a*np.array([0,1])]      #Reciprocal lattice vectors with a
     for i in range(1,6):
         G.append(np.tensordot(R_z(np.pi/3*i),G[0],1))
-    Gamma = np.array([0,0])
-    K = np.array([4*np.pi/3/a_M,0])                #K for monolayer
-    M = K/2*3
-    Kp = K*2
-    G1 = 3*K
-#    M = np.array([np.pi/a_M,np.pi/np.sqrt(3)/a_M]) #M for monolayer
-#    Kp = np.tensordot(R_z(np.pi/3),K,1)
-    dic_names = {'G':Gamma,'K':K,'M':M,'C':Kp,'g':G1}
+    G_m = [4*np.pi/np.sqrt(3)/a_monolayer*np.array([0,1])]      #Monolayer reciprocal lattice vectors
+    for i in range(1,6):
+        G_m.append(np.tensordot(R_z(np.pi/3*i),G_m[0],1))
+    K_ = np.array([G[-1][0]/3*2,0])
+    G1 = np.array([0,0])                                #Gamma
+    #G1 = np.array([G_m[-1][0]/3*2,0])                   #K
+    K = G1 + K_
+    M1 = G1 + G[-1]/2/2                           #M point on same BZ
+    M1_ = G1 - G[-1]/2/2
+    M2 = G1 + K_/2*3                            #M point in next BZ
+    Kp1 = G1 + np.tensordot(R_z(np.pi/3),K_,1)  #K' point in same BZ
+    Kp2 = G1 + K_*2                             #K' point in next BZ
+    G2 = G1 + K_*3                              #"gamma" point in next BZ
+    dic_names = {'G':G1,'K':K,'M':M1,'N':M1_,'C':Kp1,'g':G2,'m':M2,'c':Kp2}
     path = []
-    for i__ in range(3):
-        for i in range(len([*path_name])-1):
-            Pi = dic_names[path_name[i]] + i__*3*K
-            Pf = dic_names[path_name[i+1]] + i__*3*K
-            direction = Pf-Pi
-            for i in range(pts_ps):
-                path.append(Pi+direction*i/pts_ps)
-#    path.append(path[0])
+    for i in range(len([*path_name])-1):
+        Pi = dic_names[path_name[i]]
+        Pf = dic_names[path_name[i+1]]
+        direction = Pf-Pi
+        for i in range(pts_ps):
+            path.append(Pi+direction*i/pts_ps)
     return path
 
 
