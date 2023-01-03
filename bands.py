@@ -43,6 +43,11 @@ for opt, arg in opts:
     if opt == '--method':
         method = arg
 
+dic_sym = {'G':r'$\Gamma$', 'K':r'$K$', 'Q':r'$K/2$', 'q':r'$-K/2$', 'M':r'$M$', 'm':r'$-M$', 'N':r'$M/2$', 'n':r'$-M/2$', 'C':r'$K^\prime$', 'P':r'$K^\prime/2$', 'p':r'$-K^\prime/2$'}
+print("Evaluating arpes band spectrum for "+lower_layer+"/"+upper_layer+" on path "+dic_sym[Path[0]]+"-"+dic_sym[Path[1]]+"-"+dic_sym[Path[2]]+
+      "\nWith: parameters "+method+", "+str(pts_ps)+" k-points per step, "+str(N)+" circles of BZ.")
+
+#Extract parameters
 params_H =  PARS.dic_params_H[method][lower_layer]
 params_V =  PARS.dic_params_V[lower_layer+'/'+upper_layer]
 a_M =       PARS.dic_a_M[lower_layer+'/'+upper_layer]
@@ -58,8 +63,9 @@ weights_name = "Data/arpes_"+lower_layer+"-"+upper_layer+"_"+str(N)+'_'+Path+'_'
 try:    #name: LL/UL, N, Path, k-points per segment
     res = np.load(data_name)
     weight = np.load(weights_name)
+    print("\nBands and ARPES weights already computed")
 except:
-    print("Computing bilayer energies ...")
+    print("Computing bilayer energies and ARPES weights ...")
     ti = tt()
     n_cells = int(1+3*N*(N+1))*2        #dimension of H divided by 3 -> take only valence bands     #Full Diag -> *3
     sbv = [-2,0.5]                      #select_by_value for the diagonalization -> takes only bands in valence
@@ -79,6 +85,7 @@ except:
 mono_name = "Data/mono_"+lower_layer+"-"+upper_layer+'_0_'+Path+'_'+str(pts_ps)+".npy"
 try:
     res_mono = np.load(mono_name)
+    print("\nMonolayer energies already computed")
 except:
     print("\nComputing monolayer energies ...")
     ti = tt()
@@ -94,9 +101,8 @@ except:
 ########
 ########Plot
 ########
-dic_sym = {'G':'gamma', 'K':'K', 'Q':'K/2', 'q':'-K/2', 'M':'M', 'm':'-M', 'N':'M/2', 'n':'-M/2', 'C':'K\'', 'P':'K\'/2', 'p':'-K\'/2'}
 if plot:
-    print("\nPlotting ... ")
+    print("\nPlotting bands ... ")
     ti = tt()
     bnds = len(res[0,:])
     fig = plt.figure()
@@ -125,7 +131,7 @@ if plot:
     plt.show()
 
 if FC:          #False Color plot
-    print("\nPlotting False Color ...")
+    print("\nPlotting false color ...")
     ti = tt()
     bnds = len(res[0,:])
     #parameters of Lorentzian
@@ -150,19 +156,21 @@ if FC:          #False Color plot
     #Compute values of lorentzian spread of weights
     lor_name = "Data/FC_"+lower_layer+"-"+upper_layer+"_"+str(N)+'_'+Path+'_'+str(pts_ps)
     par_name = '_Full_('+str(gridy)+'_'+str(larger_E).replace('.',',')+'_'+str(K_).replace('.',',')+'_'+str(E_).replace('.',',')+')'+".npy"
-    lor_name = lor_name + par_name
+    lor_name += par_name
     try:
         lor = np.load(lor_name)
+        print("\nLorentzian spread already computed")
     except:
-        if xfull and yfull:
-            lor = np.zeros((lp,gridy))
-            for i in tqdm.tqdm(range(lp)):
-                for j in range(bnds):
-                    if weight[i,j] < cutoff_weight:
-                        continue
-                    #arrays
-                    pars = (K2,E2,weight[i,j],K_list[i],res[i,j])
-                    lor += fs.lorentzian_weight(K_list[:,None],E_list[None,:],*pars)
+        print("\nComputing Lorentzian spread ...")
+        lor = np.zeros((lp,gridy))
+        for i in tqdm.tqdm(range(lp)):
+            for j in range(bnds):
+                if weight[i,j] < cutoff_weight:
+                    continue
+                #arrays
+                pars = (K2,E2,weight[i,j],K_list[i],res[i,j])
+                lor += fs.lorentzian_weight(K_list[:,None],E_list[None,:],*pars)
+        print("Time taken: ",tt()-ti)
     ## Plot
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -173,11 +181,11 @@ if FC:          #False Color plot
     for i,c in enumerate([*Path]):      #plot symmetry points as vertical lines
         a = 1 if i == 2 else 0
         plt.vlines(K_list[i*lp//2-a],MIN_E,MAX_E,'k',lw=0.3,label=c)
-        plt.text(K_list[i*lp//2-a],MIN_E-delta/10,r'$'+dic_sym[c]+'$')
+        plt.text(K_list[i*lp//2-a],MIN_E-delta/12,dic_sym[c])
     #
     X,Y = np.meshgrid(K_list,E_list)
     plt.pcolormesh(X, Y,lor.T,alpha=0.8,cmap=plt.cm.Greys,norm=LogNorm(vmin=lor[np.nonzero(lor)].min(), vmax=lor.max()))
-    print("Time taken: ",tt()-ti)
+    plt.ylabel('eV')
     plt.show()
 
 
