@@ -165,7 +165,9 @@ def pathBZ(path_name,a_monolayer,pts_ps):
     return path, K_points
 
 
-
+def lorentzian_weight(k,e,*pars):
+    K2,E2,weight,K_,E_ = pars
+    return abs(weight)/((k-K_)**2+K2)/((e-E_)**2+E2)
 
 
 
