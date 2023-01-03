@@ -4,6 +4,7 @@ import numpy as np
 #####Hamiltonian part
 #####
 #Here I contruct the single 3 orbital hamiltonian, which is 6x6 for spin-orbit, as a function of momentum
+#Taken from Paper on "three bands" as the parameters
 def H_p(P,params):
     k_x,k_y = P
     lattice_constant,z_xx,e_1,e_2,t_0,t_1,t_2,t_11,t_12,t_22,r_0,r_1,r_2,r_11,r_12,u_0,u_1,u_2,u_11,u_12,u_22,lamb = params
@@ -57,6 +58,7 @@ def H_p(P,params):
 #####Moire potential part
 #####
 #Here I construct the single Moire potential parts. Function of the reciprocal Moire vector -> g=0,..,5
+#It is diagonal since it does not mix the bands and/or spins. Changes between in-plane (indexes 1,2) and out-of-plane (index 0) orbits.
 def V_g(g,params):          #g is a integer from 0 to 5
     V_G,psi_G,V_K,psi_K = params        #a is the moire lattice constant
     Id = np.zeros((6,6),dtype = complex)
@@ -118,24 +120,38 @@ def R_z(t):
     return R
 
 #path in BZ
-def pathBZ(path_name,a_monolayer,a,pts_ps):
-    G = [4*np.pi/np.sqrt(3)/a*np.array([0,1])]      #Reciprocal lattice vectors with a
+def pathBZ(path_name,a_monolayer,pts_ps):
+    #Reciprocal lattice vectors with a. Starts from G[0] along y and goes counter-clockwise with R_6 rotations.
+    #BZ has shape of hexagon with flat edges up and down
+    G = [4*np.pi/np.sqrt(3)/a_monolayer*np.array([0,1])]      
     for i in range(1,6):
         G.append(np.tensordot(R_z(np.pi/3*i),G[0],1))
-    G_m = [4*np.pi/np.sqrt(3)/a_monolayer*np.array([0,1])]      #Monolayer reciprocal lattice vectors
-    for i in range(1,6):
-        G_m.append(np.tensordot(R_z(np.pi/3*i),G_m[0],1))
-    K_ = np.array([G[-1][0]/3*2,0])
-    G1 = np.array([0,0])                                #Gamma
-    #G1 = np.array([G_m[-1][0]/3*2,0])                   #K
-    K = G1 + K_
-    M1 = G1 + G[-1]/2/2                           #M point on same BZ
-    M1_ = G1 - G[-1]/2/2
-    M2 = G1 + K_/2*3                            #M point in next BZ
-    Kp1 = G1 + np.tensordot(R_z(np.pi/3),K_,1)  #K' point in same BZ
-    Kp2 = G1 + K_*2                             #K' point in next BZ
-    G2 = G1 + K_*3                              #"gamma" point in next BZ
-    dic_names = {'G':G1,'K':K,'M':M1,'N':M1_,'C':Kp1,'g':G2,'m':M2,'c':Kp2}
+    #
+    K = np.array([G[-1][0]/3*2,0])                      #K-point
+    G = np.array([0,0])                                #Gamma
+    K2 =    K/2                             #Half is denoted by a '2'
+    K2_ =   - K2                            #Opposite wrt G is denoted by '_'
+    M =     G[-1]/2                          #M-point
+    M_ =     - M
+    M2 =    M/2 
+    M2_ =   - M2
+    Kp =    np.tensordot(R_z(np.pi/3),K,1)     #K'-point
+    Kp_ = - Kp
+    Kp2 =   Kp/2
+    Kp2_ =   -Kp2
+    dic_names = {'G':G,
+                 'K':K,
+                 'Q':K2,
+                 'q':K2_,
+                 'M':M,
+                 'm':M_,
+                 'N':M2,
+                 'n':M2_,
+                 'C':Kp, 
+                 'c':Kp_, 
+                 'P':Kp2, 
+                 'p':Kp2_,
+                 }
     path = []
     for i in range(len([*path_name])-1):
         Pi = dic_names[path_name[i]]
@@ -143,7 +159,10 @@ def pathBZ(path_name,a_monolayer,a,pts_ps):
         direction = Pf-Pi
         for i in range(pts_ps):
             path.append(Pi+direction*i/pts_ps)
-    return path
+    K_points = []
+    for i in [*path_name]:
+        K_points.append(dic_names[i])
+    return path, K_points
 
 
 
