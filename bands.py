@@ -13,7 +13,7 @@ from time import time as tt
 argv = sys.argv[1:]
 
 try:
-    opts, args = getopt.getopt(argv, "N:",["plot","LL=","UL=","path=","pts_ps=","fc","method="])
+    opts, args = getopt.getopt(argv, "N:",["plot","LL=","UL=","path=","pts_ps=","fc","method=","EnGrid="])
     N = 1
     lower_layer = 'WSe2'
     upper_layer = 'WS2'
@@ -22,6 +22,7 @@ try:
     plot = False
     FC = False                  #False Color plot
     method = 'GGA'
+    gridy = 0
 except:
     print("Error")
     exit()
@@ -42,10 +43,15 @@ for opt, arg in opts:
         FC = True
     if opt == '--method':
         method = arg
+    if opt == '--EnGrid':
+        gridy = int(arg)
 
+if gridy == 0:
+    gridy = pts_ps*(len(Path)-1)
+#
 dic_sym = {'G':r'$\Gamma$', 'K':r'$K$', 'Q':r'$K/2$', 'q':r'$-K/2$', 'M':r'$M$', 'm':r'$-M$', 'N':r'$M/2$', 'n':r'$-M/2$', 'C':r'$K^\prime$', 'P':r'$K^\prime/2$', 'p':r'$-K^\prime/2$'}
 print("Evaluating arpes band spectrum for "+lower_layer+"/"+upper_layer+" on path "+dic_sym[Path[0]]+"-"+dic_sym[Path[1]]+"-"+dic_sym[Path[2]]+
-      "\nWith: parameters "+method+", "+str(pts_ps)+" k-points per step, "+str(N)+" circles of BZ.")
+      "\nWith: parameters "+method+", "+str(pts_ps)+" k-points per step, "+str(N)+" circles of BZ, "+str(gridy)+" steps in E-grid.")
 
 #Extract parameters
 params_H =  PARS.dic_params_H[method][lower_layer]
@@ -71,7 +77,8 @@ except:
     sbv = [-2,0.5]                      #select_by_value for the diagonalization -> takes only bands in valence
     res = np.zeros((len(path),n_cells))
     weight = np.zeros((len(path),n_cells))
-    for i,K in tqdm.tqdm(enumerate(path)):
+    for i in tqdm.tqdm(range(len(path))):
+        K = path[i]
         H_k = fs.total_H(K,N,params_H,params_V,a_M)     #Compute Hamiltonian for given K
         res[i,:],evecs = la.eigh(H_k,subset_by_value=sbv)           #Diagonalize to get eigenvalues and eigenvectors
         for e in range(n_cells):                        #Full Diag -> //3
@@ -91,8 +98,9 @@ except:
     ti = tt()
     res_mono = np.zeros((len(path),6))
     params_V = [0,0,0,0]    #no Moirè potential -> not actually needed if N=0
-    for i,K in tqdm.tqdm(enumerate(path)):
-        H_k = fs.total_H(K,0,params_H,params_V,a_M)
+    for i in tqdm.tqdm(range(len(path))):
+        K = path[i]
+        H_k = fs.total_H(K,0,params_H,params_V,a_M)     #the only difference is in N which now is 0
         res_mono[i,:],evecs_mono = np.linalg.eigh(H_k)
     np.save(mono_name,res_mono)
     print("Time taken: ",tt()-ti)
@@ -119,7 +127,7 @@ if plot:
     for i,c in enumerate([*Path]):      #plot symmetry points as vertical lines
         a = 1 if i == 2 else 0
         plt.vlines(K_list[i*len(path)//2-a],min_e,max_e,'k',lw=0.3,label=c)
-        plt.text(K_list[i*len(path)//2-a],min_e-delta/10,r'$'+dic_sym[c]+'$')
+        plt.text(K_list[i*len(path)//2-a],min_e-delta/10,dic_sym[c])
     #real plot
     cutoff_weight = 1e-4        #don't plot weights below this cutoff to unload the figure
     for i in range(len(path)):
@@ -136,7 +144,6 @@ if FC:          #False Color plot
     bnds = len(res[0,:])
     #parameters of Lorentzian
     lp = len(path);     gridx = lp;    #grid in momentum fixed by points evaluated previously 
-    gridy = 200     #this is actually free. Grid in energy axis
     K_ = 0.004      #spread in momentum
     K2 = K_**2
     E_ = 0.05       #spread in energy in eV
@@ -171,6 +178,7 @@ if FC:          #False Color plot
                 pars = (K2,E2,weight[i,j],K_list[i],res[i,j])
                 lor += fs.lorentzian_weight(K_list[:,None],E_list[None,:],*pars)
         print("Time taken: ",tt()-ti)
+        np.save(lor_name,lor)
     ## Plot
     fig = plt.figure()
     ax = fig.add_subplot(111)

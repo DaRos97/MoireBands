@@ -1,5 +1,5 @@
 import numpy as np
-
+import matplotlib.pyplot as plt
 #####
 #####Hamiltonian part
 #####
@@ -128,7 +128,7 @@ def pathBZ(path_name,a_monolayer,pts_ps):
         G.append(np.tensordot(R_z(np.pi/3*i),G[0],1))
     #
     K = np.array([G[-1][0]/3*2,0])                      #K-point
-    G = np.array([0,0])                                #Gamma
+    Gamma = np.array([0,0])                                #Gamma
     K2 =    K/2                             #Half is denoted by a '2'
     K2_ =   - K2                            #Opposite wrt G is denoted by '_'
     M =     G[-1]/2                          #M-point
@@ -139,19 +139,24 @@ def pathBZ(path_name,a_monolayer,pts_ps):
     Kp_ = - Kp
     Kp2 =   Kp/2
     Kp2_ =   -Kp2
-    dic_names = {'G':G,
+    dic_names = {'G':Gamma,
                  'K':K,
-                 'Q':K2,
-                 'q':K2_,
                  'M':M,
                  'm':M_,
-                 'N':M2,
-                 'n':M2_,
                  'C':Kp, 
                  'c':Kp_, 
+                 'Q':K2,
+                 'q':K2_,
+                 'N':M2,
+                 'n':M2_,
                  'P':Kp2, 
                  'p':Kp2_,
                  }
+    #plt.figure()
+    #for p in dic_names.keys():
+    #    plt.scatter(dic_names[p][0],dic_names[p][1],label=p)
+    #plt.legend()
+    #plt.show()
     path = []
     for i in range(len([*path_name])-1):
         Pi = dic_names[path_name[i]]
