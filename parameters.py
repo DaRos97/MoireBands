@@ -25,7 +25,7 @@ dic_params_H = {'GGA':{
 #WS2/WSe2 --> Gamma points from paper "G valley TMD moirè bands"(first in eV, second in radiants)
 #WS2/WSe2 --> Louk's paper for K points(first in eV, second in radiants)
 dic_params_V = {'WSe2/WS2':[0.0335,np.pi, 7.7*1e-3, -106*2*np.pi/360],
-                'WS2/WSe2':[0,0,0,0]
+                'WS2/WSe2':[0.0335,np.pi, 7.7*1e-3, -106*2*np.pi/360],
             }
 ###Moirè length of bilayers in Angstrom
 dic_a_M = { 'WS2/WSe2':79.8,

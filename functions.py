@@ -1,13 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
+
 #####
 #####Hamiltonian part
 #####
 #Here I contruct the single 3 orbital hamiltonian, which is 6x6 for spin-orbit, as a function of momentum
-#Taken from Paper on "three bands" as the parameters
+#Detail can be found in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.88.085433
 def H_p(P,params):
-    k_x,k_y = P
-    lattice_constant,z_xx,e_1,e_2,t_0,t_1,t_2,t_11,t_12,t_22,r_0,r_1,r_2,r_11,r_12,u_0,u_1,u_2,u_11,u_12,u_22,lamb = params
+    k_x,k_y = P				#momentum
+    lattice_constant,z_xx,e_1,e_2,t_0,t_1,t_2,t_11,t_12,t_22,r_0,r_1,r_2,r_11,r_12,u_0,u_1,u_2,u_11,u_12,u_22,lamb = params	#extract the parameters
     a = k_x*lattice_constant/2              #alpha
     b = k_y*lattice_constant*np.sqrt(3)/2   #beta
     V_0 = (e_1 + 2*t_0*(2*np.cos(a)*np.cos(b)+np.cos(2*a)) 
@@ -58,57 +59,92 @@ def H_p(P,params):
 #####Moire potential part
 #####
 #Here I construct the single Moire potential parts. Function of the reciprocal Moire vector -> g=0,..,5
-#It is diagonal since it does not mix the bands and/or spins. Changes between in-plane (indexes 1,2) and out-of-plane (index 0) orbits.
+#It is diagonal since it does not mix the bands and/or spins. 
+#Different values for in-plane (indexes 1,2) and out-of-plane (index 0) orbits.
 def V_g(g,params):          #g is a integer from 0 to 5
-    V_G,psi_G,V_K,psi_K = params        #a is the moire lattice constant
+    V_G,psi_G,V_K,psi_K = params        #extract the parameters
     Id = np.zeros((6,6),dtype = complex)
     Id[0,0] = V_G*np.exp(1j*(-1)**(g%2)*psi_G);   Id[3,3] = Id[0,0]
     Id[1,1] = V_K*np.exp(1j*(-1)**(g%2)*psi_K);   Id[2,2] = Id[1,1]; Id[4,4] = Id[1,1]; Id[5,5] = Id[1,1]
     return Id
 
-
 #####
 #####Total Giga-Hamiltonian
 #####
 #Here I put all together to form the giga-Hamiltonian matrix by considering momentum space neighbors up to the cutoff N
+#To do it I give a number to each of the mini BZs, starting from the central one and then one circle at a time, going anticlockwise.
+#In the look-up table "lu" I put the positions of these mini-BZs, using coordinates in units of G1=(1,0), G2=(1/2,sqrt(3)/2). 
 def total_H(K_,N,params_H,params_V,a_M):
-    G = [4*np.pi/np.sqrt(3)/a_M*np.array([0,1])]    #Moiré reciprocal lattice vectors
+    #Moiré reciprocal lattice vectors. I start from the first one and obtain the others by doing pi/3 rotations
+    G = [4*np.pi/np.sqrt(3)/a_M*np.array([0,1])]    
     for i in range(1,6):
         G.append(np.tensordot(R_z(np.pi/3*i),G[0],1))
+    #dimension of the Hamiltonian, which is 6 times the number of mini-BZs. 
+    #For N=0 it is 1, for N=1 it is 6+1, for N=2 it is 12+6+1 ecc..
     n_cells = int(1+3*N*(N+1))*6
     H = np.zeros((n_cells,n_cells),dtype=complex)
-    #diagonal part and look-up table of site's coordinates
-    lu = []     #look up matrix of coordinates of single BZs, in units of G1=(1,0), G2=(1/2,sqrt(3)/2)
+    
+    ############
+    ############ Diagonal part and look-up table of site's coordinates
+    ############
+    #look up matrix of coordinates of single BZs, in units of G1=(1,0), G2=(1/2,sqrt(3)/2)
+    lu = []     
+    #Matrix "m" gives the increment to the coordinates to go around the circle, strating from 
+    #the rightmost mini-BZ and going counter-clockwise.
     m = [[-1,1],[-1,0],[0,-1],[1,-1],[1,0],[0,1]]
-    for n in range(0,N+1):      #circles
+    for n in range(0,N+1):      #circles go from 0 (central BZ) to N included
         i = 0
         j = 0
-        for s in range(np.sign(n)*(1+(n-1)*n*3),n*(n+1)*3+1):       #position in the circle which is the same as position in the diagonal of the Hamiltonian
+        #loop over indexes of mini-BZs in the circle
+        for s in range(np.sign(n)*(1+(n-1)*n*3),n*(n+1)*3+1):       
             if s == np.sign(n)*(1+(n-1)*n*3):
-                lu.append((n,0))
+                #first mini-BZ, which is the rightmost of the ring
+                lu.append((n,0))           
             else:
                 new_lu = lu[-1]
+                #Append the new mini-BZ by incrementing the previous with "m". 
+                #Each value of m has to be repeated n times, which are counted by j. 
                 lu.append((new_lu[0]+m[i][0],new_lu[1]+m[i][1]))
                 if j == n-1:
                     i += 1
                     j = 0
                 else:
                     j += 1
+            #Take the correct momentum by adding the components of "lu" times the reciprocal 
+            #lattice vectors to the initial momentum K_
             Kp = K_ + G[0]*lu[-1][0] + G[1]*lu[-1][1]
+            #place the corresponding 6x6 Hamiltonian in its position
             H[s*6:s*6+6,s*6:s*6+6] = H_p(Kp,params_H)
-    #off diagonal part --> Moire potential
-    for n in range(0,N+1):      #circles
-        for s in range(np.sign(n)*(1+(n-1)*n*3),n*(n+1)*3+1):       #position in the circle which is the same as position in the diagonal of the Hamiltonian
+    
+    ############
+    ############ Off diagonal part --> Moire potential. 
+    ############ We are placing a Moiré 6x6 potential just in the off-diagonal parts connected by a 
+    ############ reciprocal lattice vector.
+    ############
+    for n in range(0,N+1):      #Circles
+        for s in range(np.sign(n)*(1+(n-1)*n*3),n*(n+1)*3+1):       #Indices inside the circle
+            #loop over the reciprocal directions
             for i in m:
+                #Coordinates of the considered mini-BZ
                 ind_s = lu[s]
+                #Coordinames of the mini-BZ in the i direction wrt the previous
                 ind_nn = (ind_s[0]+i[0],ind_s[1]+i[1])
                 try:
+                    #if the obtained indices are in "lu" (may not be because the external mini-BZs don't have all 
+                    #the neighbors) ...->
                     nn = lu.index(ind_nn)
                 except:
                     continue
+                #index telling which reciprocal direction it is
                 g = (m.index(i) + 2)%6
+                #...-> add the Moiré potential in the giga-Hamiltonian
                 H[s*6:(s+1)*6,nn*6:(nn+1)*6] = V_g(g,params_V)
     return H
+
+#Lorentzian
+def lorentzian_weight(k,e,*pars):
+    K2,E2,weight,K_,E_ = pars
+    return abs(weight)/((k-K_)**2+K2)/((e-E_)**2+E2)
 
 #z rotations
 def R_z(t):
@@ -168,15 +204,6 @@ def pathBZ(path_name,a_monolayer,pts_ps):
     for i in [*path_name]:
         K_points.append(dic_names[i])
     return path, K_points
-
-
-def lorentzian_weight(k,e,*pars):
-    K2,E2,weight,K_,E_ = pars
-    return abs(weight)/((k-K_)**2+K2)/((e-E_)**2+E2)
-
-
-
-
 
 
 
