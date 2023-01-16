@@ -6,22 +6,16 @@ import getopt
 import scipy.linalg as la
 from time import time as tt
 
-dirname = "~/"
+dirname = "/home/users/r/rossid/moire_Data/"
 argv = sys.argv[1:]
 try:
-    opts, args = getopt.getopt(argv, "N:J:",["plot","LL=","UL=","path=","pts_ps=","fc","method=","EnGrid=","mono","offset_energy="])
+    opts, args = getopt.getopt(argv, "N:J:",["LL=","UL=","pts_ps=","method="])
     J = 0               #index of columns
-    N = 1
-    lower_layer = 'WSe2'
-    upper_layer = 'WS2'
-    Path = 'KGC'               #Points of BZ-path
-    pts_ps = 50         #points per step
-    plot = False
-    FC = False                  #False Color plot
+    N = 6
+    upper_layer = 'WSe2'
+    lower_layer = 'WS2'
+    pts_ps = 200         #points per step
     method = 'GGA'
-    gridy = 0
-    mono = False
-    offset_energy = -0.41#in eV
 except:
     print("Error")
     exit()
@@ -30,32 +24,18 @@ for opt, arg in opts:
         N = int(arg)
     if opt in ['-J']:
         J = int(arg)
-    if opt == '--plot':
-        plot = True
     if opt == '--LL':
         lower_layer = arg
     if opt == '--UL':
         upper_layer = arg
-    if opt == '--path':
-        Path = arg
     if opt == '--pts_ps':
         pts_ps = int(arg)
-    if opt == '--fc':
-        FC = True
     if opt == '--method':
         method = arg
-    if opt == '--EnGrid':
-        gridy = int(arg)
-    if opt == '--mono':
-        mono = True
-    if opt == '--offset_energy':
-        offset_energy = float(arg)
 
 if J > pts_ps*2-1:
     print("J out of bounds")
     exit()
-if gridy == 0:
-    gridy = pts_ps*(len(Path)-1)
 params_H =  [PARS.dic_params_H[method][upper_layer], PARS.dic_params_H[method][lower_layer]]
 params_V =  [PARS.dic_params_V[upper_layer+'/'+lower_layer], PARS.dic_params_V[lower_layer+'/'+upper_layer]]
 a_M =       PARS.dic_a_M[upper_layer+'/'+lower_layer]
@@ -90,7 +70,6 @@ for i in range(len(path)):
         for e in range(n_cells):
             for d in range(6):
                 weight[l,i,e] += np.abs(evecs[l][d,e])**2
-res[1] -= offset_energy
 #
 res_mono_UL = np.zeros((len(path),6))
 res_mono_LL = np.zeros((len(path),6))
@@ -99,10 +78,10 @@ for i in range(len(path)):
     K = path[i]
     H_k_UL = fs.total_H(K,0,params_H[0],params_V,a_M)     #the only difference is in N which now is 0
     H_k_LL = fs.total_H(K,0,params_H[1],params_V,a_M)     #the only difference is in N which now is 0
-    res_mono_UL[i,:],evecs_mono = np.linalg.eigh(H_k)
-    res_mono_LL[i,:],evecs_mono = np.linalg.eigh(H_k)
+    res_mono_UL[i,:],evecs_mono = np.linalg.eigh(H_k_UL)
+    res_mono_LL[i,:],evecs_mono = np.linalg.eigh(H_k_LL)
 ############
-data_name = dirname+"res_"+lower_layer+"-"+upper_layer+"_"+str(J)+".npy"
+data_name = dirname+"energies_"+lower_layer+"-"+upper_layer+"_"+str(J)+".npy"
 weights_name = dirname+"arpes_"+lower_layer+"-"+upper_layer+"_"+str(J)+".npy"    
 mono_LL_name = dirname+"mono_"+lower_layer+'_'+str(J)+".npy"
 mono_UL_name = dirname+"mono_"+upper_layer+'_'+str(J)+".npy"
