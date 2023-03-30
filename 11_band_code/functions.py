@@ -1,51 +1,91 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+a_1 = (1,0)
+a_2 = (-1/2,np.sqrt(2)/2)
+J_plus = ((3,5), (6,8), (9,11))
+J_minus = ((1,2), (3,4), (4,5), (6,7), (7,8), (9,10), (10,11))
+J_MX_plus = ((3,1), (5,1), (4,2), (10,6), (9,7), (11,7), (10,8))
+J_MX_minus = ((4,1), (3,2), (5,2), (9,6), (11,6), (10,7), (9,8), (11,8))
 #####
 #####Hamiltonian part
 #####
-#Here I contruct the single 3 orbital hamiltonian, which is 6x6 for spin-orbit, as a function of momentum
-#Detail can be found in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.88.085433
-def H_p(P,params):
-    k_x,k_y = P				#momentum
-    lattice_constant,z_xx,e_1,e_2,t_0,t_1,t_2,t_11,t_12,t_22,r_0,r_1,r_2,r_11,r_12,u_0,u_1,u_2,u_11,u_12,u_22,lamb = params	#extract the parameters
-    a = k_x*lattice_constant/2              #alpha
-    b = k_y*lattice_constant*np.sqrt(3)/2   #beta
-    V_0 = (e_1 + 2*t_0*(2*np.cos(a)*np.cos(b)+np.cos(2*a)) 
-                + 2*r_0*(2*np.cos(3*a)*np.cos(b)+np.cos(2*b))
-           +2*u_0*(2*np.cos(2*a)*np.cos(2*b)+np.cos(4*a))
-           )
-    V_1 = complex(-2*np.sqrt(3)*t_2*np.sin(a)*np.sin(b)
-                  +2*(r_1+r_2)*np.sin(3*a)*np.sin(b)
-                  -2*np.sqrt(3)*u_2*np.sin(2*a)*np.sin(2*b),
-                  2*t_1*np.sin(a)*(2*np.cos(a)+np.cos(b))
-                  +2*(r_1-r_2)*np.sin(3*a)*np.cos(b)
-                  +2*u_1*np.sin(2*a)*(2*np.cos(2*a)+np.cos(2*b))
+#Here I contruct the single 11 orbital hamiltonian, which is 22x22 for spin-orbit, as a function of momentum
+#Detail can be found in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.92.205108
+def H_monolayer(K_p,params_H,params_SO,a_mono):
+    k_x,k_y = K_p       #momentum
+    delta = a_mono* [a_1, a_1+a_2, a_2, -(2*a_1+a_2)/3, (a_1+2*a_2)/3, (a_1-a_2)/3, -2*(a_1+2*a_2)/3, 2*(2*a_1+a_2)/3, 2*(a_2-a_1)/3]
+    H_0 = np.zeros((11,11),dtype=complex)       #fist part without SO
+    #Diagonal
+    for i in range(11):
+        H_0[i,i] += (epsilon[i] + 2*t[0][i,i]*np.cos(np.dot(K_p,delta[0])) 
+                             + 2*t[1][i,i]*(np.cos(np.dot(K_p,delta[1])) + np.cos(np.dot(K_p,delta[2])))
+                 )
+    #Off diagonal symmetry +
+    for ind in J_plus:
+        i = ind[0]-1
+        j = ind[1]-1
+        H_0[i,j] += (2*t[0][i,j]*np.cos(np.dot(K_p,delta[0])) 
+                + t[1][i,j]*(np.exp(-1j*np.dot(K_p,delta[1])) + np.exp(-1j*np.dot(K_p,delta[2])))
+                + t[2][i,j]*(np.exp(1j*np.dot(K_p,delta[1])) + np.exp(1j*np.dot(K_p,delta[2])))
                 )
-    V_2 = complex(2*t_2*(np.cos(2*a)-np.cos(a)*np.cos(b))
-                  -2/np.sqrt(3)*(r_1+r_2)*(np.cos(3*a)*np.cos(b)-np.cos(2*b))
-                  +2*u_2*(np.cos(4*a)-np.cos(2*a)*np.cos(2*b)),
-                  2*np.sqrt(3)*t_1*np.cos(a)*np.sin(b)
-                  +2/np.sqrt(3)*np.sin(b)*(r_1-r_2)*(np.cos(3*a)+2*np.cos(b))
-                  +2*np.sqrt(3)*u_1*np.cos(2*a)*np.sin(2*b)
+        H_0[j,i] += np.conjugate(H[i,j])
+    #Off diagonal symmetry -
+    for ind in J_minus:
+        i = ind[0]-1
+        j = ind[1]-1
+        H_0[i,j] += (-2*1j*t[0][i,j]*np.sin(np.dot(K_p,delta[0])) 
+                + t[1][i,j]*(np.exp(-1j*np.dot(K_p,delta[1])) - np.exp(-1j*np.dot(K_p,delta[2])))
+                + t[2][i,j]*(-np.exp(1j*np.dot(K_p,delta[1])) + np.exp(1j*np.dot(K_p,delta[2])))
                 )
-    V_11 = (e_2 + (t_11+3*t_22)*np.cos(a)*np.cos(b) + 2*t_11*np.cos(2*a)
-            +4*r_11*np.cos(3*a)*np.cos(b) + 2*(r_11+np.sqrt(3)*r_12)*np.cos(2*b)
-            +(u_11+3*u_22)*np.cos(2*a)*np.cos(2*b) + 2*u_11*np.cos(4*a)
-            )
-    V_12 = complex(np.sqrt(3)*(t_22-t_11)*np.sin(a)*np.sin(b) + 4*r_12*np.sin(3*a)*np.sin(b)
-                   +np.sqrt(3)*(u_22-u_11)*np.sin(2*a)*np.sin(2*b),
-                   4*t_12*np.sin(a)*(np.cos(a)-np.cos(b))
-                   +4*u_12*np.sin(2*a)*(np.cos(2*a)-np.cos(2*b))
-                )
-    V_22 = (e_2 + (3*t_11+t_22)*np.cos(a)*np.cos(b) + 2*t_22*np.cos(2*a)
-            +2*r_11*(2*np.cos(3*a)*np.cos(b)+np.cos(2*b))
-            +2/np.sqrt(3)*r_12*(4*np.cos(3*a)*np.cos(b)-np.cos(2*b))
-            +(3*u_11+u_22)*np.cos(2*a)*np.cos(2*b) + 2*u_22*np.cos(4*a)
-            )
-    H_0 = np.array([[V_0,V_1,V_2],
-                    [np.conjugate(V_1),V_11,V_12],
-                    [np.conjugate(V_2),np.conjugate(V_12),V_22]])
+        H_0[j,i] += np.conjugate(H[i,j])
+    #M-X coupling +
+    for ind in J_MX_plus:
+        i = ind[0]-1
+        j = ind[1]-1
+        H_0[i,j] += t[3][i,j] * (np.exp(1j*np.dot(K_p,delta[3])) - np.exp(1j*np.dot(K_p,delta[5])))
+        H_0[j,i] += np.conjugate(H[i,j])
+    #M-X coupling -
+    for ind in J_MX_minus:
+        i = ind[0]-1
+        j = ind[1]-1
+        H_0[i,j] += (t[3][i,j] * (np.exp(1j*np.dot(K_p,delta[3])) + np.exp(1j*np.dot(K_p,delta[5])))
+                   t[4][i,j] * np.exp(1j*np.dot(K_p,delta[4]))
+                   )
+        H_0[j,i] += np.conjugate(H[i,j])
+    #Second nearest neighbor
+    H_1 = np.zeros((11,11),dtype=complex)       #fist part without SO
+    H_1[8,5] += t[5][8,5]*(np.exp(1j*np.dot(K_p,delta[6])) + np.exp(1j*np.dot(K_p,delta[7])) + np.exp(1j*np.dot(K_p,delta[8])))
+    H_1[5,8] += np.conjugate(H_1[8,5])
+    #
+    H_1[10,5] += t[5][10,5]*(np.exp(1j*np.dot(K_p,delta[6])) - 1/2*np.exp(1j*np.dot(K_p,delta[7])) - 1/2*np.exp(1j*np.dot(K_p,delta[8])))
+    H_1[5,10] += np.conjugate(H_1[10,5])
+    #
+    H_1[9,5] += np.sqrt(3)/2*t[5][10,5]*(- np.exp(1j*np.dot(K_p,delta[7])) + np.exp(1j*np.dot(K_p,delta[8])))
+    H_1[5,9] += np.conjugate(H_1[9,5])
+    #
+    H_1[8,7] += t[5][8,7]*(np.exp(1j*np.dot(K_p,delta[6])) - 1/2*np.exp(1j*np.dot(K_p,delta[7])) - 1/2*np.exp(1j*np.dot(K_p,delta[8])))
+    H_1[7,8] += np.conjugate(H_1[8,7])
+    #
+    H_1[8,6] += np.sqrt(3)/2*t[5][8,7]*(- np.exp(1j*np.dot(K_p,delta[7])) + np.exp(1j*np.dot(K_p,delta[8])))
+    H_1[6,8] += np.conjugate(H_1[8,6])
+    #
+    H_1[9,6] += 3/4*t[5][10,7]*(np.exp(1j*np.dot(K_p,delta[7])) + np.exp(1j*np.dot(K_p,delta[8])))
+    H_1[6,9] += np.conjugate(H_1[9,6])
+    #
+    H_1[10,6] += np.sqrt(3)/4*t[5][10,7]*(np.exp(1j*np.dot(K_p,delta[7])) - np.exp(1j*np.dot(K_p,delta[8])))
+    H_1[6,10] += np.conjugate(H_1[10,6])
+    H_1[9,7] += H_1[10,6]
+    H_1[7,9] += H_1[6,10]
+    #
+    H_1[10,7] += t[5][10,7]*(np.exp(1j*np.dot(K_p,delta[6])) + 1/4*np.exp(1j*np.dot(K_p,delta[7])) + 1/4*np.exp(1j*np.dot(K_p,delta[8])))
+    H_1[7,10] += np.conjugate(H_1[10,7])
+    #Combine the two terms
+    H_TB = H_0 + H_1
+
+    #Spin orbit terms
+    H = np.zeros((22,22),dtype = complex)
+
     L_z = np.zeros((3,3),dtype = complex)
     L_z[1,2] = 2*1j;    L_z[2,1] = -2*1j
     Sig_3 = np.zeros((2,2),dtype=complex)
@@ -74,20 +114,15 @@ def V_g(g,params):          #g is a integer from 0 to 5
 #Here I put all together to form the giga-Hamiltonian matrix by considering momentum space neighbors up to the cutoff N
 #To do it I give a number to each of the mini BZs, starting from the central one and then one circle at a time, going anticlockwise.
 #In the look-up table "lu" I put the positions of these mini-BZs, using coordinates in units of G1=(1,0), G2=(1/2,sqrt(3)/2). 
-def total_H(K_,N,params_H,params_V,a_M):
-    #Moiré reciprocal lattice vectors. I start from the first one and obtain the others by doing pi/3 rotations
-    G = [4*np.pi/np.sqrt(3)/a_M*np.array([0,1])]    
-    for i in range(1,6):
-        G.append(np.tensordot(R_z(np.pi/3*i),G[0],1))
-    #dimension of the Hamiltonian, which is 6 times the number of mini-BZs. 
-    #For N=0 it is 1, for N=1 it is 6+1, for N=2 it is 12+6+1 ecc..
-    n_cells = int(1+3*N*(N+1))*6
+def total_H(K_,N,params_H,params_V,params_SO,G_M,a_mono):
+    #Dimension of the Hamiltonian, which is 22 (11 bands + SO) times the number of mini-BZs. 
+    #For N=0 the number of mini-BZ is 1, for N=1 it is 6+1, for N=2 it is 12+6+1 ecc..
+    n_cells = int(1+3*N*(N+1))*22
     H = np.zeros((n_cells,n_cells),dtype=complex)
-    
     ############
-    ############ Diagonal part and look-up table of site's coordinates
+    ############ Diagonal (monolayer) part and look-up table of site's coordinates
     ############
-    #look up matrix of coordinates of single BZs, in units of G1=(1,0), G2=(1/2,sqrt(3)/2)
+    #Look up matrix of coordinates of single mini-BZs, in units of G1=(1,0), G2=(1/2,sqrt(3)/2)
     lu = []     
     #Matrix "m" gives the increment to the coordinates to go around the circle, strating from 
     #the rightmost mini-BZ and going counter-clockwise.
@@ -101,10 +136,9 @@ def total_H(K_,N,params_H,params_V,a_M):
                 #first mini-BZ, which is the rightmost of the ring
                 lu.append((n,0))           
             else:
-                new_lu = lu[-1]
                 #Append the new mini-BZ by incrementing the previous with "m". 
-                #Each value of m has to be repeated n times, which are counted by j. 
-                lu.append((new_lu[0]+m[i][0],new_lu[1]+m[i][1]))
+                #Each value of m has to be repeated n times (each edge of exagon), which are counted by j. 
+                lu.append((lu[-1][0]+m[i][0],lu[-1][1]+m[i][1]))
                 if j == n-1:
                     i += 1
                     j = 0
@@ -112,9 +146,9 @@ def total_H(K_,N,params_H,params_V,a_M):
                     j += 1
             #Take the correct momentum by adding the components of "lu" times the reciprocal 
             #lattice vectors to the initial momentum K_
-            Kp = K_ + G[0]*lu[-1][0] + G[1]*lu[-1][1]
-            #place the corresponding 6x6 Hamiltonian in its position
-            H[s*6:s*6+6,s*6:s*6+6] = H_p(Kp,params_H)
+            K_p = K_ + G_M[0]*lu[-1][0] + G_M[1]*lu[-1][1]
+            #place the corresponding 22x22 Hamiltonian in its position
+            H[s*22:s*22+22,s*22:s*22+22] = H_monolayer(K_p,params_H,params_SO,a_mono)
     
     ############
     ############ Off diagonal part --> Moire potential. 
