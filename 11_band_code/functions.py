@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-a_1 = (1,0)
-a_2 = (-1/2,np.sqrt(2)/2)
+a_1 = np.array([1,0])
+a_2 = np.array([-1/2,np.sqrt(3)/2])
 J_plus = ((3,5), (6,8), (9,11))
 J_minus = ((1,2), (3,4), (4,5), (6,7), (7,8), (9,10), (10,11))
 J_MX_plus = ((3,1), (5,1), (4,2), (10,6), (9,7), (11,7), (10,8))
@@ -12,9 +12,10 @@ J_MX_minus = ((4,1), (3,2), (5,2), (9,6), (11,6), (10,7), (9,8), (11,8))
 #####
 #Here I contruct the single 11 orbital hamiltonian, which is 22x22 for spin-orbit, as a function of momentum
 #Detail can be found in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.92.205108
-def H_monolayer(K_p,params_H,params_SO,a_mono):
+def H_monolayer(K_p,hopping,epsilon,HSO,a_mono):
+    t = hopping
     k_x,k_y = K_p       #momentum
-    delta = a_mono* [a_1, a_1+a_2, a_2, -(2*a_1+a_2)/3, (a_1+2*a_2)/3, (a_1-a_2)/3, -2*(a_1+2*a_2)/3, 2*(2*a_1+a_2)/3, 2*(a_2-a_1)/3]
+    delta = a_mono* np.array([a_1, a_1+a_2, a_2, -(2*a_1+a_2)/3, (a_1+2*a_2)/3, (a_1-a_2)/3, -2*(a_1+2*a_2)/3, 2*(2*a_1+a_2)/3, 2*(a_2-a_1)/3])
     H_0 = np.zeros((11,11),dtype=complex)       #fist part without SO
     #Diagonal
     for i in range(11):
@@ -25,34 +26,38 @@ def H_monolayer(K_p,params_H,params_SO,a_mono):
     for ind in J_plus:
         i = ind[0]-1
         j = ind[1]-1
-        H_0[i,j] += (2*t[0][i,j]*np.cos(np.dot(K_p,delta[0])) 
+        temp = (2*t[0][i,j]*np.cos(np.dot(K_p,delta[0])) 
                 + t[1][i,j]*(np.exp(-1j*np.dot(K_p,delta[1])) + np.exp(-1j*np.dot(K_p,delta[2])))
                 + t[2][i,j]*(np.exp(1j*np.dot(K_p,delta[1])) + np.exp(1j*np.dot(K_p,delta[2])))
                 )
-        H_0[j,i] += np.conjugate(H[i,j])
+        H_0[i,j] += temp
+        H_0[j,i] += np.conjugate(temp)
     #Off diagonal symmetry -
     for ind in J_minus:
         i = ind[0]-1
         j = ind[1]-1
-        H_0[i,j] += (-2*1j*t[0][i,j]*np.sin(np.dot(K_p,delta[0])) 
+        temp = (-2*1j*t[0][i,j]*np.sin(np.dot(K_p,delta[0])) 
                 + t[1][i,j]*(np.exp(-1j*np.dot(K_p,delta[1])) - np.exp(-1j*np.dot(K_p,delta[2])))
                 + t[2][i,j]*(-np.exp(1j*np.dot(K_p,delta[1])) + np.exp(1j*np.dot(K_p,delta[2])))
                 )
-        H_0[j,i] += np.conjugate(H[i,j])
+        H_0[i,j] += temp
+        H_0[j,i] += np.conjugate(temp)
     #M-X coupling +
     for ind in J_MX_plus:
         i = ind[0]-1
         j = ind[1]-1
-        H_0[i,j] += t[3][i,j] * (np.exp(1j*np.dot(K_p,delta[3])) - np.exp(1j*np.dot(K_p,delta[5])))
-        H_0[j,i] += np.conjugate(H[i,j])
+        temp = t[3][i,j] * (np.exp(1j*np.dot(K_p,delta[3])) - np.exp(1j*np.dot(K_p,delta[5])))
+        H_0[i,j] += temp
+        H_0[j,i] += np.conjugate(temp)
     #M-X coupling -
     for ind in J_MX_minus:
         i = ind[0]-1
         j = ind[1]-1
-        H_0[i,j] += (t[3][i,j] * (np.exp(1j*np.dot(K_p,delta[3])) + np.exp(1j*np.dot(K_p,delta[5])))
-                   t[4][i,j] * np.exp(1j*np.dot(K_p,delta[4]))
+        temp = (t[3][i,j] * (np.exp(1j*np.dot(K_p,delta[3])) + np.exp(1j*np.dot(K_p,delta[5])))
+                   + t[4][i,j] * np.exp(1j*np.dot(K_p,delta[4]))
                    )
-        H_0[j,i] += np.conjugate(H[i,j])
+        H_0[i,j] += temp
+        H_0[j,i] += np.conjugate(temp)
     #Second nearest neighbor
     H_1 = np.zeros((11,11),dtype=complex)       #fist part without SO
     H_1[8,5] += t[5][8,5]*(np.exp(1j*np.dot(K_p,delta[6])) + np.exp(1j*np.dot(K_p,delta[7])) + np.exp(1j*np.dot(K_p,delta[8])))
@@ -83,17 +88,12 @@ def H_monolayer(K_p,params_H,params_SO,a_mono):
     #Combine the two terms
     H_TB = H_0 + H_1
 
-    #Spin orbit terms
+    #### Spin orbit terms
     H = np.zeros((22,22),dtype = complex)
-
-    L_z = np.zeros((3,3),dtype = complex)
-    L_z[1,2] = 2*1j;    L_z[2,1] = -2*1j
-    Sig_3 = np.zeros((2,2),dtype=complex)
-    Sig_3[0,0] = 1; Sig_3[1,1] = -1
-    Hp = lamb/2*np.kron(Sig_3,L_z)
-    Id = np.identity(2)
-    H_final = np.kron(Id,H_0) + Hp
-    return H_final
+    H[:11,:11] = H_TB
+    H[11:,11:] = H_TB
+    H += HSO
+    return H
 
 #####
 #####Moire potential part
@@ -103,9 +103,15 @@ def H_monolayer(K_p,params_H,params_SO,a_mono):
 #Different values for in-plane (indexes 1,2) and out-of-plane (index 0) orbits.
 def V_g(g,params):          #g is a integer from 0 to 5
     V_G,psi_G,V_K,psi_K = params        #extract the parameters
-    Id = np.zeros((6,6),dtype = complex)
-    Id[0,0] = V_G*np.exp(1j*(-1)**(g%2)*psi_G);   Id[3,3] = Id[0,0]
-    Id[1,1] = V_K*np.exp(1j*(-1)**(g%2)*psi_K);   Id[2,2] = Id[1,1]; Id[4,4] = Id[1,1]; Id[5,5] = Id[1,1]
+    Id = np.zeros((22,22),dtype = complex)
+    out_of_plane = V_G*np.exp(1j*(-1)**(g%2)*psi_G)
+    in_plane = V_K*np.exp(1j*(-1)**(g%2)*psi_K)
+    list_out = (0,1,2,5,8)
+    list_in = (3,4,6,7,9,10)
+    for i in list_out:
+        Id[i,i] = Id[i+11,i+11] = out_of_plane
+    for i in list_in:
+        Id[i,i] = Id[i+11,i+11] = in_plane
     return Id
 
 #####
@@ -114,7 +120,7 @@ def V_g(g,params):          #g is a integer from 0 to 5
 #Here I put all together to form the giga-Hamiltonian matrix by considering momentum space neighbors up to the cutoff N
 #To do it I give a number to each of the mini BZs, starting from the central one and then one circle at a time, going anticlockwise.
 #In the look-up table "lu" I put the positions of these mini-BZs, using coordinates in units of G1=(1,0), G2=(1/2,sqrt(3)/2). 
-def total_H(K_,N,params_H,params_V,params_SO,G_M,a_mono):
+def total_H(K_,N,hopping,epsilon,HSO,params_V,G_M,a_mono):
     #Dimension of the Hamiltonian, which is 22 (11 bands + SO) times the number of mini-BZs. 
     #For N=0 the number of mini-BZ is 1, for N=1 it is 6+1, for N=2 it is 12+6+1 ecc..
     n_cells = int(1+3*N*(N+1))*22
@@ -148,11 +154,11 @@ def total_H(K_,N,params_H,params_V,params_SO,G_M,a_mono):
             #lattice vectors to the initial momentum K_
             K_p = K_ + G_M[0]*lu[-1][0] + G_M[1]*lu[-1][1]
             #place the corresponding 22x22 Hamiltonian in its position
-            H[s*22:s*22+22,s*22:s*22+22] = H_monolayer(K_p,params_H,params_SO,a_mono)
+            H[s*22:s*22+22,s*22:s*22+22] = H_monolayer(K_p,hopping,epsilon,HSO,a_mono)
     
     ############
     ############ Off diagonal part --> Moire potential. 
-    ############ We are placing a Moiré 6x6 potential just in the off-diagonal parts connected by a 
+    ############ We are placing a Moiré 22x22 potential just in the off-diagonal parts connected by a 
     ############ reciprocal lattice vector.
     ############
     for n in range(0,N+1):      #Circles
@@ -172,7 +178,7 @@ def total_H(K_,N,params_H,params_V,params_SO,G_M,a_mono):
                 #index telling which reciprocal direction it is
                 g = (m.index(i) + 2)%6
                 #...-> add the Moiré potential in the giga-Hamiltonian
-                H[s*6:(s+1)*6,nn*6:(nn+1)*6] = V_g(g,params_V)
+                H[s*22:(s+1)*22,nn*22:(nn+1)*22] = V_g(g,params_V)
     return H
 
 #Lorentzian
