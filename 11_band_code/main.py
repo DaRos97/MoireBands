@@ -50,7 +50,7 @@ offset_energy = 0#.41
 hopping = [PARS.find_t(upper_layer),PARS.find_t(lower_layer)]
 epsilon = [PARS.find_e(upper_layer),PARS.find_e(lower_layer)]
 HSO = [PARS.find_HSO(upper_layer),PARS.find_HSO(lower_layer)]
-params_V =  [PARS.dic_params_V[upper_layer+'/'+lower_layer], PARS.dic_params_V[lower_layer+'/'+upper_layer]]
+params_V =  PARS.dic_params_V[upper_layer+'/'+lower_layer]
 a_M =       PARS.dic_a_Moire[upper_layer+'/'+lower_layer]
 a_mono = [PARS.dic_params_a_mono[upper_layer],PARS.dic_params_a_mono[lower_layer]]
 
@@ -79,8 +79,8 @@ except:
     weight = np.zeros((2,len(path),n_cells))        #ARPES weights
     for i in tqdm.tqdm(range(len(path))):
         K = path[i]                                 #Considered K-point
-        H_UL = fs.total_H(K,N,hopping[0],epsilon[0],HSO[0],params_V[0],G_M,a_mono[0])     #Compute UL Hamiltonian for given K
-        H_LL = fs.total_H(K,N,hopping[1],epsilon[1],HSO[1],params_V[1],G_M,a_mono[1])     #Compute LL Hamiltonian for given K
+        H_UL = fs.total_H(K,N,hopping[0],epsilon[0],HSO[0],params_V,G_M,a_mono[0])     #Compute UL Hamiltonian for given K
+        H_LL = fs.total_H(K,N,hopping[1],epsilon[1],HSO[1],params_V,G_M,a_mono[1])     #Compute LL Hamiltonian for given K
         res[0,i,:],evecs_UL = la.eigh(H_UL,subset_by_value=sbv)           #Diagonalize to get eigenvalues and eigenvectors
         res[1,i,:],evecs_LL = la.eigh(H_LL,subset_by_value=sbv)           #Diagonalize to get eigenvalues and eigenvectors
         evecs = [evecs_UL,evecs_LL]
@@ -105,7 +105,7 @@ except:
     params_V = [0,0,0,0]    #no Moirè potential -> not actually needed if N=0
     for i in tqdm.tqdm(range(len(path))):
         K = path[i]
-        H_k = fs.total_H(K,0,hopping[0],epsilon[0],HSO[0],params_V[0],G_M,a_mono[0])     #Compute UL Hamiltonian for given K
+        H_k = fs.total_H(K,0,hopping[0],epsilon[0],HSO[0],params_V,G_M,a_mono[0])     #Compute UL Hamiltonian for given K
         res_mono_UL[i,:],evecs_mono = la.eigh(H_k,subset_by_value=sbv)
     np.save(mono_UL_name,res_mono_UL)
     print("Time taken: ",tt()-ti)
@@ -121,7 +121,7 @@ except:
     params_V = [0,0,0,0]    #no Moirè potential -> not actually needed if N=0
     for i in tqdm.tqdm(range(len(path))):
         K = path[i]
-        H_k = fs.total_H(K,0,hopping[1],epsilon[1],HSO[1],params_V[1],G_M,a_mono[1])     #Compute LL Hamiltonian for given K
+        H_k = fs.total_H(K,0,hopping[1],epsilon[1],HSO[1],params_V,G_M,a_mono[1])     #Compute LL Hamiltonian for given K
         res_mono_LL[i,:],evecs_mono = la.eigh(H_k,subset_by_value=sbv)
     np.save(mono_LL_name,res_mono_LL)
     print("Time taken: ",tt()-ti)

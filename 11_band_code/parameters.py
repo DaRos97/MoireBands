@@ -97,13 +97,14 @@ dic_params_H = {
                 },
         }
 def find_t(TMD):
+    #Define hopping matrix elements from inputs and complete all symmetry related ones
     t = []
-    t.append(np.zeros((11,11)))
-    t.append(np.zeros((11,11)))
-    t.append(np.zeros((11,11)))
-    t.append(np.zeros((11,11)))
-    t.append(np.zeros((11,11)))
-    t.append(np.zeros((11,11)))
+    t.append(np.zeros((11,11))) #t1
+    t.append(np.zeros((11,11))) #t2
+    t.append(np.zeros((11,11))) #t3
+    t.append(np.zeros((11,11))) #t4
+    t.append(np.zeros((11,11))) #t5
+    t.append(np.zeros((11,11))) #t6
     t[0][0,0] = dic_params_H[TMD]['t1_11']
     t[0][1,1] = dic_params_H[TMD]['t1_22']
     t[0][2,2] = dic_params_H[TMD]['t1_33']
@@ -172,6 +173,7 @@ def find_t(TMD):
     t[3][10,5] = -1/2*t[4][10,5]
     return t
 def find_e(TMD):
+    #Define the array of on-site energies from inputs and symmetry related ones
     e = np.zeros(11)
     e[0] = dic_params_H[TMD]['e1']
     e[1] = e[0]
@@ -186,7 +188,8 @@ def find_e(TMD):
     e[10] = e[9]
     return e
 
-
+#Spin-Orbit Hamiltonian
+#It is k-independent so depends only on \lambda of the materials in the TMD -> 2 parameters for each layer
 dic_params_SO = {
         'W': 0.2874,
         'S': 0.0556,
@@ -266,7 +269,6 @@ dic_params_a_mono = {
 #WS2/WSe2 --> Gamma points from paper "G valley TMD moirè bands"(first in eV, second in radiants)
 #WS2/WSe2 --> Louk's paper for K points(first in eV, second in radiants)
 dic_params_V = {'WSe2/WS2':[0.0335,np.pi, 7.7*1e-3, -106*2*np.pi/360],
-                'WS2/WSe2':[0.0335,np.pi, 7.7*1e-3, -106*2*np.pi/360],
             }
 ###Moirè length of bilayers in Angstrom
 dic_a_Moire = { 'WS2/WSe2':79.8,
