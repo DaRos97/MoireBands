@@ -12,12 +12,10 @@ import functions as fs
 import parameters as ps
 
 ####not in cluster
-import tqdm
 import matplotlib.pyplot as plt
-from matplotlib import cm
-from matplotlib.colors import LogNorm
 
 dirname = "../../Data/11_bands/"
+dirname = "/home/users/r/rossid/0_MOIRE/Data/"
 argv = sys.argv[1:]
 try:
     opts, args = getopt.getopt(argv, "M:",["pts=","cpu=","plot"])
@@ -98,14 +96,14 @@ result = D_E(fs.chi2,
 
 final_pars = np.array(result.x)
 final_en = fs.energies(final_pars,M,a_mono,k_pts_vec)
-plt.figure()
-plt.plot(k_pts_scalar,input_energies[0],'g*')
-plt.plot(k_pts_scalar,input_energies[1],'g*')
-plt.plot(k_pts_scalar,final_en[0],'r-')
-plt.plot(k_pts_scalar,final_en[1],'r-')
-
-plt.show()
-save = input("Save final parameters? [y->all/n]")
+if plot:
+    plt.figure()
+    plt.plot(k_pts_scalar,input_energies[0],'g*')
+    plt.plot(k_pts_scalar,input_energies[1],'g*')
+    plt.plot(k_pts_scalar,final_en[0],'r-')
+    plt.plot(k_pts_scalar,final_en[1],'r-')
+    plt.show()
+save = True #input("Save final parameters? [y->all/n]")
 if save != 'n':
     par_filename = dirname + 'fit_pars_'+M+'.npy'
     np.save(par_filename,final_pars)
