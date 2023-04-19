@@ -1,6 +1,6 @@
 import numpy as np
 ind_res = 0
-list_res_bm = [1/(2*x) for x in range(1,20)]
+list_res_bm = [1/(2**x) for x in range(1,30)]
 #####
 #####Parameters
 #####

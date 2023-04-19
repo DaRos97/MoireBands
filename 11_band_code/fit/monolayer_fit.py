@@ -15,12 +15,12 @@ import parameters as ps
 import matplotlib.pyplot as plt
 
 dirname = "../../Data/11_bands/"
-dirname = "/home/users/r/rossid/0_MOIRE/Data/"
+#dirname = "/home/users/r/rossid/0_MOIRE/Data/"
 argv = sys.argv[1:]
 try:
     opts, args = getopt.getopt(argv, "M:",["pts=","cpu=","plot"])
     M = 'WSe2'               #Material
-    considered_pts = 50
+    considered_pts = -1
     n_cpu = 1
     plot = False
 except:
@@ -47,6 +47,8 @@ if not (input_data_full[0][:,0] == input_data_full[1][:,0]).all():
     print("k-pts different in two points, code not valid")
     exit()
 N = len(input_data_full[0][:,0])
+if considered_pts < 0:
+    considered_pts = N
 new_N = N//(N//considered_pts)
 print("Points in input data: ",N)
 print("Considering only ",new_N," for each band in the fit")
@@ -56,7 +58,7 @@ input_energies = [input_data[0][:,1],input_data[1][:,1]]
 k_pts_scalar = input_data[0][:,0]
 k_pts_vec = fs.find_vec_k(k_pts_scalar,'KGC')
 #Args
-args_chi2 = (input_energies,M,a_mono,new_N,k_pts_vec,k_pts_scalar,plot)
+args_chi2 = (input_energies,M,a_mono,new_N,k_pts_vec)
 #Initial point
 temp_filename = 'temp_fit_pars_'+M+'.npy'
 if Path(temp_filename).is_file():
@@ -69,15 +71,17 @@ initial_chi2 = fs.chi2(initial_point,*args_chi2)
 print("Initial chi2 is ",initial_chi2)
 if plot:
     ens = fs.energies(initial_point,M,a_mono,k_pts_vec)
-    plt.figure()
-    plt.plot(k_pts_scalar,input_energies[0],'g*')
-    plt.plot(k_pts_scalar,input_energies[1],'g*')
+    plt.figure(figsize=(15,8))
+    plt.subplot(1,2,1)
     plt.plot(k_pts_scalar,ens[0],'r-')
+    plt.plot(k_pts_scalar,input_energies[0],'g*',zorder=-1)
+    plt.subplot(1,2,2)
     plt.plot(k_pts_scalar,ens[1],'r-')
+    plt.plot(k_pts_scalar,input_energies[1],'g*',zorder=-1)
     plt.show()
 #Bounds
 Bounds = []
-rg = initial_chi2        #range for bounds around dft values
+rg = 1#initial_chi2        #range for bounds around dft values
 for p in initial_point:
     pp = np.abs(p)
     Bounds.append((p-pp*rg,p+pp*rg))

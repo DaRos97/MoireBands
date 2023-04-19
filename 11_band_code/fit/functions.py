@@ -44,7 +44,7 @@ def find_vec_k(k_scalar,path):
 
 def chi2(parameters,*args):
     ti = tt()
-    input_energy, M, a_mono, N, k_pts,k2,plot = args
+    input_energy, M, a_mono, N, k_pts = args
     energies_computed = energies(parameters,M,a_mono,k_pts)
     res = 0
     for band in range(2):
@@ -54,12 +54,6 @@ def chi2(parameters,*args):
         par_filename = 'temp_fit_pars_'+M+'.npy'
         np.save(par_filename,parameters)
         ps.ind_res += 1
-        if plot:
-            plt.plot(k2,energies_computed[0],'r-')
-            plt.plot(k2,energies_computed[1],'r-')
-            plt.plot(k2,input_energy[0],'g*')
-            plt.plot(k2,input_energy[1],'g*')
-            plt.show()
     return res
 #
 def energies(parameters,M,a_mono,k_pts):
