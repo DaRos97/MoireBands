@@ -1,17 +1,68 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import parameters as ps
+import scipy.linalg as la
+from time import time as tt
+
+def convert(input_filename):
+    with open(input_filename, 'r') as f:
+        lines = f.readlines()
+    N = len(lines)
+    res = np.ndarray((N,2))
+    for i in range(N):
+        temp = lines[i].split('\t')
+        res[i,0] = float(temp[0])
+        res[i,1] = float(temp[1])
+    return res
+
+def reduce_input(input_data,considered_pts):
+    N = len(input_data[0][:,0])
+    new_N = N//(N//considered_pts)
+    res = []
+    res.append(np.ndarray((new_N,2)))
+    res.append(np.ndarray((new_N,2)))
+    for i in range(new_N):
+        ind = N//considered_pts*i
+        res[0][i,:] = input_data[0][ind,:]
+        res[1][i,:] = input_data[1][ind,:]
+    return res
+
+def find_vec_k(k_scalar,path):
+    k_pts = np.ndarray((len(k_scalar),2))
+    if path == 'KGC':
+        for i in range(len(k_scalar)):
+            if k_scalar[i] < 0:
+                k_pts[i,0] = np.abs(k_scalar[i])
+                k_pts[i,1] = 0
+            else:
+                k_pts[i,0] = np.abs(k_scalar[i])*np.cos(np.pi/3)
+                k_pts[i,1] = np.abs(k_scalar[i])*np.sin(np.pi/3)
+    else:
+        print("Path not implemented in vectorization of k points")
+        exit()
+    return k_pts
 
 def chi2(parameters,*args):
-    energies_data, M, a_mono = args
-    energies_computed = fs.energies(parameters,M,a_mono)
+    ti = tt()
+    input_energy, M, a_mono, N, k_pts,k2,plot = args
+    energies_computed = energies(parameters,M,a_mono,k_pts)
     res = 0
     for band in range(2):
-        for k in range(len(energiesi_computed[0,:])):
-            res += (energies_computed[band,k] - energies_data[band,k])**2
+        for i in range(N):
+            res += (energies_computed[band,i] - input_energy[band][i])**2
+    if res < ps.list_res_bm[ps.ind_res]:
+        par_filename = 'temp_fit_pars_'+M+'.npy'
+        np.save(par_filename,parameters)
+        ps.ind_res += 1
+        if plot:
+            plt.plot(k2,energies_computed[0],'r-')
+            plt.plot(k2,energies_computed[1],'r-')
+            plt.plot(k2,input_energy[0],'g*')
+            plt.plot(k2,input_energy[1],'g*')
+            plt.show()
     return res
 #
-def energies(parameters,M,a_mono):
-    k_pts = ...             #DEFINE K POINTS IN PATH K-GAMMA-K' exactly as those in data
+def energies(parameters,M,a_mono,k_pts):
     hopping = ps.find_t(parameters)
     epsilon = ps.find_e(parameters)
     HSO = ps.find_HSO(parameters)
@@ -19,23 +70,11 @@ def energies(parameters,M,a_mono):
     for i in range(len(k_pts)):
         K = k_pts[i]                                 #Considered K-point
         H_mono = H_monolayer(K,hopping,epsilon,HSO,a_mono)     #Compute UL Hamiltonian for given K
-        temp = la.eigvalsh(H_monolayer)
-        ens[:,i] = temp[12:14]                      #CONSIDER ONLY LAST 2 VALENCE BANDS -> correct?
+        temp = la.eigvalsh(H_mono)
+        ens[0,i] = temp[13] + parameters[-1]     #offset in energy
+        ens[1,i] = temp[12] + parameters[-1]     #offset in energy
     return ens
 #
-def final_energies(parameters,M,a_mono):
-    k_pts = ....    #same initial points as above but many more now
-    hopping = ps.find_t(parameters)
-    epsilon = ps.find_e(parameters)
-    HSO = ps.find_HSO(parameters)
-    ens = np.zeros((2,len(k_pts)))
-    for i in range(len(k_pts)):
-        K = k_pts[i]                                 #Considered K-point
-        H_mono = H_monolayer(K,hopping,epsilon,HSO,a_mono)     #Compute UL Hamiltonian for given K
-        temp = la.eigvalsh(H_monolayer)
-        ens[:,i] = temp[12:14]                      #CONSIDER ONLY LAST 2 VALENCE BANDS -> correct?
-    return k_pts, ens
-
 
 a_1 = np.array([1,0])
 a_2 = np.array([-1/2,np.sqrt(3)/2])

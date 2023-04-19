@@ -1,4 +1,6 @@
 import numpy as np
+ind_res = 0
+list_res_bm = [1/(2*x) for x in range(1,20)]
 #####
 #####Parameters
 #####
@@ -96,6 +98,9 @@ initial_pt = {
             #'S'
             0.0556,
 
+            #'offset
+            -0.7,
+
                 ],
         'WSe2': [
             #'e1':   
@@ -187,14 +192,11 @@ initial_pt = {
             0.2874,
             #'Se'
             0.2470,
+
+            #'offset
+            -0.7,
                 ],
         }
-bounds = {}
-rg = 0.1
-for M in initial_pt.keys():
-    bounds[M] = []
-    for p in initial_pt[M]:
-        bounds.append(p-rg,p+rg)
 
 def find_t(dic_params_H):
     #Define hopping matrix elements from inputs and complete all symmetry related ones
@@ -359,6 +361,7 @@ def find_HSO(dic_params_H):
     HSO[11:,:11] = Mdu
     ####
     return HSO
+#Angstrom
 dic_params_a_mono = {
         'WS2': 3.18,
         'WSe2': 3.32,

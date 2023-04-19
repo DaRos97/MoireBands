@@ -15,10 +15,11 @@ from matplotlib.colors import LogNorm
 dirname = "../Data/11_bands/"                    #WRONG
 argv = sys.argv[1:]
 try:
-    opts, args = getopt.getopt(argv, "N:",["LL=","UL="])
-    N = 4               #Number of circles of mini-BZ around the central one
+    opts, args = getopt.getopt(argv, "N:",["LL=","UL=","ap"])
+    N = 1               #Number of circles of mini-BZ around the central one
     upper_layer = 'WSe2'
     lower_layer = 'WS2'
+    ap = 'amplitude'       #amplitude
 except:
     print("Error")
     exit()
@@ -29,6 +30,8 @@ for opt, arg in opts:
         lower_layer = arg
     if opt == '--UL':
         upper_layer = arg
+    if opt == '--ap':
+        ap = 'phase'  #phase
 
 #
 hopping = [PARS.find_t(upper_layer),PARS.find_t(lower_layer)]
@@ -52,8 +55,9 @@ for i in range(1,6):
 #Moirè potential points to compute
 params_V =  PARS.dic_params_V[upper_layer+'/'+lower_layer]
 n_pts = 100
-V_path = np.linspace(0,0.1,n_pts)
-moire_vector = 2
+end_V = 0.1 if ap=='amplitude' else 2*np.pi
+V_path = np.linspace(0.001,end_V,n_pts)
+moire_vector = 0
 
 
 ######################
@@ -61,7 +65,7 @@ moire_vector = 2
 ######################
 n_cells = int(1+3*N*(N+1))*14        #Dimension of H divided by 3 -> take only valence bands
 sbv = [-10,1]                      #Select_by_value for the diagonalization in order to take only bands in valence. 
-res_name = dirname + "int_V_arpes_"+lower_layer+"-"+upper_layer+"_"+str(N)+str(moire_vector)+".npy"
+res_name = dirname + "int_V_arpes_"+lower_layer+"-"+upper_layer+"_"+str(N)+"_"+str(moire_vector)+ap+".npy"
 try:    #name: LL/UL, N, Path, k-points per segment
     res = np.load(res_name)
     print("\nIntensities already computed")
@@ -71,17 +75,19 @@ except:
     weight2 = np.zeros((2,n_pts,n_cells))        #ARPES weights
     res = np.zeros((2,n_pts,n_cells))        #ARPES weights
     for i in tqdm.tqdm(range(n_pts)):
-        params_V[2] = V_path[i]
+        ind_ap = 2 if ap=='amplitude' else 3        #index of varying parameter in params_V
+        params_V[ind_ap] = V_path[i]
         K1 = K_pt                                #Considered K-point
         H_UL = fs.total_H(K1,N,hopping[0],epsilon[0],HSO[0],params_V,G_M,a_mono[0])     #Compute UL Hamiltonian for given K
         H_LL = fs.total_H(K1,N,hopping[1],epsilon[1],HSO[1],params_V,G_M,a_mono[1])     #Compute LL Hamiltonian for given K
-        res0,evecs_UL = la.eigh(H_UL,subset_by_value=sbv)           #Diagonalize to get eigenvalues and eigenvectors
+        res0,evecs_UL = la.eigh(H_UL,subset_by_value=sbv)           #evec_UL has (1+3*N*(N+1))*22 lines and (1+3*N*(N+1))*14 columns -> eqch column is an eigenvector of H_UL
         res1,evecs_LL = la.eigh(H_LL,subset_by_value=sbv)           #Diagonalize to get eigenvalues and eigenvectors
         evecs = [evecs_UL,evecs_LL]
         for l in range(2):
             for e in range(n_cells):
                 for d in range(22):
                     weight1[l,i,e] += np.abs(evecs[l][d,e])**2
+        #
         K2 = K_pt + G_M[moire_vector]                                #Considered K-point
         H_UL = fs.total_H(K2,N,hopping[0],epsilon[0],HSO[0],params_V,G_M,a_mono[0])     #Compute UL Hamiltonian for given K
         H_LL = fs.total_H(K2,N,hopping[1],epsilon[1],HSO[1],params_V,G_M,a_mono[1])     #Compute LL Hamiltonian for given K
@@ -92,15 +98,24 @@ except:
             for e in range(n_cells):
                 for d in range(22):
                     weight2[l,i,e] += np.abs(evecs[l][d,e])**2
-        res[0,i,:] = weight2[0,i,:]/weight1[0,i,:]
-        res[1,i,:] = weight2[1,i,:]/weight1[1,i,:]
+        #Compute weight ratio
+        for j in range(n_cells):
+            if weight1[0,i,j] != 0:
+                res[0,i,j] = weight2[0,i,j]/weight1[0,i,j]
+            if weight1[1,i,j] != 0:
+                res[1,i,j] = weight2[1,i,j]/weight1[1,i,j]
     np.save(res_name,res)
     print("Time taken: ",tt()-ti)
 
 plt.figure()
-plt.plot(V_path,res[0,:,-1],'r*-')
+for i in [0,-1]:
+    plt.plot(V_path,res[0,:,i],'*-',label=str(i))
+plt.legend()
+if ap == 'amplitude':
+    plt.ylim([0,1])
 ggg = 15
-plt.xlabel(r'$|V_k|$',fontsize=ggg)
+label_x = r'$|V_k|$' if ap=='amplitude' else r'$\phi_k$'
+plt.xlabel(label_x,fontsize=ggg)
 plt.ylabel(r'$\frac{I(K+G_0)}{I(K)}$',rotation=0,fontsize=ggg)
 plt.show()
 

@@ -1,5 +1,6 @@
 #ignoring files
 Data/
 */__pycache__/
+*/*/__pycache__/
 Figures/
 .ipynb_checkpoints/
