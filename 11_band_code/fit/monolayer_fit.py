@@ -18,13 +18,14 @@ dirname = "../../Data/11_bands/"
 #dirname = "/home/users/r/rossid/0_MOIRE/Data/"
 argv = sys.argv[1:]
 try:
-    opts, args = getopt.getopt(argv, "M:",["pts=","cpu=","plot","final"])
+    opts, args = getopt.getopt(argv, "M:",["pts=","cpu=","plot","final","symm"])
     M = 'WSe2'               #Material
     considered_pts = -1
     n_cpu = 1
     plot = False
     final = False
     save = True 
+    symm = False
 except:
     print("Error")
     exit()
@@ -39,6 +40,8 @@ for opt, arg in opts:
         plot = True
     if opt == '--final':
         final = True
+    if opt == '--symm':
+        symm = True
 if plot:
     n_cpu = 1
 #Monolayer lattice length
@@ -50,6 +53,8 @@ input_data_full = [fs.convert(filename1),fs.convert(filename2)]
 if not (input_data_full[0][:,0] == input_data_full[1][:,0]).all():
     print("k-pts different in two points, code not valid")
     exit()
+if symm:
+    input_data_full = fs.symmetrize_data(input_data_full)
 #Number of points to consider
 N = len(input_data_full[0][:,0])
 if considered_pts < 0 or final:
@@ -81,6 +86,7 @@ print("Initial chi2 is ",initial_chi2)
 if plot or final:
     ens = fs.energies(initial_point,M,a_mono,k_pts_vec)
     plt.figure(figsize=(15,8))
+    plt.suptitle(M)
     plt.subplot(1,2,1)
     plt.plot(k_pts_scalar,ens[0],'r-')
     plt.plot(k_pts_scalar,input_energies[0],'g*',zorder=-1)
