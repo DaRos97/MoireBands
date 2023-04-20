@@ -43,7 +43,6 @@ def find_vec_k(k_scalar,path):
     return k_pts
 
 def chi2(parameters,*args):
-    ti = tt()
     input_energy, M, a_mono, N, k_pts = args
     energies_computed = energies(parameters,M,a_mono,k_pts)
     res = 0
