@@ -27,29 +27,6 @@ def reduce_input(input_data,considered_pts):
         res[1][i,:] = input_data[1][ind,:]
     return res
 
-def symmetrize_data(input_data):
-    N = len(input_data[0][:,0])
-    cnt = 0
-    for i in range(N):
-        if input_data[0][i,0] < 0:
-            cnt += 1
-            continue
-        break
-    cnt -= 1
-    res1 = np.ndarray((2*cnt,2))
-    for i in range(cnt):
-        res1[i,:] = input_data[0][i,:]
-    for i in range(cnt):
-        res1[cnt+i,0] = -input_data[0][cnt-i,0]
-        res1[cnt+i,1] = input_data[0][cnt-i,1]
-    res2 = np.ndarray((2*cnt,2))
-    for i in range(cnt):
-        res2[i,:] = input_data[1][i,:]
-    for i in range(cnt):
-        res2[cnt+i,0] = -input_data[1][cnt-i,0]
-        res2[cnt+i,1] = input_data[1][cnt-i,1]
-    return [res1, res2]
-
 def find_vec_k(k_scalar,path):
     k_pts = np.ndarray((len(k_scalar),2))
     if path == 'KGC':
@@ -187,6 +164,33 @@ def H_monolayer(K_p,hopping,epsilon,HSO,a_mono):
     return H
 
 
+
+
+
+####################################################
+
+def symmetrize_data(input_data):
+    N = len(input_data[0][:,0])
+    cnt = 0
+    for i in range(N):
+        if input_data[0][i,0] < 0:
+            cnt += 1
+            continue
+        break
+    cnt -= 1
+    res1 = np.ndarray((2*cnt,2))
+    for i in range(cnt):
+        res1[i,:] = input_data[0][i,:]
+    for i in range(cnt):
+        res1[cnt+i,0] = -input_data[0][cnt-i,0]
+        res1[cnt+i,1] = input_data[0][cnt-i,1]
+    res2 = np.ndarray((2*cnt,2))
+    for i in range(cnt):
+        res2[i,:] = input_data[1][i,:]
+    for i in range(cnt):
+        res2[cnt+i,0] = -input_data[1][cnt-i,0]
+        res2[cnt+i,1] = input_data[1][cnt-i,1]
+    return [res1, res2]
 
 
 
