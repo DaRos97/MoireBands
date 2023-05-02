@@ -52,12 +52,14 @@ list_names = [
             ]
 
 M = sys.argv[1]
+consider_SO = True if sys.argv[2]=='True' else False
+txt_SO = "SO" if consider_SO else "noSO"
 
-tabname = 'Table_DFT_vs_TB_'+M+'.txt'
+tabname = 'Table_DFT_vs_TB_'+M+'_'+txt_SO+'.txt'
 with open(tabname, 'w') as f:
     with redirect_stdout(f):
         print("TMD:\t",M,'\n')
-        filename = dirname + 'fit_pars_' + M + '.npy'
+        filename = dirname + 'fit_pars_' + M + '_' + txt_SO + '.npy'
         pars_computed = np.load(filename)
         pars_dft = ps.initial_pt[M]
         for i in range(len(pars_dft)):

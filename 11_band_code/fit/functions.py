@@ -42,8 +42,22 @@ def find_vec_k(k_scalar,path):
         exit()
     return k_pts
 
-def chi2(parameters,*args):
-    input_energy, M, a_mono, N, k_pts = args
+def dft_values(pars,consider_SO):
+    if consider_SO:
+        return pars
+    pars2 = pars[:40]
+    pars2.append(pars[-1])
+    return pars2
+
+def chi2(pars,*args):
+    input_energy, M, a_mono, N, k_pts, SO_pars = args
+    if SO_pars == [0,0]:
+        parameters = pars
+    else:
+        parameters = list(pars[:-1])
+        parameters.append(SO_pars[0])
+        parameters.append(SO_pars[1])
+        parameters.append(pars[-1])
     energies_computed = energies(parameters,M,a_mono,k_pts)
     res = 0
     for band in range(2):

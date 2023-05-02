@@ -20,12 +20,13 @@ dirname = "../../Data/11_bands/"
 #dirname = "/home/users/r/rossid/0_MOIRE/Data/"
 argv = sys.argv[1:]
 try:
-    opts, args = getopt.getopt(argv, "M:",["pts=","cpu=","final"])
+    opts, args = getopt.getopt(argv, "M:",["pts=","cpu=","final","SO"])
     M = 'WSe2'               #Material
     considered_pts = -1
     n_cpu = 1
     final = False
     save = True 
+    consider_SO = False
 except:
     print("Error")
     exit()
@@ -38,6 +39,9 @@ for opt, arg in opts:
         n_cpu = int(arg)
     if opt == '--final':
         final = True
+    if opt == '--SO':
+        consider_SO = True
+txt_SO = "SO" if consider_SO else "noSO"
 #Monolayer lattice length
 a_mono = ps.dic_params_a_mono[M]
 #Data
@@ -58,35 +62,42 @@ input_energies = [input_data[0][:,1],input_data[1][:,1]]
 k_pts_scalar = input_data[0][:,0]
 k_pts_vec = fs.find_vec_k(k_pts_scalar,'KGC')
 #Arguments of chi^2 function
-args_chi2 = (input_energies,M,a_mono,new_N,k_pts_vec)
+SO_pars = [0,0] if consider_SO else ps.initial_pt[M][40:42]
+args_chi2 = (input_energies,M,a_mono,new_N,k_pts_vec,SO_pars)
 #Initial point for minimization
 if final:       #use final saved values
-    temp_filename = dirname+'fit_pars_'+M+'.npy'
+    temp_filename = dirname+'fit_pars_'+M+"_"+txt_SO+'.npy'
 else:           #try to use temp saved values
-    temp_filename = 'temp_fit_pars_'+M+'.npy'
+    temp_filename = 'temp_fit_pars_'+M+"_"+txt_SO+'.npy'
 if Path(temp_filename).is_file():
     initial_point = np.load(temp_filename)
-    print("using temp file")
+    print("using saved file")
 else:
-    initial_point = ps.initial_pt[M]
+    initial_point = fs.dft_values(ps.initial_pt[M],consider_SO)
     print("using DFT file")
 #Evaluate initial value of chi^2
 initial_chi2 = fs.chi2(initial_point,*args_chi2)
 if final:
     print("Final chi2 is ",initial_chi2)
-    ens = fs.energies(initial_point,M,a_mono,k_pts_vec)
+    if consider_SO:
+        pars_final = initial_point 
+    else:
+        pars_final = initial_point[:-1]
+        pars_final.append(SO_pars[0])
+        pars_final.append(SO_pars[1])
+        pars_final.append(initial_point[-1])
+    final_en = fs.energies(pars_final,M,a_mono,k_pts_vec)
     plt.figure(figsize=(15,8))
     plt.suptitle(M)
     plt.subplot(1,2,1)
-    plt.plot(k_pts_scalar,ens[0],'r-')
+    plt.plot(k_pts_scalar,final_en[0],'r-')
     plt.plot(k_pts_scalar,input_energies[0],'g*',zorder=-1)
     plt.subplot(1,2,2)
-    plt.plot(k_pts_scalar,ens[1],'r-')
+    plt.plot(k_pts_scalar,final_en[1],'r-')
     plt.plot(k_pts_scalar,input_energies[1],'g*',zorder=-1)
     plt.show()
     if input("Save k_en list and DFT vs TB table? (y/n)") == 'y':
         #Print k and energy -> to external output AND create table of differences between DFT and fit
-        final_en = fs.energies(initial_point,M,a_mono,k_pts_vec)
         filename_ek = 'k_en_'+M+'.txt'
         with open(filename_ek, 'w') as f:
             with redirect_stdout(f):
@@ -95,21 +106,17 @@ if final:
                     print("band ",str(b+1))
                     for i in range(len(k_pts_scalar)):
                         print("{:.8f}".format(k_pts_scalar[i]),'\t',"{:.8f}".format(final_en[b,i]))
-        command = 'python distance_dft.py '+M 
+        command = 'python distance_dft.py '+M+' '+str(consider_SO)
         os.system(command)
     exit()
 #Bounds
 Bounds = []
 rg = 0.5        #proportional bound around initial values
 rg2 = 0.1   #bound irrespective of parameter value
-rg_L = 0.05           #bound spin orbit (proportional)
 list_SO = [40,41]        #indexes of SO coupling terms in parameter space
 for i,p in enumerate(initial_point):
     pp = np.abs(p)
-    if i in list_SO:
-        Bounds.append((p-pp*rg_L,p+pp*rg_L))
-    else:
-        Bounds.append((p-pp*rg-rg2,p+pp*rg+rg2))
+    Bounds.append((p-pp*rg-rg2,p+pp*rg+rg2))
 #Minimization
 result = D_E(fs.chi2,
     bounds = Bounds,
@@ -117,7 +124,7 @@ result = D_E(fs.chi2,
     maxiter = 1000,
     popsize = 15,
     tol = 0.01,
-    disp = True,
+#    disp = True,
     workers = n_cpu,
     updating = 'deferred' if n_cpu != 1 else 'immediate',
     x0 = initial_point
@@ -126,7 +133,7 @@ result = D_E(fs.chi2,
 final_pars = np.array(result.x)
 if save:
     print("Saving with final value: ",result.fun)
-    par_filename = dirname + 'fit_pars_'+M+'.npy'
+    par_filename = dirname + 'fit_pars_'+M+'_'+txt_SO+'.npy'
     np.save(par_filename,final_pars)
 
 
