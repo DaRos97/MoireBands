@@ -49,6 +49,7 @@ def chi2(parameters,*args):
     for band in range(2):
         for i in range(N):
             res += (energies_computed[band,i] - input_energy[band][i])**2
+    res /= N
     if res < ps.list_res_bm[ps.ind_res]:
         par_filename = 'temp_fit_pars_'+M+'.npy'
         np.save(par_filename,parameters)

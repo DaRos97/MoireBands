@@ -1,5 +1,8 @@
 import numpy as np
 import parameters as ps
+import sys
+
+from contextlib import redirect_stdout
 
 dirname = '../../Data/11_bands/'
 list_names = [
@@ -47,14 +50,19 @@ list_names = [
             'L_S',
             'offset'
             ]
-for M in ['WSe2','WS2']:
-    print("TMD:\t",M,'\n')
-    filename = dirname + 'fit_pars_' + M + '.npy'
-    pars_computed = np.load(filename)
-    pars_dft = ps.initial_pt[M]
-    for i in range(len(pars_dft)):
-        percentage = np.abs((pars_computed[i]-pars_dft[i])/pars_dft[i]*100)
-        l = 15 - len(list_names[i])
-        print(list_names[i],':',' '*l,"{:.3f}".format(percentage),'%\t',"{:.5f}".format(pars_dft[i]),'\t->\t',pars_computed[i])
-    print('\n\n#############################\n\n')
+
+M = sys.argv[1]
+
+tabname = 'Table_DFT_vs_TB_'+M+'.txt'
+with open(tabname, 'w') as f:
+    with redirect_stdout(f):
+        print("TMD:\t",M,'\n')
+        filename = dirname + 'fit_pars_' + M + '.npy'
+        pars_computed = np.load(filename)
+        pars_dft = ps.initial_pt[M]
+        for i in range(len(pars_dft)):
+            percentage = np.abs((pars_computed[i]-pars_dft[i])/pars_dft[i]*100)
+            l = 15 - len(list_names[i])
+            print(list_names[i],':',' '*l,"{:.3f}".format(percentage),'%\t',"{:.5f}".format(pars_dft[i]),'\t->\t',pars_computed[i])
+        print('\n\n#############################\n\n')
 
