@@ -4,16 +4,42 @@ import parameters as ps
 import scipy.linalg as la
 from time import time as tt
 
-def convert(input_filename):
-    with open(input_filename, 'r') as f:
-        lines = f.readlines()
-    N = len(lines)
-    res = np.ndarray((N,2))
+def convert(P,M):#input_filename):
+    #for given path and material, takes the two bands and returns the lists of energy and momentum for the 2 top valence bands. 
+    #For each k, is checked that the same k is also in the other band (there could be NAN)
+    lines = []
+    for i in range(2):
+        input_filename = 'input_data/'+P+'_'+M+'_band'+str(i+1)+'_v1.txt'
+        with open(input_filename, 'r') as f:
+            lines.append(f.readlines())
+    N = max(len(lines[0]),len(lines[1]))
+    res1 = []
+    res2 = []
     for i in range(N):
-        temp = lines[i].split('\t')
-        res[i,0] = float(temp[0])
-        res[i,1] = float(temp[1])
-    return res
+        try:
+            temp1 = lines[0][i].split('\t')
+            pas_1 = True
+            if temp1[1] == 'NAN\n':
+                pas_1 = False
+        except:
+            pas_1 = False
+        try:
+            temp2 = lines[1][i].split('\t')
+            pas_2 = True
+            if temp2[1] == 'NAN\n':
+                pas_2 = False
+        except:
+            pas_2 = False
+        if pas_1 and pas_2:
+            res1.append([0,0])
+            res1[-1][0] = float(temp1[0])
+            res1[-1][1] = float(temp1[1])
+            res2.append([0,0])
+            res2[-1][0] = float(temp2[0])
+            res2[-1][1] = float(temp2[1])
+    res1 = np.array(res1)
+    res2 = np.array(res2)
+    return [res1,res2]
 
 def reduce_input(input_data,considered_pts):
     N = len(input_data[0][:,0])
@@ -27,9 +53,16 @@ def reduce_input(input_data,considered_pts):
         res[1][i,:] = input_data[1][ind,:]
     return res
 
-def find_vec_k(k_scalar,path):
+def find_vec_k(k_scalar,path,a_mono):
+    #a1 = (1,0)
+    #a2 = (-1/2,sqrt(3)/2)
+    #b1 = (2\pi/a,2\pi/(sqrt(3)a))
+    #b2 = (0,4\pi/(sqrt(3)a))
+    #K = (4\pi/(3a),0)
+    #K' = (2\pi/(3a),2\pi/(sqrt(3)a))
+    #M = (\pi/a,\pi/(sqrt(3)a))
     k_pts = np.ndarray((len(k_scalar),2))
-    if path == 'KGC':
+    if path == 'KGK':
         for i in range(len(k_scalar)):
             if k_scalar[i] < 0:
                 k_pts[i,0] = np.abs(k_scalar[i])
@@ -37,6 +70,15 @@ def find_vec_k(k_scalar,path):
             else:
                 k_pts[i,0] = np.abs(k_scalar[i])*np.cos(np.pi/3)
                 k_pts[i,1] = np.abs(k_scalar[i])*np.sin(np.pi/3)
+    elif path == 'KMKp':
+        M = np.array([np.pi,np.pi/np.sqrt(3)])/a_mono
+        K = np.array([4*np.pi/3,0])/a_mono
+        Kp = np.array([2*np.pi/3,2*np.pi/np.sqrt(3)])/a_mono
+        for i in range(len(k_scalar)):
+            if k_scalar[i] < 0:
+                k_pts[i,:] = M + (M-K)*np.abs(k_scalar[i])/la.norm(M-K)
+            else:
+                k_pts[i,:] = M + (M-Kp)*np.abs(k_scalar[i])/la.norm(M-Kp)
     else:
         print("Path not implemented in vectorization of k points")
         exit()
@@ -53,19 +95,22 @@ def chi2(pars,*args):
     input_energy, M, a_mono, N, k_pts, SO_pars = args
     if SO_pars == [0,0]:
         parameters = pars
+        txt_SO = "SO"
     else:
         parameters = list(pars[:-1])
         parameters.append(SO_pars[0])
         parameters.append(SO_pars[1])
         parameters.append(pars[-1])
+        txt_SO = "noSO"
     energies_computed = energies(parameters,M,a_mono,k_pts)
     res = 0
-    for band in range(2):
-        for i in range(N):
-            res += (energies_computed[band,i] - input_energy[band][i])**2
-    res /= N
+    for cut in range(len(k_pts)):
+        for band in range(2):
+            for i in range(N[cut]):
+                res += (energies_computed[cut][band,i] - input_energy[cut][band][i])**2
+        res /= np.sqrt(N[cut])
     if res < ps.list_res_bm[ps.ind_res]:
-        par_filename = 'temp_fit_pars_'+M+'.npy'
+        par_filename = 'temp_fit_pars_'+M+'_'+txt_SO+'.npy'
         np.save(par_filename,parameters)
         ps.ind_res += 1
     return res
@@ -74,14 +119,17 @@ def energies(parameters,M,a_mono,k_pts):
     hopping = ps.find_t(parameters)
     epsilon = ps.find_e(parameters)
     HSO = ps.find_HSO(parameters)
-    ens = np.zeros((2,len(k_pts)))
-    for i in range(len(k_pts)):
-        K = k_pts[i]                                 #Considered K-point
-        H_mono = H_monolayer(K,hopping,epsilon,HSO,a_mono)     #Compute UL Hamiltonian for given K
-        temp = la.eigvalsh(H_mono)
-        ens[0,i] = temp[13] + parameters[-1]     #offset in energy
-        ens[1,i] = temp[12] + parameters[-1]     #offset in energy
-    return ens
+    ens_tot = []
+    for cut in range(len(k_pts)):
+        ens = np.zeros((2,len(k_pts[cut])))
+        for i in range(len(k_pts[cut])):
+            K = k_pts[cut][i]                                 #Considered K-point
+            H_mono = H_monolayer(K,hopping,epsilon,HSO,a_mono)     #Compute UL Hamiltonian for given K
+            temp = la.eigvalsh(H_mono)
+            ens[0,i] = temp[13] + parameters[-1]     #offset in energy
+            ens[1,i] = temp[12] + parameters[-1]     #offset in energy
+        ens_tot.append(ens)
+    return ens_tot
 #
 
 a_1 = np.array([1,0])

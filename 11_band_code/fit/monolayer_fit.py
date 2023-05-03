@@ -22,7 +22,7 @@ argv = sys.argv[1:]
 try:
     opts, args = getopt.getopt(argv, "M:",["pts=","cpu=","final","SO"])
     M = 'WSe2'               #Material
-    considered_pts = -1
+    input_considered_pts = -1
     n_cpu = 1
     final = False
     save = True 
@@ -34,7 +34,7 @@ for opt, arg in opts:
     if opt in ['-M']:
         M = arg
     if opt == '--pts':
-        considered_pts = int(arg)
+        input_considered_pts = int(arg)
     if opt == '--cpu':
         n_cpu = int(arg)
     if opt == '--final':
@@ -45,22 +45,26 @@ txt_SO = "SO" if consider_SO else "noSO"
 #Monolayer lattice length
 a_mono = ps.dic_params_a_mono[M]
 #Data
-filename1 = 'input_data/KGK_'+M+'_band1_v1.txt'
-filename2 = 'input_data/KGK_'+M+'_band2_v1.txt'
-input_data_full = [fs.convert(filename1),fs.convert(filename2)]
-if not (input_data_full[0][:,0] == input_data_full[1][:,0]).all():
-    print("k-pts different in two points, code not valid")
-    exit()
-#Number of points to consider
-N = len(input_data_full[0][:,0])        #Full length
-if considered_pts < 0 or final:
-    considered_pts = N
-new_N = N//(N//considered_pts)
-input_data = fs.reduce_input(input_data_full,considered_pts) 
-input_energies = [input_data[0][:,1],input_data[1][:,1]]
-#k points in path
-k_pts_scalar = input_data[0][:,0]
-k_pts_vec = fs.find_vec_k(k_pts_scalar,'KGC')
+paths = ['KGK','KMKp']
+cuts = len(paths)
+input_energies = []
+k_pts_vec = []
+k_pts_scalar = []
+new_N = []
+for P in paths:
+    input_data_full = fs.convert(P,M)
+    #Number of points to consider
+    N = len(input_data_full[0][:,0])        #Full length
+    if input_considered_pts < 0 or input_considered_pts > N or final:
+        considered_pts = N
+    else:
+        considered_pts = input_considered_pts
+    new_N.append(N//(N//considered_pts))
+    input_data = fs.reduce_input(input_data_full,considered_pts) 
+    input_energies.append([input_data[0][:,1],input_data[1][:,1]])
+    #k points in path
+    k_pts_scalar.append(input_data[0][:,0])
+    k_pts_vec.append(fs.find_vec_k(k_pts_scalar[-1],P,a_mono))
 #Arguments of chi^2 function
 SO_pars = [0,0] if consider_SO else ps.initial_pt[M][40:42]
 args_chi2 = (input_energies,M,a_mono,new_N,k_pts_vec,SO_pars)
@@ -82,19 +86,20 @@ if final:
     if consider_SO:
         pars_final = initial_point 
     else:
-        pars_final = initial_point[:-1]
+        pars_final = list(initial_point[:-1])
         pars_final.append(SO_pars[0])
         pars_final.append(SO_pars[1])
         pars_final.append(initial_point[-1])
     final_en = fs.energies(pars_final,M,a_mono,k_pts_vec)
     plt.figure(figsize=(15,8))
     plt.suptitle(M)
-    plt.subplot(1,2,1)
-    plt.plot(k_pts_scalar,final_en[0],'r-')
-    plt.plot(k_pts_scalar,input_energies[0],'g*',zorder=-1)
-    plt.subplot(1,2,2)
-    plt.plot(k_pts_scalar,final_en[1],'r-')
-    plt.plot(k_pts_scalar,input_energies[1],'g*',zorder=-1)
+    for cut in range(cuts):
+        plt.subplot(cuts,2,2*cut+1)
+        plt.plot(k_pts_scalar[cut],final_en[cut][0],'r-')
+        plt.plot(k_pts_scalar[cut],input_energies[cut][0],'g*',zorder=-1)
+        plt.subplot(cuts,2,2*cut+2)
+        plt.plot(k_pts_scalar[cut],final_en[cut][1],'r-')
+        plt.plot(k_pts_scalar[cut],input_energies[cut][1],'g*',zorder=-1)
     plt.show()
     if input("Save k_en list and DFT vs TB table? (y/n)") == 'y':
         #Print k and energy -> to external output AND create table of differences between DFT and fit
@@ -108,12 +113,10 @@ if final:
                         print("{:.8f}".format(k_pts_scalar[i]),'\t',"{:.8f}".format(final_en[b,i]))
         command = 'python distance_dft.py '+M+' '+str(consider_SO)
         os.system(command)
-    exit()
 #Bounds
 Bounds = []
 rg = 0.5        #proportional bound around initial values
 rg2 = 0.1   #bound irrespective of parameter value
-list_SO = [40,41]        #indexes of SO coupling terms in parameter space
 for i,p in enumerate(initial_point):
     pp = np.abs(p)
     Bounds.append((p-pp*rg-rg2,p+pp*rg+rg2))

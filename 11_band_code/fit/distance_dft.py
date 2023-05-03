@@ -5,7 +5,7 @@ import sys
 from contextlib import redirect_stdout
 
 dirname = '../../Data/11_bands/'
-list_names = [
+list_names_all = [
             'e1', 
             'e3',   
             'e4',   
@@ -61,7 +61,14 @@ with open(tabname, 'w') as f:
         print("TMD:\t",M,'\n')
         filename = dirname + 'fit_pars_' + M + '_' + txt_SO + '.npy'
         pars_computed = np.load(filename)
-        pars_dft = ps.initial_pt[M]
+        if txt_SO == 'SO':
+            pars_dft = ps.initial_pt[M]
+            list_names = list_names_all
+        else:
+            pars_dft = ps.initial_pt[M][:40]
+            pars_dft.append(ps.initial_pt[M][-1])
+            list_names = list_names_all[:40]
+            list_names.append(list_names_all[-1])
         for i in range(len(pars_dft)):
             percentage = np.abs((pars_computed[i]-pars_dft[i])/pars_dft[i]*100)
             l = 15 - len(list_names[i])
