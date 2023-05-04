@@ -113,6 +113,7 @@ if final:
                         print("{:.8f}".format(k_pts_scalar[i]),'\t',"{:.8f}".format(final_en[b,i]))
         command = 'python distance_dft.py '+M+' '+str(consider_SO)
         os.system(command)
+    exit()
 #Bounds
 Bounds = []
 rg = 0.5        #proportional bound around initial values
