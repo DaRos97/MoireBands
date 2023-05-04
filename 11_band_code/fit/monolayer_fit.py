@@ -103,7 +103,7 @@ if final:
     plt.show()
     if input("Save k_en list and DFT vs TB table? (y/n)") == 'y':
         #Print k and energy -> to external output AND create table of differences between DFT and fit
-        filename_ek = 'k_en_'+M+'.txt'
+        filename_ek = 'result/k_en_'+M+'.txt'
         with open(filename_ek, 'w') as f:
             with redirect_stdout(f):
                 print("TMD:\t",M,'\n')
@@ -116,7 +116,7 @@ if final:
     exit()
 #Bounds
 Bounds = []
-rg = 0.5        #proportional bound around initial values
+rg = 1        #proportional bound around initial values
 rg2 = 0.1   #bound irrespective of parameter value
 for i,p in enumerate(initial_point):
     pp = np.abs(p)

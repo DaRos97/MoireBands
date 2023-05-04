@@ -55,7 +55,7 @@ M = sys.argv[1]
 consider_SO = True if sys.argv[2]=='True' else False
 txt_SO = "SO" if consider_SO else "noSO"
 
-tabname = 'Table_DFT_vs_TB_'+M+'_'+txt_SO+'.txt'
+tabname = 'result/Table_DFT_vs_TB_'+M+'_'+txt_SO+'.txt'
 with open(tabname, 'w') as f:
     with redirect_stdout(f):
         print("TMD:\t",M,'\n')
