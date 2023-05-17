@@ -103,14 +103,15 @@ if final:
     plt.show()
     if input("Save k_en list and DFT vs TB table? (y/n)") == 'y':
         #Print k and energy -> to external output AND create table of differences between DFT and fit
-        filename_ek = 'result/k_en_'+M+'.txt'
-        with open(filename_ek, 'w') as f:
-            with redirect_stdout(f):
-                print("TMD:\t",M,'\n')
-                for b in range(2):
-                    print("band ",str(b+1))
-                    for i in range(len(k_pts_scalar)):
-                        print("{:.8f}".format(k_pts_scalar[i]),'\t',"{:.8f}".format(final_en[b,i]))
+        for cut in range(cuts):
+            filename_ek = 'result/k_en_'+M+'_'+paths[cut]+'.txt'
+            with open(filename_ek, 'w') as f:
+                with redirect_stdout(f):
+                    print("TMD:\t",M,'\n')
+                    for b in range(2):
+                        print("band ",str(b+1))
+                        for i in range(len(k_pts_scalar[cut])):
+                            print("{:.8f}".format(k_pts_scalar[cut][i]),'\t',"{:.8f}".format(final_en[cut][b,i]))
         command = 'python distance_dft.py '+M+' '+str(consider_SO)
         os.system(command)
     exit()
