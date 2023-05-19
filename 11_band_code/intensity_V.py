@@ -55,10 +55,9 @@ for i in range(1,6):
 #Moirè potential points to compute
 params_V =  PARS.dic_params_V[upper_layer+'/'+lower_layer]
 n_pts = 100
-end_V = 0.1 if ap=='amplitude' else 2*np.pi
-V_path = np.linspace(0.001,end_V,n_pts)
-moire_vector = 0
-
+end_V = 2*params_V[2] if ap=='amplitude' else 2*np.pi
+V_path = np.linspace(0,end_V,n_pts)
+moire_vector = 0        #index of Moire reciprocal lattice vector
 
 ######################
 ###################### Construct Hamiltonians with Moirè potential
@@ -77,6 +76,7 @@ except:
     for i in tqdm.tqdm(range(n_pts)):
         ind_ap = 2 if ap=='amplitude' else 3        #index of varying parameter in params_V
         params_V[ind_ap] = V_path[i]
+        #First point
         K1 = K_pt                                #Considered K-point
         H_UL = fs.total_H(K1,N,hopping[0],epsilon[0],HSO[0],params_V,G_M,a_mono[0])     #Compute UL Hamiltonian for given K
         H_LL = fs.total_H(K1,N,hopping[1],epsilon[1],HSO[1],params_V,G_M,a_mono[1])     #Compute LL Hamiltonian for given K
@@ -87,7 +87,7 @@ except:
             for e in range(n_cells):
                 for d in range(22):
                     weight1[l,i,e] += np.abs(evecs[l][d,e])**2
-        #
+        #Second point
         K2 = K_pt + G_M[moire_vector]                                #Considered K-point
         H_UL = fs.total_H(K2,N,hopping[0],epsilon[0],HSO[0],params_V,G_M,a_mono[0])     #Compute UL Hamiltonian for given K
         H_LL = fs.total_H(K2,N,hopping[1],epsilon[1],HSO[1],params_V,G_M,a_mono[1])     #Compute LL Hamiltonian for given K
