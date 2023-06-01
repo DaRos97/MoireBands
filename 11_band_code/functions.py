@@ -185,6 +185,10 @@ def total_H(K_,N,hopping,epsilon,HSO,params_V,G_M,a_mono):
 def lorentzian_weight(k,e,*pars):
     K2,E2,weight,K_,E_ = pars
     return abs(weight)/((k-K_)**2+K2)/((e-E_)**2+E2)
+#Banana Lorentzian
+def banana_lorentzian_weight(kx,ky,*pars):
+    Kx2,Ky2,E2,weight,E_,E_cut,Kx_,Ky_ = pars
+    return abs(weight)/((kx-Kx_)**2+Kx2)/((ky-Ky_)**2+Ky2)/((E_-E_cut)**2+E2)
 
 #z rotations
 def R_z(t):
@@ -245,10 +249,34 @@ def pathBZ(path_name,a_monolayer,pts_ps):
         K_points.append(dic_names[i])
     return path, K_points
 
+def gridBZ(grid_pars,a_monolayer):
+    K_center,dist_kx,dist_ky,n_bands,pts_per_direction = grid_pars
+    #K_center: string with name of central point of the grid
+    #dist_k*: float of distance from central point of furthest point in each direction *
+    #pts_per_direction: array of 2 floats with TOTAL number of steps in the two directions -> better if odd so central point is included
+    G = [4*np.pi/np.sqrt(3)/a_monolayer*np.array([0,1])]      
+    for i in range(1,6):
+        G.append(np.tensordot(R_z(np.pi/3*i),G[0],1))
+    K = np.array([G[-1][0]/3*2,0])                      #K-point
+    Gamma = np.array([0,0])                                #Gamma
+    Kp =    np.tensordot(R_z(np.pi/3),K,1)     #K'-point
+    dic_symm_pts = {'G':Gamma,'K':K,'C':Kp}
+    #
+    grid = np.zeros((pts_per_direction[0],pts_per_direction[1],2))
+    KKK = dic_symm_pts[K_center]
+    for x in range(-pts_per_direction[0]//2+1,pts_per_direction[0]//2+1):
+        for y in range(-pts_per_direction[1]//2+1,pts_per_direction[1]//2+1):
+            K_pt_x = KKK[0] + dist_kx*x/pts_per_direction[0]
+            K_pt_y = KKK[1] + dist_ky*y/pts_per_direction[1]
+            grid[x+pts_per_direction[0]//2,y+pts_per_direction[1]//2,0] = K_pt_x
+            grid[x+pts_per_direction[0]//2,y+pts_per_direction[1]//2,1] = K_pt_y
+    return grid
 
-
-
-
+def get_Moire(a_M):     #Compute Moire recipèrocal lattice vectors
+    G_M = [4*np.pi/np.sqrt(3)/a_M*np.array([0,1])]    
+    for i in range(1,6):
+        G_M.append(np.tensordot(R_z(np.pi/3*i),G_M[0],1))
+    return G_M
 
 
 

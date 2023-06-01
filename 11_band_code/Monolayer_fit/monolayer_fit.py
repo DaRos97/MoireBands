@@ -16,7 +16,8 @@ import matplotlib.pyplot as plt
 from contextlib import redirect_stdout
 import os
 
-dirname = "../../Data/11_bands/"
+dirname = "result/"
+#dirname = "./"
 #dirname = "/home/users/r/rossid/0_MOIRE/Data/"
 argv = sys.argv[1:]
 try:
@@ -95,9 +96,11 @@ if final:
     plt.suptitle(M)
     for cut in range(cuts):
         plt.subplot(cuts,2,2*cut+1)
+        plt.title("Cut "+paths[cut]+", band 0")
         plt.plot(k_pts_scalar[cut],final_en[cut][0],'r-')
         plt.plot(k_pts_scalar[cut],input_energies[cut][0],'g*',zorder=-1)
         plt.subplot(cuts,2,2*cut+2)
+        plt.title("Cut "+paths[cut]+", band 1")
         plt.plot(k_pts_scalar[cut],final_en[cut][1],'r-')
         plt.plot(k_pts_scalar[cut],input_energies[cut][1],'g*',zorder=-1)
     plt.show()
@@ -112,7 +115,7 @@ if final:
                         print("band ",str(b+1))
                         for i in range(len(k_pts_scalar[cut])):
                             print("{:.8f}".format(k_pts_scalar[cut][i]),'\t',"{:.8f}".format(final_en[cut][b,i]))
-        command = 'python distance_dft.py '+M+' '+str(consider_SO)
+        command = 'python distance_dft.py '+M+' '+str(consider_SO)+' '+dirname
         os.system(command)
     exit()
 #Bounds

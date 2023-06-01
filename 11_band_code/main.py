@@ -3,59 +3,76 @@ import sys
 import getopt
 import os
 
-data_dirname = "../Data/11_bands/"
 argv = sys.argv[1:]
 try:
-    opts, args = getopt.getopt(argv, "N:",["Path=","LL=","UL=","pts_ps=","mono","gridy=","spread_E="])
-    N = 4               #Number of circles of mini-BZ around the central one
+    opts, args = getopt.getopt(argv, "N:")
+    #General parameters
+    N = 2               #Number of circles of mini-BZ around the central one
     upper_layer = 'WSe2'
     lower_layer = 'WS2'
+    data_dirname = "Data/"
+    general_pars = (N,upper_layer,lower_layer,data_dirname)
+    #Parameters for path bands
+    compute_path = 1#False
     pts_ps = 200         #points per step
     Path = 'KGC'
-    sbv = [-10,1]
-    factor_gridy = 5
-    spread_E = 0.005
-    spread_K = 0.001      #spread in momentum
+    n_bands = 4         #Number of valence bands to consider
+    pars_path_bands = (pts_ps,Path,n_bands)
+    #Parameters for path lorentz (K-E plot)
+    factor_gridy = 2        #number of points in y (energy) axis given by (len(Path)-1)*pts_ps*factor_gridy
+    spread_E = 0.05
+    spread_K = 1e-4      #spread in momentum
     larger_E = 0.2      #in eV. Enlargment of E axis wrt min and max band energies
-    plot_mono = False
+    shade_LL = 1#0.5
+    plot_EK = True
+    plot_mono_EK = 0#True
+    spread_pars_path = (factor_gridy,spread_E,spread_K,larger_E,shade_LL,plot_EK,plot_mono_EK)
+    #Parameters for grid bands
+    compute_grid = 0#True
+    K_center = 'G'
+    dist_kx = 1.2
+    dist_ky = 0.5
+    n_n = 51                #Number of k-pts in each direction, kx and ky
+    pts_per_direction = (2*n_n+1,n_n)       #need to be BOTH odd
+    n_bands_grid = 4        #Same as n_bands above
+    grid_pars = (K_center,dist_kx,dist_ky,n_bands_grid,pts_per_direction)
+    #Parameters grid lorentz (banana plot)
+    E_cut = 0.7
+    spread_Kx_banana = spread_Ky_banana = spread_K
+    spread_E_banana = spread_E
+    plot_banana = True
+    spread_pars_grid = (E_cut,spread_Kx_banana,spread_Ky_banana,spread_E_banana,plot_banana)
 except:
     print("Error")
     exit()
 for opt, arg in opts:
     if opt in ['-N']:
         N = int(arg)
-    if opt == '--LL':
-        lower_layer = arg
-    if opt == '--UL':
-        upper_layer = arg
-    if opt == '--pts_ps':
-        pts_ps = int(arg)
-    if opt == '--Path':
-        Path = arg
 
-#launch band calculation
-args_arpes_bands = (N,upper_layer,lower_layer,pts_ps,Path,sbv,data_dirname)
-import arpes_bands
-arpes_bands.arpes_bands(args_arpes_bands)
+if compute_path:
+    #launch path band calculation
+    args_path_bands = (general_pars,pars_path_bands)
+    import path_bands
+    path_bands.path_bands(args_path_bands)
 
-#launch lorentzian spread for K-E plot
-args_EK_lorentz = (N,upper_layer,lower_layer,pts_ps,Path,sbv,factor_gridy,spread_E,spread_K,larger_E,data_dirname)
-import EK_lorentz
-EK_lorentz.EK_lorentz(args_EK_lorentz)
+    #launch lorentzian spread for K-E plot
+    args_path_lorentz = (general_pars,pars_path_bands,spread_pars_path)
+    import path_lorentz
+    path_lorentz.path_lorentz(args_path_lorentz)
 
-#launch plot for K-E
-args_plot_EK = (N,upper_layer,lower_layer,pts_ps,Path,sbv,factor_gridy,spread_E,spread_K,larger_E,plot_mono,data_dirname)
-import plot_EK
-#plot_EK.plot_EK(args_plot_EK)
+if compute_grid:
+    #launch grid bands for constant energy maps
+    args_grid_bands = (general_pars,grid_pars)
+    import grid_bands
+    grid_bands.grid_bands(args_grid_bands)
 
-#launch lorentzian spread for constant energy maps
-args_banana_lorentz = (N,upper_layer,lower_layer,pts_ps,Path,sbv,factor_gridy,spread_E,spread_K,larger_E,plot_mono,data_dirname)
-import banana_lorentz
-banana_lorentz.banana_lorentz(args_banana_lorentz)
+    #launch banana lorentz for constant energy maps
+    args_grid_lorentz = (general_pars,grid_pars,spread_pars_grid)
+    import grid_lorentz
+    grid_lorentz.grid_lorentz(args_grid_lorentz)
 
-exit()
 
-#launch plot for constant energy maps
-com_3b = "python plot_banana.py"
-os.system(com_3b)
+
+
+
 

@@ -3,8 +3,9 @@ import numpy as np
 #####Parameters
 #####
 ###Monolayer paerameters
+
 #WS2 --> Table III  (first two in Angstrom, all others in eV, last in .. (lambda of SO)
-dic_params_H = {    
+dic_params_DFT = {    
         'WS2': {
             'e1':   1.3754,
             'e3':   -1.1278,
@@ -96,6 +97,20 @@ dic_params_H = {
             't6_118':   -0.2424,
                 },
         }
+dirname = "Monolayer_fit/result/"
+dic_params_H = {}
+dic_params_offset = {}
+for M in ['WSe2','WS2']:
+    dic_params_H[M] = {}
+    filename = dirname+'fit_pars_'+M+'_noSO.npy'
+    pars = np.load(filename)
+    captions = list(dic_params_DFT[M].keys())
+    for i in range(len(captions)):
+        dic_params_H[M][captions[i]] = pars[i]
+    
+    #SO
+    dic_params_offset[M] = pars[-1]
+#
 def find_t(TMD):
     #Define hopping matrix elements from inputs and complete all symmetry related ones
     t = []
@@ -269,6 +284,7 @@ dic_params_a_mono = {
 #WS2/WSe2 --> Gamma points from paper "G valley TMD moirè bands"(first in eV, second in radiants)
 #WS2/WSe2 --> Louk's paper for K points(first in eV, second in radiants)
 dic_params_V = {'WSe2/WS2':[0.0335,np.pi, 7.7*1e-3, -106*2*np.pi/360],
+                'WS2/WSe2':[0.0335,np.pi, 7.7*1e-3, -106*2*np.pi/360]
             }
 ###Moirè length of bilayers in Angstrom
 dic_a_Moire = { 'WS2/WSe2':79.8,

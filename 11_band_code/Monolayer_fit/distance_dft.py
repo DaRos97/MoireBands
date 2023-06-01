@@ -4,7 +4,6 @@ import sys
 
 from contextlib import redirect_stdout
 
-dirname = '../../Data/11_bands/'
 list_names_all = [
             'e1', 
             'e3',   
@@ -53,6 +52,7 @@ list_names_all = [
 
 M = sys.argv[1]
 consider_SO = True if sys.argv[2]=='True' else False
+dirname = sys.argv[3]
 txt_SO = "SO" if consider_SO else "noSO"
 
 tabname = 'result/Table_DFT_vs_TB_'+M+'_'+txt_SO+'.txt'
