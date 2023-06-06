@@ -30,8 +30,8 @@ def grid_bands(args):
     ######################
     n_cells = int(1+3*N*(N+1))*14        #Dimension of H with only valence bands 
     n_cells_below = int(1+3*N*(N+1))*(14-n_bands)        #Dimension of H with only valence bands - bands considered
-    data_name = dirname + "banana_en_"+lower_layer+"-"+upper_layer+"_"+str(N)+'_'+K_center+'_'+str(pts_per_direction)+'_'+str(n_bands)+".npy"
-    weights_name = dirname + "banana_arpes__"+lower_layer+"-"+upper_layer+"_"+str(N)+'_'+K_center+'_'+str(pts_per_direction[0])+'_'+str(n_bands)+".npy"
+    data_name = dirname + "banana_en_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+K_center+'_'+str(dist_kx).replace('.',',')+'_'+str(dist_ky).replace('.',',')+'_'+str(pts_per_direction)+'_'+str(n_bands)+".npy"
+    weights_name = dirname + "banana_arpes__"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+K_center+'_'+str(dist_kx).replace('.',',')+'_'+str(dist_ky).replace('.',',')+'_'+str(pts_per_direction)+'_'+str(n_bands)+".npy"
     try:    #name: LL/UL, N, K_center, grid size, number of considered valence bands
         res = np.load(data_name)
         weight = np.load(weights_name)

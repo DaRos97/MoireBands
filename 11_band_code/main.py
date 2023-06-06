@@ -13,7 +13,7 @@ try:
     data_dirname = "Data/"
     general_pars = (N,upper_layer,lower_layer,data_dirname)
     #Parameters for path bands
-    compute_path = 1#False
+    compute_path = 0
     pts_ps = 200         #points per step
     Path = 'KGC'
     n_bands = 4         #Number of valence bands to consider
@@ -28,17 +28,18 @@ try:
     plot_mono_EK = 0#True
     spread_pars_path = (factor_gridy,spread_E,spread_K,larger_E,shade_LL,plot_EK,plot_mono_EK)
     #Parameters for grid bands
-    compute_grid = 0#True
+    compute_grid = 1
     K_center = 'G'
     dist_kx = 1.2
     dist_ky = 0.5
-    n_n = 51                #Number of k-pts in each direction, kx and ky
-    pts_per_direction = (2*n_n+1,n_n)       #need to be BOTH odd
-    n_bands_grid = 4        #Same as n_bands above
+    n_bands_grid = 8        #Same as n_bands above
+    n_pts_x = 31                #Number of k-pts in x-direction
+    n_pts_y = 31
+    pts_per_direction = (n_pts_x,n_pts_y)
     grid_pars = (K_center,dist_kx,dist_ky,n_bands_grid,pts_per_direction)
     #Parameters grid lorentz (banana plot)
-    E_cut = 0.7
-    spread_Kx_banana = spread_Ky_banana = spread_K
+    E_cut = 1
+    spread_Kx_banana = spread_Ky_banana = 1e-2#spread_K
     spread_E_banana = spread_E
     plot_banana = True
     spread_pars_grid = (E_cut,spread_Kx_banana,spread_Ky_banana,spread_E_banana,plot_banana)

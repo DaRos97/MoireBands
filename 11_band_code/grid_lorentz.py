@@ -15,28 +15,19 @@ def grid_lorentz(args):
     K_center, dist_kx, dist_ky, n_bands, pts_per_direction = grid_pars
     E_cut, spread_Kx, spread_Ky, spread_E, plot = spread_pars 
     #
-    data_name = dirname + "banana_en_"+lower_layer+"-"+upper_layer+"_"+str(N)+'_'+K_center+'_'+str(pts_per_direction)+'_'+str(n_bands)+".npy"
-    weights_name = dirname + "banana_arpes__"+lower_layer+"-"+upper_layer+"_"+str(N)+'_'+K_center+'_'+str(pts_per_direction[0])+'_'+str(n_bands)+".npy"
+    data_name = dirname + "banana_en_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+K_center+'_'+str(dist_kx).replace('.',',')+'_'+str(dist_ky).replace('.',',')+'_'+str(pts_per_direction)+'_'+str(n_bands)+".npy"
+    weights_name = dirname + "banana_arpes__"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+K_center+'_'+str(dist_kx).replace('.',',')+'_'+str(dist_ky).replace('.',',')+'_'+str(pts_per_direction)+'_'+str(n_bands)+".npy"
     res = np.load(data_name)
     weight = np.load(weights_name)
     a_mono = [PARS.dic_params_a_mono[upper_layer],PARS.dic_params_a_mono[lower_layer]]
+    #
     grid = fs.gridBZ(grid_pars,a_mono[0])
-    #
     bnds = res.shape[-1]
-    G = [4*np.pi/np.sqrt(3)/a_mono[0]*np.array([0,1])]      
-    for i in range(1,6):
-        G.append(np.tensordot(fs.R_z(np.pi/3*i),G[0],1))
-    K = np.array([G[-1][0]/3*2,0])                      #K-point
-    Gamma = np.array([0,0])                                #Gamma
-    Kp =    np.tensordot(fs.R_z(np.pi/3),K,1)     #K'-point
-    dic_symm_pts = {'G':Gamma,'K':K,'C':Kp}
-    KKK = dic_symm_pts[grid_pars[0]]
-    #
-    Kx_list = np.linspace(KKK[0]-dist_kx,KKK[0]+dist_kx,pts_per_direction[0])
-    Ky_list = np.linspace(KKK[1]-dist_ky,KKK[1]+dist_ky,pts_per_direction[1])
+    Kx_list = grid[:,0,0]
+    Ky_list = grid[0,:,1]
     #Compute values of lorentzian spread of weights for banana plot
-    lor_name = dirname + "banana_FC_"+lower_layer+"-"+upper_layer+"_"+str(N)+'_'+K_center+'_'+str(pts_per_direction)+'_'+str(n_bands)
-    par_name = '_Full_('+str(spread_Kx).replace('.',',')+'_'+str(spread_E).replace('.',',')+')'+'_E'+str(E_cut).replace('.',',')+".npy"
+    lor_name = dirname + "banana_FC_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+K_center+'_'+str(dist_kx).replace('.',',')+'_'+str(dist_ky).replace('.',',')+'_'+str(pts_per_direction)+'_'+str(n_bands)
+    par_name = '_Full_'+str(spread_Kx).replace('.',',')+'_'+str(spread_E).replace('.',',')+'_E'+str(E_cut).replace('.',',')+".npy"
     lor_name += par_name
     try:
         lor = np.load(lor_name)
@@ -53,6 +44,8 @@ def grid_lorentz(args):
                 for j in range(bnds):
                     pars = (Kx2,Ky2,E2,weight[l,x,y,j],res[l,x,y,j],E_cut,grid[x,y,0],grid[x,y,1])
                     lor += fs.banana_lorentzian_weight(Kx_list[:,None],Ky_list[None,:],*pars)
+#                    print(lor)
+#                    input()
         np.save(lor_name,lor)
 
     if plot:
@@ -63,3 +56,10 @@ def grid_lorentz(args):
         plt.ylabel('Ky')
         plt.xlabel('Kx')
         plt.show()
+
+
+
+
+
+
+

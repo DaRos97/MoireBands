@@ -29,8 +29,8 @@ def path_bands(args):
     ######################
     n_cells = int(1+3*N*(N+1))*14        #Dimension of H with only valence bands 
     n_cells_below = int(1+3*N*(N+1))*(14-n_bands)        #Dimension of H with only valence bands considered
-    data_name = dirname + "en_"+lower_layer+"-"+upper_layer+"_"+str(N)+'_'+Path+'_'+str(pts_ps)+'_'+str(n_bands)+".npy"
-    weights_name = dirname + "arpes_"+lower_layer+"-"+upper_layer+"_"+str(N)+'_'+Path+'_'+str(pts_ps)+'_'+str(n_bands)+".npy"
+    data_name = dirname + "en_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+Path+'_'+str(pts_ps)+'_'+str(n_bands)+".npy"
+    weights_name = dirname + "arpes_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+Path+'_'+str(pts_ps)+'_'+str(n_bands)+".npy"
     try:    #name: LL/UL, N, Path, k-points per segment, number of valence bands considered
         res = np.load(data_name)
         weight = np.load(weights_name)
