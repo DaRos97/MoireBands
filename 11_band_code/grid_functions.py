@@ -1,16 +1,17 @@
 import numpy as np
 import functions as fs
-import parameters as PARS
+import PARAMS as PARS
 import scipy.linalg as la
 
-####not in cluster
-import tqdm
-import matplotlib.pyplot as plt
 def grid_bands(args):
     #Parameters I need
     general_pars,grid_pars = args
     N,upper_layer,lower_layer,dirname = general_pars
     K_center, dist_kx, dist_ky, n_bands, pts_per_direction = grid_pars
+    if cluster:
+        tqdm = fs.tqdm
+    else:
+        from tqdm import tqdm
     # Get parameters from PARS
     hopping = [PARS.find_t(upper_layer),PARS.find_t(lower_layer)]
     epsilon = [PARS.find_e(upper_layer),PARS.find_e(lower_layer)]
@@ -40,7 +41,7 @@ def grid_bands(args):
         res = np.zeros((2,pts_per_direction[0],pts_per_direction[1],n_cells-n_cells_below))           
         #Energies: 2 -> layers, grid k-pts, n_cells -> dimension of Hamiltonian
         weight = np.zeros((2,pts_per_direction[0],pts_per_direction[1],n_cells-n_cells_below))        #ARPES weights
-        for i in tqdm.tqdm(range(pts_per_direction[0]*pts_per_direction[1])):
+        for i in tqdm(range(pts_per_direction[0]*pts_per_direction[1])):
             x = i%pts_per_direction[0]
             y = i//pts_per_direction[0]              
             K = grid[x,y]                                 #Considered K-point
@@ -58,9 +59,72 @@ def grid_bands(args):
         res[1] += PARS.dic_params_offset[lower_layer]
         np.save(data_name,res)
         np.save(weights_name,weight)
-    return 0
-    #Plot
-    plt.figure()
-    plt.plot(np.arange(res.shape[1]),res[0,:,0,0]) 
-    plt.show()
-    exit()
+
+def grid_lorentz(args):
+    general_pars,grid_pars,spread_pars = args
+    N,upper_layer,lower_layer,dirname = general_pars
+    K_center, dist_kx, dist_ky, n_bands, pts_per_direction = grid_pars
+    E_cut_list, spread_Kx, spread_Ky, spread_E, plot = spread_pars 
+    if cluster:
+        tqdm = fs.tqdm
+    else:
+        from tqdm import tqdm
+    #
+    data_name = dirname + "banana_en_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+K_center+'_'+str(dist_kx).replace('.',',')+'_'+str(dist_ky).replace('.',',')+'_'+str(pts_per_direction)+'_'+str(n_bands)+".npy"
+    weights_name = dirname + "banana_arpes__"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+K_center+'_'+str(dist_kx).replace('.',',')+'_'+str(dist_ky).replace('.',',')+'_'+str(pts_per_direction)+'_'+str(n_bands)+".npy"
+    res = np.load(data_name)
+    weight = np.load(weights_name)
+    a_mono = [PARS.dic_params_a_mono[upper_layer],PARS.dic_params_a_mono[lower_layer]]
+    #
+    grid = fs.gridBZ(grid_pars,a_mono[0])
+    bnds = res.shape[-1]
+    Kx_list = grid[:,0,0]
+    Ky_list = grid[0,:,1]
+    #Compute values of lorentzian spread of weights for banana plot
+    lor_name = dirname + "banana_FC_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+K_center+'_'+str(dist_kx).replace('.',',')+'_'+str(dist_ky).replace('.',',')+'_'+str(pts_per_direction)+'_'+str(n_bands)
+    lor_ = []
+    for E_cut in E_cut_list:
+        par_name = '_Full_'+str(spread_Kx).replace('.',',')+'_'+str(spread_E).replace('.',',')+'_E'+str(E_cut).replace('.',',')+".npy"
+        lor_name += par_name
+        try:
+            lor = np.load(lor_name)
+        except:
+            print("\nComputing banana lorentzian spread of E="+str(E_cut)+" ...")
+            lor = np.zeros((pts_per_direction[0],pts_per_direction[1]))
+            Kx2 = spread_Kx**2
+            Ky2 = spread_Ky**2
+            E2 = spread_E**2
+            for i in tqdm(range(pts_per_direction[0]*pts_per_direction[1])):
+                x = i%pts_per_direction[0]
+                y = i//pts_per_direction[0] 
+                for l in range(2):              #layers
+                    for j in range(bnds):
+                        pars = (Kx2,Ky2,E2,weight[l,x,y,j],res[l,x,y,j],E_cut,grid[x,y,0],grid[x,y,1])
+                        lor += fs.banana_lorentzian_weight(Kx_list[:,None],Ky_list[None,:],*pars)
+    #                    print(lor)
+    #                    input()
+            np.save(lor_name,lor)
+        lor_.append(lor)
+
+    if plot:
+        import matplotlib.pyplot as plt
+        from matplotlib import cm
+        from matplotlib.colors import LogNorm
+        #PLOTTING
+        fig = plt.figure(figsize = (15,8))
+        X,Y = np.meshgrid(Kx_list,Ky_list)
+        n = len(E_cut_list)
+        for i in range(n):
+            plt.subplot(2,2,i+1)
+            plt.title("CEM: "+str(E_cut_list[i])+" eV")
+            plt.pcolormesh(X, Y,lor_[i].T,alpha=0.8,cmap=plt.cm.Greys,norm=LogNorm(vmin=lor_[i][np.nonzero(lor_[i])].min(), vmax=lor_[i].max()))
+            plt.ylabel('Ky')
+            plt.xlabel('Kx')
+        plt.show()
+
+
+
+
+
+
+
