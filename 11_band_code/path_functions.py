@@ -88,7 +88,7 @@ def path_bands(args):
 
 def path_lorentz(args):
     general_pars,pars_path_bands,spread_pars_path = args
-    N,upper_layer,lower_layer,dirname = general_pars
+    N,upper_layer,lower_layer,dirname,cluster = general_pars
     pts_ps,Path,n_bands = pars_path_bands
     factor_gridy, E_, K_, larger_E, shade_LL, plot, plot_mono = spread_pars_path
     if cluster:

@@ -6,7 +6,7 @@ import scipy.linalg as la
 def grid_bands(args):
     #Parameters I need
     general_pars,grid_pars = args
-    N,upper_layer,lower_layer,dirname = general_pars
+    N,upper_layer,lower_layer,dirname,cluster = general_pars
     K_center, dist_kx, dist_ky, n_bands, pts_per_direction = grid_pars
     if cluster:
         tqdm = fs.tqdm
@@ -62,7 +62,7 @@ def grid_bands(args):
 
 def grid_lorentz(args):
     general_pars,grid_pars,spread_pars = args
-    N,upper_layer,lower_layer,dirname = general_pars
+    N,upper_layer,lower_layer,dirname,cluster = general_pars
     K_center, dist_kx, dist_ky, n_bands, pts_per_direction = grid_pars
     E_cut_list, spread_Kx, spread_Ky, spread_E, plot = spread_pars 
     if cluster:
