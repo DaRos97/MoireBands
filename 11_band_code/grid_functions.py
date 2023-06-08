@@ -78,22 +78,25 @@ def grid_lorentz(args):
     #
     grid = fs.gridBZ(grid_pars,a_mono[0])
     bnds = res.shape[-1]
-    Kx_list = grid[:,0,0]
-    Ky_list = grid[0,:,1]
+    Kx_list = np.linspace(-dist_kx,dist_kx,pts_per_direction[0])#grid[:,0,0]
+    Ky_list = np.linspace(-dist_ky,dist_ky,pts_per_direction[1])#grid[0,:,1]
     #Compute values of lorentzian spread of weights for banana plot
-    lor_name = dirname + "banana_FC_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+K_center+'_'+str(dist_kx).replace('.',',')+'_'+str(dist_ky).replace('.',',')+'_'+str(pts_per_direction)+'_'+str(n_bands)
+    gen_lor_name = dirname + "banana_FC_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+K_center+'_'+str(dist_kx).replace('.',',')+'_'+str(dist_ky).replace('.',',')+'_'+str(pts_per_direction)+'_'+str(n_bands)
     lor_ = []
     for E_cut in E_cut_list:
         par_name = '_Full_'+str(spread_Kx).replace('.',',')+'_'+str(spread_E).replace('.',',')+'_E'+str(E_cut).replace('.',',')+".npy"
-        lor_name += par_name
+        lor_name = gen_lor_name + par_name
+        print(lor_name)
         try:
             lor = np.load(lor_name)
         except:
             print("\nComputing banana lorentzian spread of E="+str(E_cut)+" ...")
+            #lor = np.zeros((pts_per_direction[0],pts_per_direction[1]))
             lor = np.zeros((pts_per_direction[0],pts_per_direction[1]))
             Kx2 = spread_Kx**2
             Ky2 = spread_Ky**2
             E2 = spread_E**2
+            L_E = 1/((res-E_cut)**2+E2)
             for i in tqdm(range(pts_per_direction[0]*pts_per_direction[1])):
                 x = i%pts_per_direction[0]
                 y = i//pts_per_direction[0] 

@@ -5,9 +5,9 @@ import os
 
 argv = sys.argv[1:]
 try:
-    opts, args = getopt.getopt(argv, "N:",["path","grid","cluster"])
+    opts, args = getopt.getopt(argv, "N:",["spread=","path","grid","cluster"])
     #General parameters
-    N = 3               #Number of circles of mini-BZ around the central one
+    N = 4              #Number of circles of mini-BZ around the central one
     upper_layer = 'WSe2'
     lower_layer = 'WS2'
     data_dirname = "Data/"
@@ -32,13 +32,14 @@ try:
     dist_kx = 1.2
     dist_ky = 0.5
     n_bands_grid = 8        #Same as n_bands above
-    n_pts_x = 61                #Number of k-pts in x-direction
-    n_pts_y = 31
+    n_pts_x = 101                #Number of k-pts in x-direction
+    n_pts_y = 51
     pts_per_direction = (n_pts_x,n_pts_y)
     #Parameters grid lorentz (banana plot)
-    E_cut = [0.7,0.8,0.9,1]
-    spread_Kx_banana = spread_Ky_banana = 1e-2
-    spread_E_banana = spread_E
+    E_cut = [-0.8,-0.9,-1,-1.1,-1.2,-1.3]
+    spread_ind = 0
+    spread_Kx_banana = spread_Ky_banana = 0.01
+    spread_E_banana = 0.05#spread_E
     plot_banana = True
 except:
     print("Error")
@@ -56,6 +57,13 @@ for opt, arg in opts:
         plot_EK = False
         plot_mono_EK = False
         plot_banana = False
+    if opt == "--spread":
+        spread_ind = int(arg)
+        list_s_k = np.logspace(-1,-10,base=2,num=10)
+        list_s_E = np.logspace(-1,-10,base=2,num=10)
+        #
+        spread_Kx_banana = spread_Ky_banana = list_s_k[spread_ind//10]
+        spread_E_banana = list_s_E[spread_ind%10]
 #
 general_pars = (N,upper_layer,lower_layer,data_dirname,cluster)
 spread_pars_path = (factor_gridy,spread_E,spread_K,larger_E,shade_LL,plot_EK,plot_mono_EK)
