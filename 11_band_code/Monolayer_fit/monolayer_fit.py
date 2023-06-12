@@ -11,23 +11,16 @@ from time import time as tt
 import functions as fs
 import parameters as ps
 
-####not in cluster
-import matplotlib.pyplot as plt
-from contextlib import redirect_stdout
-import os
-
-dirname = "result/"
-#dirname = "./"
-#dirname = "/home/users/r/rossid/0_MOIRE/Data/"
 argv = sys.argv[1:]
 try:
-    opts, args = getopt.getopt(argv, "M:",["pts=","cpu=","final","SO"])
+    opts, args = getopt.getopt(argv, "M:",["pts=","cpu=","final","SO","cluster"])
     M = 'WSe2'               #Material
     input_considered_pts = -1
     n_cpu = 1
     final = False
     save = True 
-    consider_SO = False
+    dirname = "result/"
+    txt_SO = "noSO"
 except:
     print("Error")
     exit()
@@ -41,8 +34,9 @@ for opt, arg in opts:
     if opt == '--final':
         final = True
     if opt == '--SO':
-        consider_SO = True
-txt_SO = "SO" if consider_SO else "noSO"
+        txt_SO = "SO"
+    if opt == "--cluster":
+        dirname = "/home/users/r/rossid/0_MOIRE/Data/"
 #Monolayer lattice length
 a_mono = ps.dic_params_a_mono[M]
 #Data
@@ -83,6 +77,10 @@ else:
 #Evaluate initial value of chi^2
 initial_chi2 = fs.chi2(initial_point,*args_chi2)
 if final:
+    import matplotlib.pyplot as plt
+    from contextlib import redirect_stdout
+    import os
+    #
     print("Final chi2 is ",initial_chi2)
     if consider_SO:
         pars_final = initial_point 
@@ -120,8 +118,8 @@ if final:
     exit()
 #Bounds
 Bounds = []
-rg = 1        #proportional bound around initial values
-rg2 = 0.1   #bound irrespective of parameter value
+rg = 0.5#1        #proportional bound around initial values
+rg2 = 0#0.1   #bound irrespective of parameter value
 for i,p in enumerate(initial_point):
     pp = np.abs(p)
     Bounds.append((p-pp*rg-rg2,p+pp*rg+rg2))
@@ -130,7 +128,7 @@ result = D_E(fs.chi2,
     bounds = Bounds,
     args = args_chi2,
     maxiter = 1000,
-    popsize = 15,
+    popsize = 20,
     tol = 0.01,
 #    disp = True,
     workers = n_cpu,
