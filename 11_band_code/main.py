@@ -13,7 +13,7 @@ try:
     data_dirname = "Data/"
     cluster = False
     #Parameters for path bands
-    compute_path = 0
+    compute_path = False
     pts_ps = 200         #points per step
     Path = 'KGC'
     n_bands = 8         #Number of valence bands to consider
@@ -27,13 +27,13 @@ try:
     plot_EK = True
     plot_mono_EK = 0#True
     #Parameters for grid bands
-    compute_grid = 1
+    compute_grid = False
     K_center = 'G'
-    dist_kx = 1.2
-    dist_ky = 0.5
-    n_bands_grid = 8        #Same as n_bands above
-    n_pts_x = 101                #Number of k-pts in x-direction
-    n_pts_y = 51
+    dist_kx = 0.6
+    dist_ky = 0.6
+    n_bands_grid = 4        #Same as n_bands above
+    n_pts_x = 201                #Number of k-pts in x-direction
+    n_pts_y = 201
     pts_per_direction = (n_pts_x,n_pts_y)
     #Parameters grid lorentz (banana plot)
     E_cut = [-0.8,-0.9,-1,-1.1,-1.2,-1.3]
@@ -53,7 +53,7 @@ for opt, arg in opts:
         compute_grid = True
     if opt == "--cluster":
         cluster = True
-        data_dirname = "home/users/r/rossid/1_MOIRE/Data/"
+        data_dirname = "/home/users/r/rossid/1_MOIRE/Data/"
         plot_EK = False
         plot_mono_EK = False
         plot_banana = False
@@ -64,6 +64,9 @@ for opt, arg in opts:
         #
         spread_Kx_banana = spread_Ky_banana = list_s_k[spread_ind//10]
         spread_E_banana = list_s_E[spread_ind%10]
+        #
+        spread_K = list_s_k[spread_ind//10]
+        spread_E = list_s_E[spread_ind%10]
 #
 general_pars = (N,upper_layer,lower_layer,data_dirname,cluster)
 spread_pars_path = (factor_gridy,spread_E,spread_K,larger_E,shade_LL,plot_EK,plot_mono_EK)
