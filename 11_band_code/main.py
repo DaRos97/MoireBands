@@ -40,6 +40,7 @@ try:
     spread_ind = 0
     spread_Kx_banana = spread_Ky_banana = 0.01
     spread_E_banana = 0.05#spread_E
+    fold = "6fold"
     plot_banana = True
 except:
     print("Error")
@@ -71,7 +72,7 @@ for opt, arg in opts:
 general_pars = (N,upper_layer,lower_layer,data_dirname,cluster)
 spread_pars_path = (factor_gridy,spread_E,spread_K,larger_E,shade_LL,plot_EK,plot_mono_EK)
 grid_pars = (K_center,dist_kx,dist_ky,n_bands_grid,pts_per_direction)
-spread_pars_grid = (E_cut,spread_Kx_banana,spread_Ky_banana,spread_E_banana,plot_banana)
+spread_pars_grid = (E_cut,spread_Kx_banana,spread_Ky_banana,spread_E_banana,fold,plot_banana)
 
 if compute_path:
     import path_functions
