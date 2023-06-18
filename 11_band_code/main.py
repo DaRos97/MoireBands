@@ -5,7 +5,7 @@ import os
 
 argv = sys.argv[1:]
 try:
-    opts, args = getopt.getopt(argv, "N:",["spread=","path","grid","cluster"])
+    opts, args = getopt.getopt(argv, "N:",["spread=","path","grid","cluster","fold="])
     #General parameters
     N = 4              #Number of circles of mini-BZ around the central one
     upper_layer = 'WSe2'
@@ -32,8 +32,8 @@ try:
     dist_kx = 0.6
     dist_ky = 0.6
     n_bands_grid = 4        #Same as n_bands above
-    n_pts_x = 201                #Number of k-pts in x-direction
-    n_pts_y = 201
+    n_pts_x = 151                #Number of k-pts in x-direction
+    n_pts_y = 151
     pts_per_direction = (n_pts_x,n_pts_y)
     #Parameters grid lorentz (banana plot)
     E_cut = [-0.8,-0.9,-1,-1.1,-1.2,-1.3]
@@ -58,6 +58,8 @@ for opt, arg in opts:
         plot_EK = False
         plot_mono_EK = False
         plot_banana = False
+    if opt == "--fold":
+        fold = arg + "fold"
     if opt == "--spread":
         spread_ind = int(arg)
         list_s_k = np.logspace(-1,-10,base=2,num=10)

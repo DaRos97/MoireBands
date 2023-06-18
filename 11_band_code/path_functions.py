@@ -142,6 +142,7 @@ def path_lorentz(args):
         from matplotlib.colors import LogNorm
         #PLOTTING
         fig = plt.figure(figsize = (15,8))
+        figname = "Figs_p/fig_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+Path+'_'+str(pts_ps)+'_'+str(n_bands)+'('+str(gridy)+'_'+str(larger_E).replace('.',',')+'_'+str(K_).replace('.',',')+'_'+str(E_).replace('.',',')+'_'+str(shade_LL)+').pdf'
         ax = fig.add_subplot(111)
         ax.axes.get_xaxis().set_visible(False)
         if plot_mono:
@@ -171,7 +172,8 @@ def path_lorentz(args):
         plt.pcolormesh(X, Y,lor.T,alpha=0.8,cmap=plt.cm.Greys,norm=LogNorm(vmin=VMIN, vmax=VMAX))
         plt.ylabel('eV')
         plt.ylim(-2,MAX_E)
-        plt.show()
+        plt.savefig(figname)
+#        plt.show()
 
 
 

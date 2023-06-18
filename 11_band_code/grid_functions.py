@@ -94,14 +94,12 @@ def grid_lorentz(args):
     gen_lor_name = dirname + "banana_FC_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+K_center+'_'+str(dist_kx).replace('.',',')+'_'+str(dist_ky).replace('.',',')+'_'+str(pts_per_direction)+'_'+str(n_bands)
     lor_ = []
     for E_cut in E_cut_list:
-        par_name = '_Full_'+str(spread_Kx).replace('.',',')+'_'+str(spread_E).replace('.',',')+'_E'+str(E_cut).replace('.',',')+".npy"
+        par_name = '_Full_'+fold+'_'+str(spread_Kx).replace('.',',')+'_'+str(spread_E).replace('.',',')+'_E'+str(E_cut).replace('.',',')+".npy"
         lor_name = gen_lor_name + par_name
-        print(lor_name)
         try:
             lor = np.load(lor_name)
         except:
             print("\nComputing banana lorentzian spread of E="+str(E_cut)+" ...")
-            #lor = np.zeros((pts_per_direction[0],pts_per_direction[1]))
             lor = np.zeros((pts_per_direction[0],pts_per_direction[1]))
             Kx2 = spread_Kx**2
             Ky2 = spread_Ky**2
@@ -113,9 +111,8 @@ def grid_lorentz(args):
                 for l in range(2):              #layers
                     for j in range(bnds):
                         pars = (Kx2,Ky2,E2,weight[l,x,y,j],res[l,x,y,j],E_cut,grid[x,y,0],grid[x,y,1])
-                        lor += fs.banana_lorentzian_weight(Kx_list[:,None],Ky_list[None,:],*pars)
-    #                    print(lor)
-    #                    input()
+                        temp = fs.banana_lorentzian_weight(Kx_list[:,None],Ky_list[None,:],*pars)
+                        lor += temp
             np.save(lor_name,lor)
         lor_.append(lor)
 
@@ -135,12 +132,16 @@ def grid_lorentz(args):
             plt.subplot(fig_x,fig_y,i+1)
             plt.title("CEM: "+str(E_cut_list[i])+" eV")
             plt.pcolormesh(X, Y,lor_[i].T,alpha=0.8,cmap=plt.cm.Greys,norm=LogNorm(vmin=lor_[i][np.nonzero(lor_[i])].min(), vmax=lor_[i].max()))
-            plt.ylim(-0.6,0.6)
-            plt.xlim(-1.5,1.5)
+#            plt.ylim(-0.6,0.6)
+#            plt.xlim(-1.5,1.5)
             plt.ylabel('Ky')
             plt.xlabel('Kx')
 #        plt.savefig(figname)
         plt.show()
+    if plot_miniBZ:
+        plt.figure()
+        plt.show()
+
 
 
 
