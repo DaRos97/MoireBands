@@ -36,7 +36,7 @@ try:
     n_pts_y = 151
     pts_per_direction = (n_pts_x,n_pts_y)
     #Parameters grid lorentz (banana plot)
-    E_cut = [-0.8,-0.9,-1,-1.1,-1.2,-1.3]
+    E_cut = [-0.8,-0.85,-0.9,-0.95,-1,-1.05,-1.1,-1.15]
     spread_ind = 0
     spread_Kx_banana = spread_Ky_banana = 0.01
     spread_E_banana = 0.05#spread_E
@@ -62,8 +62,8 @@ for opt, arg in opts:
         fold = arg + "fold"
     if opt == "--spread":
         spread_ind = int(arg)
-        list_s_k = np.logspace(-1,-10,base=2,num=10)
-        list_s_E = np.logspace(-1,-10,base=2,num=10)
+        list_s_k = np.logspace(-3,-10,base=2,num=10)
+        list_s_E = np.logspace(-3,-10,base=2,num=10)
         #
         spread_Kx_banana = spread_Ky_banana = list_s_k[spread_ind//10]
         spread_E_banana = list_s_E[spread_ind%10]

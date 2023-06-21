@@ -29,8 +29,8 @@ def grid_bands(args):
     ######################
     ###################### Construct Hamiltonians with Moirè potential
     ######################
-    n_cells = int(1+3*N*(N+1))*14        #Dimension of H with only valence bands 
-    n_cells_below = int(1+3*N*(N+1))*(14-n_bands)        #Dimension of H with only valence bands - bands considered
+    n_cells = int(1+3*N*(N+1))*14        #Index of higher valence band 
+    n_cells_below = int(1+3*N*(N+1))*(14-n_bands)        #Index of lowest band considered
     data_name = dirname + "banana_en_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+K_center+'_'+str(dist_kx).replace('.',',')+'_'+str(dist_ky).replace('.',',')+'_'+str(pts_per_direction)+'_'+str(n_bands)+".npy"
     weights_name_6fold = dirname + "banana_arpes_6fold_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+K_center+'_'+str(dist_kx).replace('.',',')+'_'+str(dist_ky).replace('.',',')+'_'+str(pts_per_direction)+'_'+str(n_bands)+".npy"
     weights_name_3fold = dirname + "banana_arpes_3fold_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+K_center+'_'+str(dist_kx).replace('.',',')+'_'+str(dist_ky).replace('.',',')+'_'+str(pts_per_direction)+'_'+str(n_bands)+".npy"
@@ -104,15 +104,14 @@ def grid_lorentz(args):
             Kx2 = spread_Kx**2
             Ky2 = spread_Ky**2
             E2 = spread_E**2
-            L_E = 1/((res-E_cut)**2+E2)
+            G_E_tot = 1/((res-E_cut)**2+E2)
             for i in tqdm(range(pts_per_direction[0]*pts_per_direction[1])):
                 x = i%pts_per_direction[0]
                 y = i//pts_per_direction[0] 
+                G_K = 1/((Kx_list[:,None]-grid[x,y,0])**2+(Ky_list[None,:]-grid[x,y,1])**2+Kx2)**(3/2)
                 for l in range(2):              #layers
                     for j in range(bnds):
-                        pars = (Kx2,Ky2,E2,weight[l,x,y,j],res[l,x,y,j],E_cut,grid[x,y,0],grid[x,y,1])
-                        temp = fs.banana_lorentzian_weight(Kx_list[:,None],Ky_list[None,:],*pars)
-                        lor += temp
+                        lor += abs(weight[l,x,y,j])*G_E_tot[l,x,y,j]*G_K
             np.save(lor_name,lor)
         lor_.append(lor)
 
@@ -121,7 +120,8 @@ def grid_lorentz(args):
         from matplotlib import cm
         from matplotlib.colors import LogNorm
         #PLOTTING
-        figname = "Figs_g/fig_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+K_center+'_'+str(dist_kx).replace('.',',')+'_'+str(dist_ky).replace('.',',')+'_'+str(pts_per_direction)+'_'+str(n_bands)+'_'+str(spread_Kx).replace('.',',')+'_'+str(spread_E).replace('.',',')+".pdf"
+        figname = "Figs_"+fold+"/fig_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+K_center+'_'+str(dist_kx).replace('.',',')+'_'+str(dist_ky).replace('.',',')+'_'+str(pts_per_direction)+'_'+str(n_bands)+'_'+str(spread_Kx).replace('.',',')+'_'+str(spread_E).replace('.',',')+".pdf"
+        print(figname)
         fig = plt.figure(figsize = (15,8))
         plt.suptitle("Spread K: "+str(spread_Kx)+", Spread E: "+str(spread_E))
         X,Y = np.meshgrid(Kx_list,Ky_list)
@@ -130,16 +130,15 @@ def grid_lorentz(args):
         fig_x, fig_y = list_dim[n-1]
         for i in range(n):
             plt.subplot(fig_x,fig_y,i+1)
+            plt.gca().set_aspect('equal')
             plt.title("CEM: "+str(E_cut_list[i])+" eV")
             plt.pcolormesh(X, Y,lor_[i].T,alpha=0.8,cmap=plt.cm.Greys,norm=LogNorm(vmin=lor_[i][np.nonzero(lor_[i])].min(), vmax=lor_[i].max()))
 #            plt.ylim(-0.6,0.6)
 #            plt.xlim(-1.5,1.5)
             plt.ylabel('Ky')
             plt.xlabel('Kx')
+            plt.colorbar()
 #        plt.savefig(figname)
-        plt.show()
-    if plot_miniBZ:
-        plt.figure()
         plt.show()
 
 
