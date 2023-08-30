@@ -185,10 +185,6 @@ def total_H(K_,N,hopping,epsilon,HSO,params_V,G_M,a_mono):
 def lorentzian_weight(k,e,*pars):
     K2,E2,weight,K_,E_ = pars
     return abs(weight)/((k-K_)**2+K2)/((e-E_)**2+E2)
-#Banana Lorentzian
-def banana_lorentzian_weight(kx_list,ky_list,*pars):
-    Kx2,Ky2,E2,weight,E_,E_cut,Kx_,Ky_ = pars
-    return abs(weight)/((kx_list-Kx_)**2+Kx2)/((ky_list-Ky_)**2+Ky2)/((E_-E_cut)**2+E2)
 
 #z rotations
 def R_z(t):

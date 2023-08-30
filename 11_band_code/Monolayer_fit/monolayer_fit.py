@@ -21,6 +21,7 @@ try:
     save = True 
     dirname = "result/"
     txt_SO = "noSO"
+    consider_SO = False
 except:
     print("Error")
     exit()
@@ -35,6 +36,7 @@ for opt, arg in opts:
         final = True
     if opt == '--SO':
         txt_SO = "SO"
+        consider_SO = True
     if opt == "--cluster":
         dirname = "/home/users/r/rossid/0_MOIRE/Data/"
 #Monolayer lattice length

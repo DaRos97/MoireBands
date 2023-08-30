@@ -126,18 +126,18 @@ def grid_lorentz(args):
         plt.suptitle("Spread K: "+str(spread_Kx)+", Spread E: "+str(spread_E))
         X,Y = np.meshgrid(Kx_list,Ky_list)
         n = len(E_cut_list)
-        list_dim = [(1,1),(1,2),(2,2),(2,2),(2,3),(2,3),(3,3),(3,3)]
+        list_dim = [(1,1),(1,2),(2,2),(2,2),(2,3),(2,3),(3,3),(2,4),(3,3)]
         fig_x, fig_y = list_dim[n-1]
         for i in range(n):
             plt.subplot(fig_x,fig_y,i+1)
             plt.gca().set_aspect('equal')
             plt.title("CEM: "+str(E_cut_list[i])+" eV")
-            plt.pcolormesh(X, Y,lor_[i].T,alpha=0.8,cmap=plt.cm.Greys,norm=LogNorm(vmin=lor_[i][np.nonzero(lor_[i])].min(), vmax=lor_[i].max()))
+            plt.pcolormesh(X, Y,lor_[i].T,alpha=0.8,cmap=plt.cm.Greys)#,norm=LogNorm(vmin=lor_[i][np.nonzero(lor_[i])].min(), vmax=lor_[i].max()))
 #            plt.ylim(-0.6,0.6)
 #            plt.xlim(-1.5,1.5)
             plt.ylabel('Ky')
             plt.xlabel('Kx')
-            plt.colorbar()
+#            plt.colorbar()
 #        plt.savefig(figname)
         plt.show()
 
