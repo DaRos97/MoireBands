@@ -1,5 +1,3 @@
-In this folder we consider a simple model for the bilayer in order to understand better the single components
-
 # Interlayer hopping and Moirè potential
 
 Around Gamma:
@@ -11,9 +9,6 @@ In file "interlayer_1.py" we take the bilayer data from experiment and fit it wi
 
 H = (   -k^2/2m_1   -a(1-bk^2)      )
     (   -a(1-bk^2)  -k^2/2m_2-c     )
-<!---
-<img src="https://render.githubusercontent.com/render/math?math=H=\begin   ">
--->
 
 Like this we find the values of m_1,m_2, c and of the interlayer hopping.
 
@@ -30,7 +25,19 @@ the Moirè potential we see the features of the experiment, which are mainly two
 
 We can think of a fit for this step as well, just in Moirè potential amplitude and phase.
 
-# Constant energy maps
+In file "interlayer_3.py" we fit the Moirè potential with the data.
+
+We care only about the Moirè of the top band. We want to fit the data with the Model we have. In order to do that we compute a final image (with Lorentz spreading) 
+with exactly the same size as the data (same number of pixels) --> need to fix the grid accordingly. Then we do a chi^2 minimization by comparing each produced picture 
+pixel by pixel. 
+
+We do this at Gamma with the model described above, and the same at K using another image and a different model --> ask Louk.
+
+# Data
+
+The experiment image is on the cut K-G-K'. The inset "KGK_WSe2onWS2_forDario.png" goes from -0.5 to 0.5 A^-1 and in energy from -0.5 to -1.7 eV.
+
+# Others
 
 We want here to see the 3-fold rotation symmetry instead of a normal 6-fold we would expect. We need to add the spin-orbit coupling, but different depending if we go
 towards K or K' from Gamma. Then, we want to do a spin-projected ARPES weight and see what happens.

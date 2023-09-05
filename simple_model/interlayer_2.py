@@ -36,7 +36,7 @@ parnames = str(N)+'_'+"{:.4f}".format(V)+'_'+"{:.4f}".format(phase)+'_'+str(pts_
 en_name = dirname+'energy_'+parnames+'.npy'
 weight_name = dirname+'weight_'+parnames+'.npy'
 lorentz_name = dirname+'lorentz_'+parnames+'.npy'
-fig_name = dirname+'figure_'+parnames+'.png'
+fig_name = dirname+'figure_'+parnames+'_clear.png'
 
 #Data
 a_M = 79.8 #Angstrom 
@@ -48,7 +48,7 @@ n_cells = int(1+3*N*(N+1))
 popt_filename = "popt_interlayer.npy"
 pars_H = np.load(popt_filename)
 pars_V = (V,phase)
-
+print("Parameters are (a,b,c,m1,m2,mu): ", pars_H)
 #pars_V = (0.0335,np.pi) #first in eV, second in radiants. G-data
 
 G_M = fs.get_Moire(a_M)
@@ -138,7 +138,7 @@ if 1:
     VMAX = lor.max()
     plt.pcolormesh(X, Y,lor.T,alpha=0.8,cmap=plt.cm.Greys,norm=LogNorm(vmin=VMIN, vmax=VMAX))
     plt.ylabel('eV')
-    if 1:
+    if 0:
         lll = 0.5
         plt.plot(K_list,en[:,0],'b',linewidth=lll)
         plt.plot(K_list,en[:,1],'r',linewidth=lll)

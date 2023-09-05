@@ -3,6 +3,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
+#Open image and take pixels
 filename = "KGK_WSe2onWS2_forDario.png"
 im  = Image.open(filename)
 
@@ -17,6 +18,9 @@ r = 0.1
 xline = np.linspace(-0.5+r,0.5-r,y-2*y//10+1)
 yline = np.linspace(-1.7,-0.5,x)
 
+
+#Take for each column the darkest point, above and below a separatrix line b/w the two bands, 
+#and fit the points around it with a gaussian --> take max as darkest point
 green = np.array([0,255,0,255])
 red = np.array([255,0,0,255])
 blue = np.array([0,0,255,255])
@@ -66,7 +70,7 @@ new_im = Image.fromarray(np.uint8(pic))
 new_filename = "test_im.png"
 new_im.save(new_filename)
 
-#fitting
+#fitting of bands with simple model 
 comboX = np.append(xline,xline)
 rem_d = y//10
 comboY = np.append(yline[data[0,rem_d:-rem_d]],yline[data[1,rem_d:-rem_d]])
@@ -109,7 +113,7 @@ plt.ylim(-1.7,-0.5)
 plt.show()
 
 
-
+#Save result of fitting
 popt_filename = "popt_interlayer.npy"
 np.save(popt_filename,popt)
 

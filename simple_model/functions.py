@@ -127,3 +127,71 @@ def lorentzian_weight(k,e,*pars):
 
 def tqdm(n):
     return n
+
+def path_BZ_small(a_monolayer,pts_ps,lim):
+    G = [4*np.pi/np.sqrt(3)/a_monolayer*np.array([0,1])]      
+    for i in range(1,6):
+        G.append(np.tensordot(R_z(np.pi/3*i),G[0],1))
+    #
+    K = np.array([G[-1][0]/3*2,0])                      #K-point
+    Gamma = np.array([0,0])                                #Gamma
+    Kp =    np.tensordot(R_z(np.pi/3),K,1)     #K'-point
+    path = []
+    #K-G
+    m = K[1]/K[0]
+    Kix = lim/np.sqrt(1+m**2) 
+    Kiy = np.sqrt(lim**2-Kix**2)
+    Ki = np.array([Kix,Kiy])
+    Kf = Gamma
+    direction = Kf-Ki
+    for i in range(pts_ps):
+        path.append(Ki+direction*i/pts_ps)
+    #G-K'
+    m = Kp[1]/Kp[0]
+    Kix = lim/np.sqrt(1+m**2) 
+    Kiy = np.sqrt(lim**2-Kix**2)
+    Kf = np.array([Kix,Kiy])
+    Ki = Gamma
+    direction = Kf-Ki
+    for i in range(pts_ps):
+        path.append(Ki+direction*i/pts_ps)
+    return path
+
+def image_difference(Pars, *args):
+    V,phase,E_,K_ = Pars
+    N,pic,fig_x,fig_y,fac_grid_x,E_list,K_list,pars_H,G_M,path,minimization = args
+    #
+    pars_V = (V,phase)
+    n_cells = int(1+3*N*(N+1))
+    res = np.zeros((len(path),2*n_cells))
+    weight = np.zeros((len(path),2*n_cells))
+    for i in range(len(path)):
+        K = path[i]                                 #Considered K-point
+        H = big_H(K,N,pars_H,pars_V,G_M)
+        res[i,:],evecs = np.linalg.eigh(H)#,subset_by_index=[n_cells_below,n_cells-1])
+        for e in range(2*n_cells):
+            for l in range(1):  #don't need the overlap with lower band, if not 1-->2
+                weight[i,e] += np.abs(evecs[n_cells*l,e])**2       ################################
+    gridx = fig_y       #grid in momentum
+    gridy = fig_x       #grid in energy
+    K2 = K_**2
+    E2 = E_**2
+    lor = np.zeros((gridx,gridy))
+    for i in range(len(path)):
+        for j in range(2*n_cells):
+            if weight[i,j] > 1e-3:
+                pars = (K2,E2,weight[i,j],K_list[i*fac_grid_x],res[i,j])
+                lor += lorentzian_weight(K_list[:,None],E_list[None,:],*pars)
+    #Transform lor to a png format
+    max_lor = np.max(np.ravel(lor))
+    for i in range(gridx):
+        for j in range(gridy):
+            lor[i,j] = int(256-256*lor[i,j]/max_lor)
+    lor = np.uint8(np.flip(lor.T,axis=0))
+    minus_image = (pic[:,:,0]-lor)
+    minus = np.sum(np.ravel(minus_image))/(fig_x*fig_y)
+    if minimization:
+        return minus
+    else:
+        return lor
+
