@@ -2,8 +2,9 @@ import numpy as np
 from PIL import Image
 import functions as fs
 #import matplotlib.pyplot as plt
-#import os
+import os
 from scipy.optimize import minimize
+from scipy.optimize import differential_evolution as d_e
 
 cluster = False
 ###Open image of data and cut it to relevant window
@@ -24,12 +25,25 @@ E_min = E_min_fig + down_size*delta_E/temp
 E_max = E_max_fig - up_size*delta_E/temp
 pic = np.array(np.asarray(im)[b_up+up_size:-down_size-b_up,b_up:-b_up])
 fig_E,fig_K,z = pic.shape
-fac_grid_K = 10         #evaluate fig_K/2/fac_grid_x k-points per step --> 1 evaluates them all
+fac_grid_K = 4         #evaluate fig_K/2/fac_grid_x k-points per step --> 1 evaluates them all
+fac_grid_E = 4         #evaluate fig_E/fac_grid_E pixels
 #save cut image
 new_image = Image.fromarray(np.uint8(pic))
 new_imagename = dirname + "cut_data.png"
 new_image.save(new_imagename)
 #os.system("xdg-open "+new_imagename)
+#remake original image with smaller number of pixels to fit actual colors
+len_E = fig_E//fac_grid_E
+len_K = fig_K//fac_grid_K
+new_pic = np.zeros((len_E,len_K,z))
+for i in range(len_E):
+    for j in range(len_K):
+        new_pic[i,j] = pic[i*fac_grid_E,j*fac_grid_K]
+new_image = Image.fromarray(np.uint8(new_pic))
+new_imagename = dirname + "test.png"
+new_image.save(new_imagename)
+os.system("xdg-open "+new_imagename)
+
 ###Import fitting parameters
 popt_filename = dirname + "popt_interlayer.npy"
 pars_H = np.load(popt_filename)
@@ -40,35 +54,46 @@ N = 3           #3 for cluster
 a_M = 79.8      #Moirè unit length --> Angstrom 
 G_M = fs.get_Moire(a_M)     #Moirè lattice vectors
 a_mono = [3.32, 3.18]       #monolayer lattice lengths --> Angstrom, WSe2 and WS2
-pts_ps = (fig_K//2)//fac_grid_K     #half of k-points
-path = fs.path_BZ_small(a_mono[0],pts_ps,K_lim)     #K-points in BZ cut K-G-K' with modulus between -lim and lim
-K_list = np.linspace(-K_lim,K_lim,fig_K)
-E_list = np.linspace(E_min,E_max,fig_E)
+path = fs.path_BZ_small(a_mono[0],len_K//3,K_lim)     #K-points in BZ cut K-G-K' with modulus between -lim and lim
+K_list = np.linspace(-K_lim,K_lim,len_K)
+E_list = np.linspace(E_min,E_max,len_E)
 #Parameters and bounds for minimization
-init_pars = [0.02,0.6,0.05,0.05]        #mod V, phase V, spread E, spread K
+init_pars = [0.02,2.6,0.03,0.03]        #mod V, phase V, spread E, spread K
 bounds_pars = ((0.001,0.1),(0,2*np.pi),(0.001,0.1),(0.001,0.1))
 minimization = True
 
 print("Initiating minimization")
-res = minimize(
-        fs.image_difference,
-        x0 = np.array(init_pars),
-        args = (N,pic,fig_E,fig_K,fac_grid_K,E_list,K_list,pars_H,G_M,path,minimization),
-        bounds = bounds_pars,
-        options = {
-            'disp':False if cluster else True,
-#            'maxiter':1e1,
-            },
-#        tol = 1e-8,
-        method = 'Nelder-Mead',
-        )
+if 0:
+    res = minimize(
+            fs.image_difference,
+            x0 = np.array(init_pars),
+            args = (N,new_pic,len_E,len_K,E_list,K_list,pars_H,G_M,path,minimization),
+            bounds = bounds_pars,
+            options = {
+                'disp':False if cluster else True,
+    #            'maxiter':1e1,
+                },
+    #        tol = 1e-8,
+            method = 'Nelder-Mead',
+            )
+else:
+    res = d_e(
+            fs.image_difference,
+            x0 = np.array(init_pars),
+            args = (N,new_pic,len_E,len_K,E_list,K_list,pars_H,G_M,path,minimization),
+            bounds = bounds_pars,
+            disp = False if cluster else True,
+            workers = 1,
+            updating = 'immediate'      #'deferred' for workers > 1
+#            method = 'Nelder-Mead',
+            )
 
 print("Minimization finished with difference ",res.fun)
 print("with parameters ",res.x)
 print("Saving...")
 
 minimization = False
-args = (N,pic,fig_E,fig_K,fac_grid_K,E_list,K_list,pars_H,G_M,path,minimization)
+args = (N,new_pic,len_E,len_K,E_list,K_list,pars_H,G_M,path,minimization)
 final_pic = fs.image_difference(res.x,*args)
 
 #save final image

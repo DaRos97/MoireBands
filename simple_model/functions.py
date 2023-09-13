@@ -128,7 +128,7 @@ def lorentzian_weight(k,e,*pars):
 def tqdm(n):
     return n
 
-def path_BZ_small(a_monolayer,pts_ps,lim):
+def path_BZ_small(a_monolayer,pts_path,lim):
     G = [4*np.pi/np.sqrt(3)/a_monolayer*np.array([0,1])]      
     for i in range(1,6):
         G.append(np.tensordot(R_z(np.pi/3*i),G[0],1))
@@ -144,8 +144,8 @@ def path_BZ_small(a_monolayer,pts_ps,lim):
     Ki = np.array([Kix,Kiy])
     Kf = Gamma
     direction = Kf-Ki
-    for i in range(pts_ps):
-        path.append(Ki+direction*i/pts_ps)
+    for i in range(pts_path//2):
+        path.append(Ki+direction*i/(pts_path//2))
     #G-K'
     m = Kp[1]/Kp[0]
     Kix = lim/np.sqrt(1+m**2) 
@@ -153,14 +153,14 @@ def path_BZ_small(a_monolayer,pts_ps,lim):
     Kf = np.array([Kix,Kiy])
     Ki = Gamma
     direction = Kf-Ki
-    for i in range(pts_ps):
-        path.append(Ki+direction*i/pts_ps)
+    for i in range(pts_path//2):
+        path.append(Ki+direction*i/(pts_path//2))
     return path
 
 def image_difference(Pars, *args):
     V,phase,E_,K_ = Pars
-    N,pic,fig_E,fig_K,fac_grid_K,E_list,K_list,pars_H,G_M,path,minimization = args
-    #
+    N,pic,len_E,len_K,E_list,K_list,pars_H,G_M,path,minimization = args
+    fac_k = len_K//len(path)
     pars_V = (V,phase)
     n_cells = int(1+3*N*(N+1))
     res = np.zeros((len(path),2*n_cells))
@@ -174,20 +174,36 @@ def image_difference(Pars, *args):
                 weight[i,e] += np.abs(evecs[n_cells*l,e])**2       ################################
     K2 = K_**2
     E2 = E_**2
-    lor = np.zeros((fig_K,fig_E))
+    lor = np.zeros((len_K,len_E))
     for i in range(len(path)):
         for j in range(2*n_cells):
             if weight[i,j] > 1e-3:
-                pars = (K2,E2,weight[i,j],K_list[i*fac_grid_K],res[i,j])
+                #pars = (K2,E2,weight[i,j],K_list[i*fac_grid_K],res[i,j])
+                pars = (K2,E2,weight[i,j],K_list[i*fac_k],res[i,j])
                 lor += lorentzian_weight(K_list[:,None],E_list[None,:],*pars)
     #Transform lor to a png format
     max_lor = np.max(np.ravel(lor))
-    for i in range(fig_K):
-        for j in range(fig_E):
-            lor[i,j] = int(256-256*lor[i,j]/max_lor)
+    whitest = np.max(np.ravel(pic))     #whitest
+    blackest = np.min(np.ravel(pic))     #blackest
+    for i in range(len_K):
+        for j in range(len_E):
+            lor[i,j] = int((whitest-blackest)*(1-lor[i,j]/max_lor)+blackest)
     lor = np.uint8(np.flip(lor.T,axis=0))
-    minus_image = (pic[:,:,0]-lor)
-    minus = np.sum(np.ravel(minus_image))/(fig_E*fig_K)
+    minus_image = np.zeros((len_E,len_K//2))
+    for i in range(len_E):
+        for j in range(len_K//2):
+            minus_image[i,j] = np.abs(pic[i,j,0]-lor[i,j])
+#    minus_image[:,:,3] = 255
+    minus = np.abs(np.sum(np.ravel(minus_image)))
+    if 1:
+        from PIL import Image
+        import os
+        new_image = Image.fromarray(np.uint8(lor))
+        new_imagename = "temp.png"
+        new_image.save(new_imagename)
+        os.system("xdg-open "+new_imagename)
+        print("Pars: ",Pars,", difference: ",minus)
+    #    input()
     if minimization:
         return minus
     else:
