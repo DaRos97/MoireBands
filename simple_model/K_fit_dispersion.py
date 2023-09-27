@@ -2,21 +2,30 @@ import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
+import os
 
 #Open image and take pixels
-filename = "KGK_WSe2onWS2_forDario.png"
+filename = "KK_LH_WSe2onWS2_forDario.png"
 im  = Image.open(filename)
 
 #to array
-b_up = 12
+b_up = 12           ###Correct?
 pic = np.asarray(im)[b_up:-b_up,b_up:-b_up]
 pic = np.array(pic)
-x,y,z = pic.shape
+len_E,len_K,z = pic.shape
+print(len_E,len_K)
 
-data = np.zeros((2,y),dtype=int)
-r = 0.1
-xline = np.linspace(-0.5+r,0.5-r,y-2*y//10+1)
-yline = np.linspace(-1.7,-0.5,x)
+new_image = Image.fromarray(np.uint8(pic))
+new_imagename = "temp_1.png"
+new_image.save(new_imagename)
+#os.system("xdg-open "+new_imagename)
+
+q = 200
+m = 1.7
+data = np.zeros((2,len_K-q),dtype=int)
+#0.5 and 1.7 are different now..
+xline = np.linspace(-1.1,-0.1,len_K)
+yline = np.linspace(-1.4,-0.2,len_E)
 
 
 #Take for each column the darkest point, above and below a separatrix line b/w the two bands, 
@@ -27,6 +36,7 @@ blue = np.array([0,0,255,255])
 def inv_gauss(x,a,b,x0,s):
     return -(a*np.exp(-((x-x0)/s)**2)+b)
 def find_max(col):
+    #finds maximum of given column f pixels by fitting a gaussian
     med = np.argmin(col)
     domain = 50
     in_ = med-domain if med-domain > 0 else 0
@@ -43,57 +53,36 @@ def find_max(col):
         return in_+int(popt[2]) if abs(in_+int(popt[2]))<len(col) else med
     except:
         return med
-    print(popt)
-    xx = np.linspace(0,len(new_arr),1000)
-    plt.plot(xx,inv_gauss(xx,*popt),'k-')
-    plt.plot(np.arange(len(new_arr)),new_arr,'r*')
-    plt.show()
+if 0:
+    for i in range(q,len_K//2-q):
+        e = int(len_E-i*m+q-1)
+        pic[e,i] = blue
+    new_image = Image.fromarray(np.uint8(pic))
+    new_imagename = "temp_2.png"
+    new_image.save(new_imagename)
+    os.system("xdg-open "+new_imagename)
 if 1:
     #new array
-    for i in range(y):
-        border = x//2+(i-y//2)**2//700
+    for i in range(len_K//2-q):
+        border = int(len_E-i*m+q) if i > q else len_E
         col = pic[:border,i,0]
         d = find_max(col)
-#        d = np.argmin(col)
         pic[d,i,:] = red
-        data[0,i] = int(x-d)
-    for i in range(y):
-        border = x//2+(i-y//2)**2//700
-        col = pic[border:,i,0]
-        d = find_max(col)
-#        d = np.argmin(col)
-        pic[border+d,i,:] = blue
-        data[1,i] = int(x-(border+d))
-
+        data[0,i] = int(len_E-d)
 #save new image
 new_im = Image.fromarray(np.uint8(pic))
-new_filename = "test_im.png"
-new_im.save(new_filename)
+new_imagename = "extracted_pts.png"
+new_im.save(new_imagename)
+#os.system("xdg-open "+new_imagename)
 
 #fitting of bands with simple model 
-comboX = np.append(xline,xline)
 rem_d = y//10
 comboY = np.append(yline[data[0,rem_d:-rem_d]],yline[data[1,rem_d:-rem_d]])
-def func1(k,a,b,c,m1,m2,mu):
-    alpha = k**2/2/m1+k**2/2/m2+c
-    beta = k**2/2/m1*(k**2/2/m2+c) - a**2*(1-b*k**2)**2
-    step = np.sqrt(alpha**2-4*beta)
-    return (-alpha+step)/2 + mu
-def func2(k,a,b,c,m1,m2,mu):
-    alpha = k**2/2/m1+k**2/2/m2+c
-    beta = k**2/2/m1*(k**2/2/m2+c) - a**2*(1-b*k**2)**2
-    step = np.sqrt(alpha**2-4*beta)
-    return (-alpha-step)/2 + mu
-def combinedFunc(combK,a,b,c,m1,m2,mu):
-    extract1 = combK[:len(xline)]
-    extract2 = combK[len(xline):]
-
-    res1 = func1(extract1,a,b,c,m1,m2,mu)
-    res2 = func2(extract2,a,b,c,m1,m2,mu)
-    return np.append(res1, res2)
+def func(k,m1,mu):
+    return -k**2/2/m1 + mu
 
 popt,pcov = curve_fit(
-        combinedFunc,
+        func,
         comboX,comboY,
         p0=(-0.1,-1,0.7,0.1,0.1,-0.5),
         bounds=([-10,-10,0.1,0.01,0.01,-1],[10,10,2.7,5,5,-0.1]),

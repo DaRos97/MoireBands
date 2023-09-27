@@ -33,6 +33,12 @@ pixel by pixel.
 
 We do this at Gamma with the model described above, and the same at K using another image and a different model --> ask Louk.
 
+# Fitting at K-point
+
+Using the image from experiments in the cut Gamma-K-M we fit first the upper band (neglect lower bands and spin orbit oupling) with a parabolic dispersion k^2/2m --> get m.
+
+Then we insert the moirè potential and fit the image pixel by pixel with the data as done for the Gamma point in order to get the Moirè potential at K.
+
 # Data
 
 The experiment image is on the cut K-G-K'. The inset "KGK_WSe2onWS2_forDario.png" goes from -0.5 to 0.5 A^-1 and in energy from -0.5 to -1.7 eV.
