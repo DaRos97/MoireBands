@@ -1,7 +1,5 @@
 import numpy as np
 from PIL import Image
-import functions as fs
-#import matplotlib.pyplot as plt
 import os
 
 dirname = "figs_png/"
@@ -64,7 +62,7 @@ if 0: #frame selected region
     new_image.save(new_imagename)
     os.system("xdg-open "+new_imagename)
 
-
+#Cut relevant part of the picture and save it for future study
 new_pic = pic[ind_e_M:ind_e_m,ind_k_m:ind_k_M]
 new_image = Image.fromarray(np.uint8(new_pic))
 new_imagename = dirname + "cut_KGK.png"

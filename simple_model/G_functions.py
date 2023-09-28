@@ -70,7 +70,7 @@ def lorentzian_weight(k,e,*pars):
     K2,E2,weight,K_,E_ = pars
     return abs(weight)/((k-K_)**2+K2)/((e-E_)**2+E2)
 
-def path_BZ_small(a_monolayer,pts_path,lim):
+def path_BZ_KGK(a_monolayer,pts_path,lim):
     G = 4*np.pi/np.sqrt(3)/a_monolayer*np.array([0,1])      #reciprocal lattice vector
     #
     K = np.tensordot(R_z(-np.pi/2),G,1)/np.sqrt(3)#
@@ -106,10 +106,9 @@ def path_BZ_small(a_monolayer,pts_path,lim):
     return path
 
 def image_difference(Pars, *args):
-    print(Pars)
     V,phase,E_,K_ = Pars
-    N,pic,len_E,len_K,E_list,K_list,pars_H,G_M,path,minimization = args
-    fac_k = len_K//len(path)
+    N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,minimization = args
+    fac_k = len_k//len(path)
     pars_V = (V,phase)
     n_cells = int(1+3*N*(N+1))
     res = np.zeros((len(path),2*n_cells))
@@ -127,8 +126,10 @@ def image_difference(Pars, *args):
         K_space = np.linspace(-np.linalg.norm(path[0]),np.linalg.norm(path[-1]),len(path))
         plt.figure()
 #        plt.subplot(1,2,1)
+        #plot all bands
         for e in range(2*n_cells):
             plt.plot(K_space,res[:,e],'k',linewidth=0.1)
+        #plot all weigts
         for i in range(len(path)):
             for e in range(2*n_cells):
                 if weight[i,e]>1e-3:
@@ -144,53 +145,60 @@ def image_difference(Pars, *args):
             plt.plot(K_space,res_0[:,0],'r',linewidth=0.5)
             plt.plot(K_space,res_0[:,1],'r',linewidth=0.5)
         plt.ylim(E_list[0],E_list[-1])       #-1.7,-0.5
+        plt.xlim(K_space[0],K_space[-1])       #-0.5,0.5
         plt.show()
         exit()
+    #Lorentzian spread
     K2 = K_**2
     E2 = E_**2
-    lor = np.zeros((len_K,len_E))
+    lor = np.zeros((len_k,len_e))
     for i in range(len(path)):
         for j in range(2*n_cells):
-            if weight[i,j] > 1e-3:
+            if weight[i,j] > 1e-5:
                 pars = (K2,E2,weight[i,j],K_list[i*fac_k],res[i,j])
                 lor += lorentzian_weight(K_list[:,None],E_list[None,:],*pars)
-    if 1:       #plot Lorentzian weighetd
-#        plt.subplot(1,2,2)
+    #Transform lor to a png format in the range of white/black of the original picture
+    max_lor = np.max(np.ravel(lor))
+    min_lor = np.min(np.ravel(np.nonzero(lor)))
+    whitest = np.max(np.ravel(pic))     
+    blackest = np.min(np.ravel(pic))     
+    norm_lor = np.zeros((len_k,len_e))
+    for i in range(len_k):
+        for j in range(len_e):
+            norm_lor[i,j] = int((whitest-blackest)*(1-lor[i,j]/(max_lor-min_lor))+blackest)
+    pic_lor = np.flip(norm_lor.T,axis=0)   #invert e-axis
+    if 0: #png image
+        from PIL import Image
+        import os
+        new_image = Image.fromarray(np.uint8(pic_lor))
+        new_imagename = "temp.png"
+        new_image.save(new_imagename)
+        os.system("xdg-open "+new_imagename)
+        #exit()
+    if 0:#plot with pcolormesh on matplotlib
         X,Y = np.meshgrid(K_list,E_list)
         from matplotlib import cm
         from matplotlib.colors import LogNorm
         VMIN = lor[np.nonzero(lor)].min()
         VMAX = lor.max()
         plt.pcolormesh(X, Y,lor.T,alpha=0.8,cmap=plt.cm.Greys,norm=LogNorm(vmin=VMIN, vmax=VMAX))
-        plt.savefig("aaaaaaaaa.png")
         plt.show()
-#        exit()
-    #Transform lor to a png format
-    max_lor = np.max(np.ravel(lor))
-    whitest = np.max(np.ravel(pic))     
-    blackest = np.min(np.ravel(pic))     
-    for i in range(len_K):
-        for j in range(len_E):
-            lor[i,j] = int((whitest-blackest)*(1-lor[i,j]/max_lor)+blackest)
-    lor = np.uint8(np.flip(lor.T,axis=0))
-    minus_image = np.zeros((len_E,len_K//2))
-    for i in range(len_E):
-        for j in range(len_K//2):
-            minus_image[i,j] = np.abs(pic[i,j,0]-lor[i,j])
-    minus = np.abs(np.sum(np.ravel(minus_image)))
-    if 1:
-        from PIL import Image
-        import os
-        new_image = Image.fromarray(np.uint8(lor))
-        new_imagename = "temp.png"#"figs_temp/"+"{:.4f}".format(V)+"_"+"{:.4f}".format(phase)+".png"
-        new_image.save(new_imagename)
-        os.system("xdg-open "+new_imagename)
-        print("Pars: ",Pars,", difference: ",minus)
         exit()
+    #Compute difference pixel by pixel of the two images
+    #minus_image = np.zeros((len_e,len_k//2))
+    minus = 0
+    for i in range(len_e):
+        for j in range(len_k//2):
+            minus += np.abs(pic[i,j,0]-pic_lor[i,j])
+            #minus_image[i,j] = np.abs(pic[i,j,0]-pic_lor[i,j])
+    #minus = np.abs(np.sum(np.ravel(minus_image)))
+    #
     if minimization:
+#        print(Pars)
+#        print("Minus: ",minus)
         return minus
     else:
-        return lor
+        return lor_pic
 
 
 

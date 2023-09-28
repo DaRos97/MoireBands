@@ -1,16 +1,25 @@
-# Interlayer hopping and Moirè potential
+# G1 - Preliminary
+
+We start by cutting the initial image given by GM, in the window -0.5/-1.7 eV and -0.5/0.5 A^-1.
+
+# G2 - Interlayer hopping and Moirè potential
+
+We first extract the darkest points to see the two bands. Then we fit them with the simplified model below.
 
 Around Gamma:
 - We take a parabolic dispersion for each band: *-k^2/2m*  --> one parameter for each band
 - We take an energy offset *c* for the lower band
 - We include an interlayer hopping of the form *-a(1-bk^2)*  --> hopping stronger at k=0 since the d_z orbital is stronger. Parameter b defines how quickly this decreases
+- An overall chemical potential *mu*
 
-In file "interlayer_1.py" we take the bilayer data from experiment and fit it with the Hamiltonian
+The Hamiltonian is
 
-H = (   -k^2/2m_1   -a(1-bk^2)      )
-    (   -a(1-bk^2)  -k^2/2m_2-c     )
+H = (   -k^2/2m_1+mu   -a(1-bk^2)      )
+    (   -a(1-bk^2)  -k^2/2m_2-c+mu     )
 
 Like this we find the values of m_1,m_2, c and of the interlayer hopping.
+
+# G3 - Moire fitting
 
 In file "interlayer_2.py" we go further and use these values together with the Moirè coupling. 
 The Hamiltonian now is divided in 4 blocks: H = (A B \\ C D), B=C
