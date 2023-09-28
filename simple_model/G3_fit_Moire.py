@@ -4,7 +4,7 @@ import G_functions as fs
 import os
 from scipy.optimize import differential_evolution as d_e
 
-cluster = False
+cluster = True
 ###Open image of data and cut it to relevant window
 home_dirname = "/home/users/r/rossid/simple_model/" if cluster else "/home/dario/Desktop/git/MoireBands/simple_model/"
 dirname = home_dirname + "figs_png/"
@@ -60,7 +60,7 @@ pars_H = np.load(popt_filename)
 
 ###Construct the variational image
 #Parameters of Moirè Hamiltonian
-N = 3          #5-6 for cluster
+N = 5          #5-6 for cluster
 k_points_factor = 5         #compute len_k//k_points_factor k-points in variational image
 a_M = 79.8      #Moirè unit length --> Angstrom  #############
 G_M = fs.get_Moire(a_M)     #Moirè lattice vectors
@@ -74,24 +74,35 @@ bounds_pars = ((0.001,0.1),(0,2*np.pi),(0.001,0.1),(0.001,0.1))
 minimization = True
 Args = (N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,minimization)
 
-if 0:       #Test by hand
-    list_V = [0.02,]#np.linspace(0.0235,0.0435,5)
-    list_ph = [0,]#np.linspace(0,np.pi,11,endpoint=False)
+if 1:       #Test by hand
+    import time
+    list_V = np.linspace(0.02,0.04,10)
+    list_ph = np.linspace(0,np.pi,10,endpoint=False)
+    list_E_ = np.linspace(0.01,0.04,10)
+    list_K_ = np.linspace(0.005,0.03,10)
     for V in list_V:
         for ph in list_ph:
-            par = [0.02,0.5+1/3*np.pi,0.03,0.03]
-            fs.image_difference(par,*Args)
+            for e_ in list_E_:
+                for k_ in list_K_:
+                    par = [V,ph,e_,k_]
+                    pic_par = fs.image_difference(par,*Args)
+                    #
+                    new_image = Image.fromarray(np.uint8(pic_par))
+                    pars_name = "{:.4f}".format(V)+'_'+"{:.4f}".format(ph)+'_'+"{:.4f}".format(e_)+'_'+"{:.4f}".format(k_)
+                    new_imagename = home_dirname+"temp_image/"+pars_name+".png"
+                    new_image.save(new_imagename)
     exit()
 
 print("Initiating minimization")
+n_workers = 4 if cluster else 1
 res = d_e(
             fs.image_difference,
             x0 = np.array(init_pars),
             args = (N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,minimization),
             bounds = bounds_pars,
             disp = False if cluster else True,
-            workers = 1,
-            updating = 'immediate'      #'deferred' for workers > 1
+            workers = n_workers,
+            updating = 'immediate' if n_workers==1 else 'deferred'
             )
 
 print("Minimization finished with difference ",res.fun)

@@ -167,13 +167,15 @@ def image_difference(Pars, *args):
         for j in range(len_e):
             norm_lor[i,j] = int((whitest-blackest)*(1-lor[i,j]/(max_lor-min_lor))+blackest)
     pic_lor = np.flip(norm_lor.T,axis=0)   #invert e-axis
-    if 0: #png image
+    return pic_lor
+    if 1: #png image
         from PIL import Image
         import os
         new_image = Image.fromarray(np.uint8(pic_lor))
-        new_imagename = "temp.png"
+        pars_name = "{:.4f}".format(V)+'_'+"{:.4f}".format(phase)+'_'+"{:.4f}".format(E_)+'_'+"{:.4f}".format(K_)
+        new_imagename = "temp_image/"+pars_name+".png"
         new_image.save(new_imagename)
-        os.system("xdg-open "+new_imagename)
+#        os.system("xdg-open "+new_imagename)
         #exit()
     if 0:#plot with pcolormesh on matplotlib
         X,Y = np.meshgrid(K_list,E_list)
@@ -198,7 +200,7 @@ def image_difference(Pars, *args):
 #        print("Minus: ",minus)
         return minus
     else:
-        return lor_pic
+        return pic_lor
 
 
 
