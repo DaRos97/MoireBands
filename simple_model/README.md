@@ -2,7 +2,7 @@
 
 We start by cutting the initial image given by GM, in the window -0.5/-1.7 eV and -0.5/0.5 A^-1.
 
-# G2 - Interlayer hopping and Moirè potential
+# G2 - Interlayer hopping
 
 We first extract the darkest points to see the two bands. Then we fit them with the simplified model below.
 
@@ -21,7 +21,8 @@ Like this we find the values of m_1,m_2, c and of the interlayer hopping.
 
 # G3 - Moire fitting
 
-In file "interlayer_2.py" we go further and use these values together with the Moirè coupling. 
+Here we first cut the image to consider just the upper band. Then we take the parameters obtained in G2 and we construct Moirè Hamiltonians of the form: 
+
 The Hamiltonian now is divided in 4 blocks: H = (A B \\ C D), B=C
 
 A and D represent the single layers. We take a number of mini-BZs, which are on the diagonal, and are coupled to each other by the Moirè potential,
@@ -32,15 +33,24 @@ B and C give the interlayer hopping, which is k dependent and acts only within t
 We diagonalize the big H for the path K-G-K' and compute the ARPES overlap to get a plot similar to the experiment. We want to see for which values of 
 the Moirè potential we see the features of the experiment, which are mainly two strong Moirè replicas for the upper layer. 
 
-We can think of a fit for this step as well, just in Moirè potential amplitude and phase.
+We construct png images with various values of V, phase and spread in E and K direction. Once we obtain a reasonable agreement by eye of what the parameters should be, 
+we start a minimization routine where we minimize the difference between the constructed image and the experimental one.
 
-In file "interlayer_3.py" we fit the Moirè potential with the data.
+# K1 - Preliminary
 
-We care only about the Moirè of the top band. We want to fit the data with the Model we have. In order to do that we compute a final image (with Lorentz spreading) 
-with exactly the same size as the data (same number of pixels) --> need to fix the grid accordingly. Then we do a chi^2 minimization by comparing each produced picture 
-pixel by pixel. 
+The same at K using another image and a different model. We have three light polarizations: CL,LH,LV. In K1 we just remove the border of empty and black pixels.
 
-We do this at Gamma with the model described above, and the same at K using another image and a different model --> ask Louk.
+# K2 - Interlayer hopping
+
+We use the left part (G-K) of CL picture to fit just the upper band with a parabolic dispersion of the type
+
+H = -k^2/(2m) + mu
+
+We consider only a small portion of k (~ 0.1 A^-1) close to the K point so that it actually looks like a parabula.
+
+# K3 - Moire fitting
+
+We use the LH light for this step, still in the left part (G-K cut).
 
 # Fitting at K-point
 
