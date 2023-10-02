@@ -160,8 +160,8 @@ def image_difference(Pars, *args):
     #Transform lor to a png format in the range of white/black of the original picture
     max_lor = np.max(np.ravel(lor))
     min_lor = np.min(np.ravel(np.nonzero(lor)))
-    whitest = np.max(np.ravel(pic))     
-    blackest = np.min(np.ravel(pic))     
+    whitest = 255#np.max(np.ravel(pic))     
+    blackest = 0#np.min(np.ravel(pic))     
     norm_lor = np.zeros((len_k,len_e))
     for i in range(len_k):
         for j in range(len_e):

@@ -4,7 +4,7 @@ import K_functions as fs
 import os
 from scipy.optimize import differential_evolution as d_e
 
-cluster = True
+cluster = False
 ###Open image of data and cut it to relevant window
 home_dirname = "/home/users/r/rossid/simple_model/" if cluster else "/home/dario/Desktop/git/MoireBands/simple_model/"
 dirname = home_dirname + "figs_png/"
@@ -70,8 +70,8 @@ pars_H = np.load(popt_filename)
 
 ###Construct the variational image
 #Parameters of Moirè Hamiltonian
-N = 3          #5-6 for cluster
-k_points_factor = 1         #compute len_k//k_points_factor k-points in variational image
+N = 5          #5-6 for cluster
+k_points_factor = 5         #compute len_k//k_points_factor k-points in variational image
 a_M = 79.8      #Moirè unit length --> Angstrom  #############
 G_M = fs.get_Moire(a_M)     #Moirè lattice vectors
 a_mono = [3.32, 3.18]       #monolayer lattice lengths --> [WSe2, WS2] Angstrom
@@ -94,14 +94,15 @@ if 1:       #Test by hand
         for ph in list_ph:
             for e_ in list_E_:
                 for k_ in list_K_:
-                    par = [V,ph,e_,k_]
+                    par = [1e-2,2.3,0.001,k_]
                     pic_par = fs.image_difference(par,*Args)
                     #
                     new_image = Image.fromarray(np.uint8(pic_par))
-                    pars_name = "K_"+"{:.4f}".format(V)+'_'+"{:.4f}".format(ph)+'_'+"{:.4f}".format(e_)+'_'+"{:.4f}".format(k_)
-                    new_imagename = home_dirname+"temp_image/"+pars_name+".png"
+                    pars_name = "{:.4f}".format(V)+'_'+"{:.4f}".format(ph)+'_'+"{:.4f}".format(e_)+'_'+"{:.4f}".format(k_)
+                    new_imagename = home_dirname+"K_temp_image/"+pars_name+".png"
                     new_image.save(new_imagename)
                     os.system("xdg-open "+new_imagename)
+                    exit()
     exit()
 
 print("Initiating minimization")

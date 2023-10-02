@@ -4,7 +4,7 @@ import G_functions as fs
 import os
 from scipy.optimize import differential_evolution as d_e
 
-cluster = True
+cluster = False
 ###Open image of data and cut it to relevant window
 home_dirname = "/home/users/r/rossid/simple_model/" if cluster else "/home/dario/Desktop/git/MoireBands/simple_model/"
 dirname = home_dirname + "figs_png/"
@@ -84,13 +84,15 @@ if 1:       #Test by hand
         for ph in list_ph:
             for e_ in list_E_:
                 for k_ in list_K_:
-                    par = [V,ph,e_,k_]
+                    par = [0.0335,np.pi,0.01,0.01]
                     pic_par = fs.image_difference(par,*Args)
                     #
                     new_image = Image.fromarray(np.uint8(pic_par))
                     pars_name = "{:.4f}".format(V)+'_'+"{:.4f}".format(ph)+'_'+"{:.4f}".format(e_)+'_'+"{:.4f}".format(k_)
-                    new_imagename = home_dirname+"temp_image/"+pars_name+".png"
+                    new_imagename = "temp.png"#home_dirname+"temp_image/"+pars_name+".png"
                     new_image.save(new_imagename)
+                    os.system("xdg-open "+new_imagename)
+                    exit()
     exit()
 
 print("Initiating minimization")

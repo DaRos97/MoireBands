@@ -86,13 +86,14 @@ def image_difference(Pars, *args):
         #
         plt.figure()
         #plot all bands
+        KKKK = np.linspace(K_list[0],K_list[-1],res.shape[0])
         for e in range(n_cells):
-            plt.plot(K_list,res[:,e],'k',linewidth=0.1)
+            plt.plot(KKKK,res[:,e],'k',linewidth=0.1)
         #plot all weigts
         for i in range(len(path)):
             for e in range(n_cells):
                 if weight[i,e]>1e-3:
-                    plt.scatter(K_list[i],res[i,e],s=3*weight[i,e],color='b')
+                    plt.scatter(KKKK[i],res[i,e],s=3*weight[i,e],color='b')
         if 1: #plot N=0 bands
             n_cells0 = 1
             res_0 = np.zeros((len(path),n_cells0))
@@ -101,9 +102,9 @@ def image_difference(Pars, *args):
                 K = path[i]                                 #Considered K-point
                 H = big_H(K,0,pars_H,pars_V,G_M)
                 res_0[i,:],evecs = np.linalg.eigh(H)#,subset_by_index=[n_cells_below,n_cells-1])
-            plt.plot(K_list,res_0[:,0],'r',linewidth=0.5)
-        #plt.ylim(E_list[0],E_list[-1])       
-        #plt.xlim(K_space[0],K_space[-1])       
+            plt.plot(KKKK,res_0[:,0],'r',linewidth=0.5)
+        plt.ylim(E_list[0],E_list[-1])       
+        plt.xlim(KKKK[0],KKKK[-1])       
         plt.show()
         exit()
     #Lorentzian spread
@@ -112,7 +113,7 @@ def image_difference(Pars, *args):
     lor = np.zeros((len_k,len_e))
     for i in range(len(path)):
         for j in range(n_cells):
-            if weight[i,j] > 1e-5:
+            if weight[i,j] > 1e-13:
                 pars = (K2,E2,weight[i,j],K_list[i*fac_k],res[i,j])
                 lor += lorentzian_weight(K_list[:,None],E_list[None,:],*pars)
     #Transform lor to a png format in the range of white/black of the original picture
