@@ -86,9 +86,9 @@ if final:
         pars_final.append(SO_pars[0])
         pars_final.append(SO_pars[1])
         pars_final.append(initial_point[-1])
-    final_en = fs.energies(pars_final,M,a_mono,k_pts_vec)
+    final_en = fs.energies(pars_final,TMD,a_mono,k_pts_vec)
     plt.figure(figsize=(15,8))
-    plt.suptitle(M)
+    plt.suptitle(TMD)
     for cut in range(cuts):
         plt.subplot(cuts,2,2*cut+1)
         plt.title("Cut "+paths[cut]+", band 0")
@@ -110,7 +110,7 @@ if final:
                         print("band ",str(b+1))
                         for i in range(len(k_pts_scalar[cut])):
                             print("{:.8f}".format(k_pts_scalar[cut][i]),'\t',"{:.8f}".format(final_en[cut][b,i]))
-        command = 'python distance_dft.py '+M+' '+str(consider_SO)+' '+dirname
+        command = 'python distance_dft.py '+TMD+' '+str(consider_SO)+' '+save_data_dirname
         os.system(command)
     exit()
 
@@ -136,7 +136,7 @@ result = D_E(fs.chi2,
 
 final_pars = np.array(result.x)
 print("Saving with final value: ",result.fun)
-par_filename = dirname + 'fit_pars_'+M+'_'+txt_SO+'.npy'
+par_filename = save_data_dirname + 'fit_pars_'+TMD+'_'+txt_SO+'.npy'
 np.save(par_filename,final_pars)
 
 

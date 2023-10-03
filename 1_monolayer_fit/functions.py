@@ -90,8 +90,16 @@ def chi2(pars,*args):
             for i in range(len_data[cut]):
                 res += (computed_en[cut][band,i] - input_energy[cut][band][i])**2
         res /= np.sqrt(len_data[cut])
+    if 0:
+        import matplotlib.pyplot as plt
+        b=0
+        c=0
+        plt.plot(np.linspace(0,1,len_data[c]),computed_en[c][b,:])
+        plt.scatter(np.linspace(0,1,len_data[c]),input_energy[c][b])
+        plt.show()
+        exit()
     if res < ps.list_res_bm[ps.ind_res]:    #save temp values
-        par_filename = data_dirname + 'temp_fit_pars_'+M+'_'+txt_SO+'.npy'
+        par_filename = data_dirname + 'temp_fit_pars_'+TMD+'_'+txt_SO+'.npy'
         np.save(par_filename,parameters)
         print("saving res < ",ps.list_res_bm[ps.ind_res])
         ps.ind_res += 1
@@ -102,15 +110,16 @@ def energies(parameters,TMD,a_mono,k_pts):
     epsilon = ps.find_e(parameters)
     HSO = ps.find_HSO(parameters)
     ens_tot = []
+    offset = parameters[-1]
     for cut in range(len(k_pts)):
         ens = np.zeros((2,len(k_pts[cut])))
         for i in range(len(k_pts[cut])):
             K = k_pts[cut][i]                                 #Considered K-point
-            H_mono = H_monolayer(K,hopping,epsilon,HSO,a_mono)     #Compute UL Hamiltonian for given K
+            H_mono = H_monolayer(K,hopping,epsilon,HSO,a_mono,offset)     #Compute UL Hamiltonian for given K
             temp = la.eigvalsh(H_mono)
             #index of higher valence band 13, the other is 12 (out of 22)
-            ens[0,i] = temp[13] + parameters[-1]     #offset in energy
-            ens[1,i] = temp[12] + parameters[-1]     #offset in energy
+            ens[0,i] = temp[13]
+            ens[1,i] = temp[12]
         ens_tot.append(ens)
     return ens_tot
 #
@@ -126,7 +135,7 @@ J_MX_minus = ((4,1), (3,2), (5,2), (9,6), (11,6), (10,7), (9,8), (11,8))
 #####
 #Here I contruct the single 11 orbital hamiltonian, which is 22x22 for spin-orbit, as a function of momentum
 #Detail can be found in https://journals.aps.org/prb/abstract/10.1103/PhysRevB.92.205108
-def H_monolayer(K_p,hopping,epsilon,HSO,a_mono):
+def H_monolayer(K_p,hopping,epsilon,HSO,a_mono,offset):
     t = hopping
     k_x,k_y = K_p       #momentum
     delta = a_mono* np.array([a_1, a_1+a_2, a_2, -(2*a_1+a_2)/3, (a_1+2*a_2)/3, (a_1-a_2)/3, -2*(a_1+2*a_2)/3, 2*(2*a_1+a_2)/3, 2*(a_2-a_1)/3])
@@ -207,6 +216,9 @@ def H_monolayer(K_p,hopping,epsilon,HSO,a_mono):
     H[:11,:11] = H_TB
     H[11:,11:] = H_TB
     H += HSO
+
+    #Offset
+    H += np.identity(22)*offset
     return H
 
 
