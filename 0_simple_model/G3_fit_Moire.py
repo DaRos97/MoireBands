@@ -35,7 +35,7 @@ len_e, len_k, z = pic.shape
 new_image = Image.fromarray(np.uint8(pic))
 new_imagename = dirname + "cut_KGK_Moire.png"
 new_image.save(new_imagename)
-os.system("xdg-open "+new_imagename)
+#os.system("xdg-open "+new_imagename)
 
 if 0: #remake original image with smaller number of pixels to fit actual colors
     fig_E,fig_K,z = pic.shape
@@ -69,7 +69,7 @@ path = fs.path_BZ_KGK(a_mono[0],len_k//k_points_factor,K_lim)     #K-points in B
 K_list = np.linspace(-K_lim,K_lim,len_k)
 E_list = np.linspace(E_f,E_i,len_e)
 #Parameters and bounds for minimization
-init_pars = [0.04,3.2,0.04,0.01]        #mod V, phase V, spread E, spread K
+init_pars = [0.04,3.2,0.04,0.01]        #mod V -> eV, phase V, spread E, spread K
 bounds_pars = ((0.001,0.1),(0,2*np.pi),(0.001,0.1),(0.001,0.1))
 minimization = True
 Args = (N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,minimization)
@@ -84,12 +84,16 @@ if 1:       #Test by hand
         for ph in list_ph:
             for e_ in list_E_:
                 for k_ in list_K_:
-                    par = [0.0335,np.pi,0.01,0.01]
+                    V = 0.01
+                    ph = 0#np.pi
+                    e_ = 0.015
+                    k_ = 0.01
+                    par = [V,ph,e_,k_]
                     pic_par = fs.image_difference(par,*Args)
                     #
                     new_image = Image.fromarray(np.uint8(pic_par))
                     pars_name = "{:.4f}".format(V)+'_'+"{:.4f}".format(ph)+'_'+"{:.4f}".format(e_)+'_'+"{:.4f}".format(k_)
-                    new_imagename = "temp.png"#home_dirname+"temp_image/"+pars_name+".png"
+                    new_imagename = home_dirname+"temp_image_fc/"+pars_name+".png"
                     new_image.save(new_imagename)
                     os.system("xdg-open "+new_imagename)
                     exit()

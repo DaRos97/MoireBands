@@ -13,7 +13,7 @@ try:
     data_dirname = "Data/"
     cluster = False
     #Parameters for path bands
-    compute_path = False
+    compute_path = True
     pts_ps = 200         #points per step
     Path = 'KGC'
     n_bands = 8         #Number of valence bands to consider

@@ -1,13 +1,17 @@
 #ignoring files
-Data/
 Data_Experiments/
+Figures/
 */__pycache__/
 */*/__pycache__/
-Figures/
-.ipynb_checkpoints/
 
-simple_model/temp_image/
-11_band_code/Figs_p/
-11_band_code/Figs_3fold/
-11_band_code/old_Data/
+0_simple_model/*temp*
+2_final_model/Data/
 
+eleven_band_model/Figs_p/
+eleven_band_model/Figs_g/
+eleven_band_model/Figs_3fold/
+eleven_band_model/Figs_6fold/
+eleven_band_model/Data/
+eleven_band_model/old_Data/
+
+three_band_model/Data/
