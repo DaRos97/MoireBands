@@ -1,7 +1,7 @@
 import numpy as np
+temp_res = 0
 ind_res = 0
 list_res_bm = [1/(2**x) for x in range(30)]
-print(list_res_bm)
 #####
 #####Parameters
 #####

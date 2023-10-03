@@ -98,11 +98,11 @@ def chi2(pars,*args):
         plt.scatter(np.linspace(0,1,len_data[c]),input_energy[c][b])
         plt.show()
         exit()
-    if res < ps.list_res_bm[ps.ind_res]:    #save temp values
+    if res < ps.temp_res/2:    #save temp values
         par_filename = data_dirname + 'temp_fit_pars_'+TMD+'_'+txt_SO+'.npy'
         np.save(par_filename,parameters)
-        print("saving res < ",ps.list_res_bm[ps.ind_res])
-        ps.ind_res += 1
+        print("saving res ",res)
+        ps.temp_res = res
     return res
 #
 def energies(parameters,TMD,a_mono,k_pts):

@@ -66,14 +66,47 @@ fit_pars_filename = save_data_dirname+'fit_pars_'+TMD+"_"+txt_SO+'.npy' if final
 
 try:
     initial_point = np.load(fit_pars_filename)
+#    initial_point = fs.dft_values(ps.initial_pt[TMD],consider_SO)
     print("using saved fit parameters as initial point")
+    DFT = False
 except:
     initial_point = fs.dft_values(ps.initial_pt[TMD],consider_SO)
     print("using DFT parameters as initial point")
+    DFT = True
 #Evaluate initial value of chi^2
 initial_chi2 = fs.chi2(initial_point,*args_chi2)
+ps.temp_res = initial_chi2      #initiate comparison parameter
+if DFT:
+    par_filename = save_data_dirname + 'temp_fit_pars_'+TMD+'_'+txt_SO+'.npy'
+    np.save(par_filename,initial_point)
+    print("saving res ",initial_chi2)
 
-if final:
+if not final:
+    #Bounds
+    Bounds = []
+    rg = 0.5#1        #proportional bound around initial values
+    rg2 = 0#0.1   #bound irrespective of parameter value
+    for i,p in enumerate(initial_point):
+        pp = np.abs(p)
+        Bounds.append((p-pp*rg-rg2,p+pp*rg+rg2))
+    #Minimization
+    result = D_E(fs.chi2,
+        bounds = Bounds,
+        args = args_chi2,
+        maxiter = 1000,
+        popsize = 20,
+        tol = 0.01,
+        disp = False if cluster else True,
+        workers = n_cpu,
+        updating = 'deferred' if n_cpu != 1 else 'immediate',
+        x0 = initial_point
+        )
+
+    final_pars = np.array(result.x)
+    print("Saving with final value: ",result.fun)
+    par_filename = save_data_dirname + 'fit_pars_'+TMD+'_'+txt_SO+'.npy'
+    np.save(par_filename,final_pars)
+else:
     import matplotlib.pyplot as plt
     from contextlib import redirect_stdout
     import os
@@ -102,10 +135,10 @@ if final:
     if input("Save k_en list and DFT vs TB table? (y/n)") == 'y':
         #Print k and energy -> to external output AND create table of differences between DFT and fit
         for cut in range(cuts):
-            filename_ek = 'result/k_en_'+M+'_'+paths[cut]+'.txt'
+            filename_ek = save_data_dirname + 'k_en_'+TMD+'_'+paths[cut]+'.txt'
             with open(filename_ek, 'w') as f:
                 with redirect_stdout(f):
-                    print("TMD:\t",M,'\n')
+                    print("TMD:\t",TMD,'\n')
                     for b in range(2):
                         print("band ",str(b+1))
                         for i in range(len(k_pts_scalar[cut])):
@@ -114,30 +147,6 @@ if final:
         os.system(command)
     exit()
 
-#Bounds
-Bounds = []
-rg = 0.5#1        #proportional bound around initial values
-rg2 = 0#0.1   #bound irrespective of parameter value
-for i,p in enumerate(initial_point):
-    pp = np.abs(p)
-    Bounds.append((p-pp*rg-rg2,p+pp*rg+rg2))
-#Minimization
-result = D_E(fs.chi2,
-    bounds = Bounds,
-    args = args_chi2,
-    maxiter = 1000,
-    popsize = 20,
-    tol = 0.01,
-    disp = False if cluster else True,
-    workers = n_cpu,
-    updating = 'deferred' if n_cpu != 1 else 'immediate',
-    x0 = initial_point
-    )
-
-final_pars = np.array(result.x)
-print("Saving with final value: ",result.fun)
-par_filename = save_data_dirname + 'fit_pars_'+TMD+'_'+txt_SO+'.npy'
-np.save(par_filename,final_pars)
 
 
 
