@@ -4,44 +4,29 @@ import parameters as ps
 import scipy.linalg as la
 from time import time as tt
 
-def convert(P,M):#input_filename):
+def convert(path,TMD,dirname):
     #for given path and material, takes the two bands and returns the lists of energy and momentum for the 2 top valence bands. 
     #For each k, is checked that the same k is also in the other band (there could be NAN)
     lines = []
     for i in range(2):
-        input_filename = 'input_data/'+P+'_'+M+'_band'+str(i+1)+'_v1.txt'
+        input_filename = dirname + 'input_data/'+path+'_'+TMD+'_band'+str(i+1)+'_v1.txt'
         with open(input_filename, 'r') as f:
             lines.append(f.readlines())
-    N = max(len(lines[0]),len(lines[1]))
+    N = len(lines[0])
     res1 = []
     res2 = []
     for i in range(N):
-        try:
-            temp1 = lines[0][i].split('\t')
-            pas_1 = True
-            if temp1[1] == 'NAN\n':
-                pas_1 = False
-        except:
-            pas_1 = False
-        try:
-            temp2 = lines[1][i].split('\t')
-            pas_2 = True
-            if temp2[1] == 'NAN\n':
-                pas_2 = False
-        except:
-            pas_2 = False
-        if pas_1 and pas_2:
-            res1.append([0,0])
-            res1[-1][0] = float(temp1[0])
-            res1[-1][1] = float(temp1[1])
-            res2.append([0,0])
-            res2[-1][0] = float(temp2[0])
-            res2[-1][1] = float(temp2[1])
+        temp1 = lines[0][i].split('\t')
+        temp2 = lines[1][i].split('\t')
+        if temp1[1]=='NAN\n' or temp2[1]=='NAN\n':
+            continue
+        res1.append([float(temp1[0]),float(temp1[1])])
+        res2.append([float(temp2[0]),float(temp2[1])])
     res1 = np.array(res1)
     res2 = np.array(res2)
     return [res1,res2]
 
-def reduce_input(input_data,considered_pts):
+def reduce_input(input_data,considered_pts):        #NOT USED
     N = len(input_data[0][:,0])
     new_N = N//(N//considered_pts)
     res = []
@@ -64,12 +49,8 @@ def find_vec_k(k_scalar,path,a_mono):
     k_pts = np.ndarray((len(k_scalar),2))
     if path == 'KGK':
         for i in range(len(k_scalar)):
-            if k_scalar[i] < 0:
-                k_pts[i,0] = np.abs(k_scalar[i])
-                k_pts[i,1] = 0
-            else:
-                k_pts[i,0] = np.abs(k_scalar[i])*np.cos(np.pi/3)
-                k_pts[i,1] = np.abs(k_scalar[i])*np.sin(np.pi/3)
+            k_pts[i,0] = k_scalar[i]
+            k_pts[i,1] = 0
     elif path == 'KMKp':
         M = np.array([np.pi,np.pi/np.sqrt(3)])/a_mono
         K = np.array([4*np.pi/3,0])/a_mono
@@ -92,7 +73,7 @@ def dft_values(pars,consider_SO):
     return pars2
 
 def chi2(pars,*args):
-    input_energy, M, a_mono, N, k_pts, SO_pars = args
+    input_energy, TMD, a_mono, len_data, k_pts, SO_pars, data_dirname = args
     if SO_pars == [0,0]:
         parameters = pars
         txt_SO = "SO"
@@ -102,20 +83,21 @@ def chi2(pars,*args):
         parameters.append(SO_pars[1])
         parameters.append(pars[-1])
         txt_SO = "noSO"
-    energies_computed = energies(parameters,M,a_mono,k_pts)
+    computed_en = energies(parameters,TMD,a_mono,k_pts)
     res = 0
     for cut in range(len(k_pts)):
         for band in range(2):
-            for i in range(N[cut]):
-                res += (energies_computed[cut][band,i] - input_energy[cut][band][i])**2
-        res /= np.sqrt(N[cut])
-    if res < ps.list_res_bm[ps.ind_res]:
-        par_filename = 'temp_fit_pars_'+M+'_'+txt_SO+'.npy'
+            for i in range(len_data[cut]):
+                res += (computed_en[cut][band,i] - input_energy[cut][band][i])**2
+        res /= np.sqrt(len_data[cut])
+    if res < ps.list_res_bm[ps.ind_res]:    #save temp values
+        par_filename = data_dirname + 'temp_fit_pars_'+M+'_'+txt_SO+'.npy'
         np.save(par_filename,parameters)
+        print("saving res < ",ps.list_res_bm[ps.ind_res])
         ps.ind_res += 1
     return res
 #
-def energies(parameters,M,a_mono,k_pts):
+def energies(parameters,TMD,a_mono,k_pts):
     hopping = ps.find_t(parameters)
     epsilon = ps.find_e(parameters)
     HSO = ps.find_HSO(parameters)
@@ -126,6 +108,7 @@ def energies(parameters,M,a_mono,k_pts):
             K = k_pts[cut][i]                                 #Considered K-point
             H_mono = H_monolayer(K,hopping,epsilon,HSO,a_mono)     #Compute UL Hamiltonian for given K
             temp = la.eigvalsh(H_mono)
+            #index of higher valence band 13, the other is 12 (out of 22)
             ens[0,i] = temp[13] + parameters[-1]     #offset in energy
             ens[1,i] = temp[12] + parameters[-1]     #offset in energy
         ens_tot.append(ens)
