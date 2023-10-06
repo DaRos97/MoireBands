@@ -92,12 +92,13 @@ def chi2(pars,*args):
         res /= np.sqrt(len_data[cut])
     if 0:
         import matplotlib.pyplot as plt
-        b=0
-        c=0
-        plt.plot(np.linspace(0,1,len_data[c]),computed_en[c][b,:])
-        plt.scatter(np.linspace(0,1,len_data[c]),input_energy[c][b])
+        for b in range(2):
+            for c in range(2):
+                plt.subplot(2,2,2*b+c+1)
+                plt.scatter(np.linspace(0,1,len_data[c]),input_energy[c][b],color='b')
+                plt.plot(np.linspace(0,1,len_data[c]),computed_en[c][b,:],'r')
         plt.show()
-        exit()
+        return res
     if res < ps.temp_res/2:    #save temp values
         par_filename = data_dirname + 'temp_fit_pars_'+TMD+'_'+txt_SO+'.npy'
         np.save(par_filename,parameters)

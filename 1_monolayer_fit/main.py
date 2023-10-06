@@ -81,14 +81,20 @@ if DFT:
     np.save(par_filename,initial_point)
     print("saving res ",initial_chi2)
 
+if 1:
+    print(initial_point)
+    fs.chi2(initial_point,*args_chi2)
+    exit()
+
 if not final:
     #Bounds
     Bounds = []
     rg = 0.5#1        #proportional bound around initial values
-    rg2 = 0#0.1   #bound irrespective of parameter value
     for i,p in enumerate(initial_point):
         pp = np.abs(p)
-        Bounds.append((p-pp*rg-rg2,p+pp*rg+rg2))
+        pmin = p-pp*rg in pp*rg > 1e-2 else p-1e-2
+        pmax = p+pp*rg in pp*rg > 1e-2 else p+1e-2
+        Bounds.append((pmin,pmax))
     #Minimization
     result = D_E(fs.chi2,
         bounds = Bounds,
