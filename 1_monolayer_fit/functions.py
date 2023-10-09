@@ -104,6 +104,8 @@ def chi2(pars,*args):
         np.save(par_filename,parameters)
         print("saving res ",res)
         ps.temp_res = res
+    if 0:
+        print(res)
     return res
 #
 def energies(parameters,TMD,a_mono,k_pts):

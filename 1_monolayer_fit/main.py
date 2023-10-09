@@ -1,8 +1,11 @@
 import numpy as np
 import sys
 import getopt
+from pathlib import Path
 #
-from scipy.optimize import differential_evolution as D_E        #try a gradient descent
+from scipy.optimize import differential_evolution as D_E        #stochastic
+from scipy.optimize import minimize as MZ        #grad_descent
+type_minimization = 'grad_descent'
 #
 import scipy.linalg as la
 #
@@ -48,6 +51,7 @@ input_energies = []
 k_pts_vec = []
 k_pts_scalar = []
 len_data = []
+#Extract experimental data for the 2 BZ paths
 for P in paths:
     input_data_full = fs.convert(P,TMD,home_dirname)
     #Number of points to consider
@@ -61,52 +65,71 @@ for P in paths:
 #Arguments of chi^2 function
 SO_pars = [0,0] if consider_SO else ps.initial_pt[TMD][40:42]
 args_chi2 = (input_energies,TMD,a_mono,len_data,k_pts_vec,SO_pars,save_data_dirname)
-#Initial point for minimization
-fit_pars_filename = save_data_dirname+'fit_pars_'+TMD+"_"+txt_SO+'.npy' if final else save_data_dirname + 'temp_fit_pars_'+TMD+"_"+txt_SO+'.npy'
-
-try:
+#Filename of parameters
+if final:
+    fit_pars_filename = save_data_dirname+'fit_pars_'+TMD+"_"+txt_SO+'.npy'
+    if Path(fit_pars_filename).is_file():
+        print("Using final value of minimization for final evaluation")
+    else:
+        fit_pars_filename = save_data_dirname+'temp_fit_pars_'+TMD+"_"+txt_SO+'.npy'
+        print("Using temp file for final evaluation")
+else:
+    fit_pars_filename = "/no_res"
+#Extract initial point of minimization (or of final result)
+if Path(fit_pars_filename).is_file():
     initial_point = np.load(fit_pars_filename)
-#    initial_point = fs.dft_values(ps.initial_pt[TMD],consider_SO)
-    print("using saved fit parameters as initial point")
+    print("Extracting saved fit parameters")
     DFT = False
-except:
+else:
     initial_point = fs.dft_values(ps.initial_pt[TMD],consider_SO)
-    print("using DFT parameters as initial point")
+    print("Using DFT parameters")
     DFT = True
 #Evaluate initial value of chi^2
 initial_chi2 = fs.chi2(initial_point,*args_chi2)
 ps.temp_res = initial_chi2      #initiate comparison parameter
-if DFT:
+if DFT: #Save DFT value in temp and use it as initial comparison result for the minimization
     par_filename = save_data_dirname + 'temp_fit_pars_'+TMD+'_'+txt_SO+'.npy'
     np.save(par_filename,initial_point)
-    print("saving res ",initial_chi2)
+    print("saving DFT res ",initial_chi2)
 
-if 1:
-    print(initial_point)
-    fs.chi2(initial_point,*args_chi2)
-    exit()
-
-if not final:
+if not final:   #Minimization
     #Bounds
     Bounds = []
-    rg = 0.5#1        #proportional bound around initial values
+    rg = 0.5        #proportional bound around initial values
+    min_variation = 0.1
     for i,p in enumerate(initial_point):
         pp = np.abs(p)
-        pmin = p-pp*rg in pp*rg > 1e-2 else p-1e-2
-        pmax = p+pp*rg in pp*rg > 1e-2 else p+1e-2
-        Bounds.append((pmin,pmax))
+        if pp*rg > min_variation:
+            Bounds.append((p-pp*rg,p+pp*rg))
+        else:
+            Bounds.append((p-min_variation,p+min_variation))
+        if 0:
+            print("initial par ",ps.list_names_all[i],": ",p)
+            print("bound: ",Bounds[-1],'\n')
     #Minimization
-    result = D_E(fs.chi2,
-        bounds = Bounds,
-        args = args_chi2,
-        maxiter = 1000,
-        popsize = 20,
-        tol = 0.01,
-        disp = False if cluster else True,
-        workers = n_cpu,
-        updating = 'deferred' if n_cpu != 1 else 'immediate',
-        x0 = initial_point
-        )
+    if type_minimization == 'stochastic':
+        result = D_E(fs.chi2,
+            bounds = Bounds,
+            args = args_chi2,
+    #        maxiter = 1000,
+    #        popsize = 20,
+    #        tol = 0.01,
+            disp = False if cluster else True,
+            workers = n_cpu,
+            updating = 'deferred' if n_cpu != 1 else 'immediate',
+            x0 = initial_point
+            )
+    elif type_minimization == 'grad_descent':
+        result = MZ(fs.chi2,
+            args = args_chi2,
+            x0 = initial_point,
+            bounds = Bounds,
+            method = 'Nelder-Mead',
+            options = {
+                'disp': False if cluster else True,
+                'adaptive' : True,
+                },
+            )
 
     final_pars = np.array(result.x)
     print("Saving with final value: ",result.fun)
