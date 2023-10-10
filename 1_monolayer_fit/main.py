@@ -95,9 +95,11 @@ if DFT: #Save DFT value in temp and use it as initial comparison result for the 
 if not final:   #Minimization
     #Bounds
     Bounds = []
-    rg = 0.5        #proportional bound around initial values
+    rg = 0.3        #proportional bound around initial values
     min_variation = 0.1
     for i,p in enumerate(initial_point):
+        if i == len(initial_point)-1:       #offset has larger bounds because it's set by hand, not by DFT
+            min_variation = 0.5         
         pp = np.abs(p)
         if pp*rg > min_variation:
             Bounds.append((p-pp*rg,p+pp*rg))
@@ -128,6 +130,9 @@ if not final:   #Minimization
             options = {
                 'disp': False if cluster else True,
                 'adaptive' : True,
+                'fatol': 1e-8,
+                'xatol': 1e-8,
+                'maxiter': 1e6,
                 },
             )
 
