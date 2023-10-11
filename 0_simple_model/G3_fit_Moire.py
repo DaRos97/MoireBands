@@ -6,7 +6,7 @@ from scipy.optimize import differential_evolution as d_e
 
 cluster = False
 ###Open image of data and cut it to relevant window
-home_dirname = "/home/users/r/rossid/simple_model/" if cluster else "/home/dario/Desktop/git/MoireBands/simple_model/"
+home_dirname = "/home/users/r/rossid/0_simple_model/" if cluster else "/home/dario/Desktop/git/MoireBands/0_simple_model/"
 dirname = home_dirname + "figs_png/"
 dirname_data = home_dirname + "data_fits/"
 image_name = dirname + "cut_KGK.png"         #experimental data
@@ -84,7 +84,7 @@ if 1:       #Test by hand
         for ph in list_ph:
             for e_ in list_E_:
                 for k_ in list_K_:
-                    V = 0.01
+                    V = 0.015
                     ph = 0#np.pi
                     e_ = 0.015
                     k_ = 0.01

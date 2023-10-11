@@ -68,10 +68,17 @@ def big_H(K_,N,pars_H,pars_V,G_M):
 
 def lorentzian_weight(k,e,*pars):
     K2,E2,weight_,K_,E_ = pars
-#    f = 1000
-#    weight_rescaled = weight_**2*f**2/(weight_**2*f**2+3*weight_*f+4)
-    weight_rescaled = weight_**(1/2)
-    return weight_rescaled/((k-K_)**2+K2)/((e-E_)**2+E2)
+    type_spread = 'gauss'
+    if type_spread == 'lor':
+        f = 1000
+        weight_rescaled = weight_**2*f**2/(weight_**2*f**2+3*weight_*f+4)
+        weight_rescaled = weight_**(1/2)
+        return weight_rescaled/((k-K_)**2+K2)/((e-E_)**2+E2)
+    elif type_spread == 'gauss':
+        weight_rescaled = weight_#**(1/2)
+        s_e = 0.01
+        s_k = 0.01
+        return weight_rescaled*np.exp(-((k-K_)/s_k)**2)*np.exp(-((e-E_)/s_e)**2)
 
 def path_BZ_KGK(a_monolayer,pts_path,lim):
     G = 4*np.pi/np.sqrt(3)/a_monolayer*np.array([0,1])      #reciprocal lattice vector
@@ -117,7 +124,12 @@ def image_difference(Pars, *args):
         for i in range(len(path)):
             for e in range(2*n_cells):
                 if weight[i,e]>1e-3:
-                    plt.scatter(K_space[i],res[i,e],s=10*weight[i,e],color='b')
+                    if i > 3*len(path)//4 and i < 5*len(path)//6-4 and weight[i,e]>0.01 and res[i,e] > -1.2: #color some dots
+                        print(i,e,weight[i,e])
+                        col='r'
+                    else:
+                        col='b'
+                    plt.scatter(K_space[i],res[i,e],s=10*weight[i,e],color=col)
         if 1: #plot N=0 bands
             n_cells0 = 1
             res_0 = np.zeros((len(path),2*n_cells0))
@@ -138,7 +150,7 @@ def image_difference(Pars, *args):
     lor = np.zeros((len_k,len_e))
     for i in range(len(path)):
         for j in range(2*n_cells):
-            if weight[i,j] > 1e-10:
+            if weight[i,j] > 1e-3:
                 pars = (K2,E2,weight[i,j],K_list[i*fac_k],res[i,j])
                 lor += lorentzian_weight(K_list[:,None],E_list[None,:],*pars)
     #Transform lor to a png format in the range of white/black of the original picture
@@ -164,8 +176,12 @@ def image_difference(Pars, *args):
         X,Y = np.meshgrid(K_list,E_list)
         from matplotlib import cm
         from matplotlib.colors import LogNorm
-        VMIN = lor[np.nonzero(lor)].min()
+        VMIN = 5e-3#lor[np.nonzero(lor)].min()
         VMAX = lor.max()
+        for i in range(lor.shape[0]):
+            for j in range(lor.shape[1]):
+                if lor[i,j] < VMIN:
+                    lor[i,j] = VMIN
         print(VMIN,VMAX)
         plt.pcolormesh(X, Y,lor.T,alpha=0.8,cmap=plt.cm.Greys,norm=LogNorm(vmin=VMIN, vmax=VMAX))
         plt.show()

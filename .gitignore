@@ -5,7 +5,9 @@ Figures/
 */*/__pycache__/
 
 0_simple_model/*temp*
+1_monolayer_fit/Data/
 2_final_model/Data/
+2_final_model/temp*
 
 eleven_band_model/Figs_p/
 eleven_band_model/Figs_g/

@@ -71,12 +71,15 @@ for opt, arg in opts:
         spread_K = list_s_k[spread_ind//10]
         spread_E = list_s_E[spread_ind%10]
 
-if 0:#Shady stuff
+if 1:#Shady stuff
     ens = np.load("temp_ens.npy")
     evs = np.load("temp_evs.npy")
-    n = 27
-    print(ens[n])
-    print(evs[:,n])
+    n_ = [24,25,26,27]
+    for n in n_:
+        print("band: ",n)
+        for i in range(evs.shape[0]):
+            if abs(np.linalg.norm(evs[i,n]))>1e-2:
+                print(i,np.linalg.norm(evs[i,n]))
     exit()
 
 #

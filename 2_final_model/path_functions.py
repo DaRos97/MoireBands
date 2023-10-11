@@ -19,7 +19,7 @@ def path_bands(args):
     #
     params_interlayer_hopping_name = "input_data/G_popt_interlayer.npy"
     p_IH = np.load(params_interlayer_hopping_name)[:2]  #interlayer hopping parameters -> only a and b needed
-#    p_IH = (0,0)
+    p_IH = (0,0)
     #
     params_V =  PARS.dic_params_V[upper_layer+'/'+lower_layer]
     a_M =       PARS.dic_a_Moire[upper_layer+'/'+lower_layer]
@@ -34,8 +34,8 @@ def path_bands(args):
     ######################
     ###################### Construct Hamiltonians with Moirè potential
     ######################
-    n_cells = int(1+3*N*(N+1))*28        #Dimension of H with only valence bands -> first n_cells bands are interesting 
-    n_cells_below = int(1+3*N*(N+1))*(28-n_bands)        #Index of lowest band to consider (after that is too low in spectrum)
+    n_cells = int(1+3*N*(N+1))*44#*28        #Dimension of H with only valence bands -> first n_cells bands are interesting 
+    n_cells_below = 0#int(1+3*N*(N+1))*(28-n_bands)        #Index of lowest band to consider (after that is too low in spectrum)
     #
     data_name = dirname + "en_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+Path+'_'+str(pts_ps)+'_'+str(n_bands)+".npy"
     weights_name = dirname + "arpes_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+Path+'_'+str(pts_ps)+'_'+str(n_bands)+".npy"
@@ -61,6 +61,11 @@ def path_bands(args):
                 for l in range(2):
                     for d in range(22):
                         weight[i,e] += np.abs(evecs[l*dim_H+d,e])**2
+            if i == len(path)//2:
+                print(K,res[i])
+                np.save("temp_ens.npy",res[i])
+                np.save("temp_evs.npy",evecs)
+                exit()
         if 0:#plot bands
             import matplotlib.pyplot as plt
             for b in range(n_cells-n_cells_below):
@@ -97,10 +102,6 @@ def path_bands(args):
             en, evec = la.eigh(big_H)#,subset_by_index=[14-n_bands,13])
             res_mono_UL = en[dim_Hs:]
             res_mono_LL = en[:dim_Hs]
-        #Offset energy
-#        res_mono_UL += PARS.dic_params_offset[upper_layer]
-#        res_mono_LL += PARS.dic_params_offset[upper_layer]
-        np.save(mono_UL_name,res_mono_UL)
         np.save(mono_LL_name,res_mono_LL)
 
 def path_lorentz(args):
