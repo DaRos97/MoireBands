@@ -5,6 +5,7 @@ import os
 from scipy.optimize import differential_evolution as d_e
 
 cluster = False
+n_workers = 4 if cluster else 1
 ###Open image of data and cut it to relevant window
 home_dirname = "/home/users/r/rossid/0_simple_model/" if cluster else "/home/dario/Desktop/git/MoireBands/0_simple_model/"
 dirname = home_dirname + "figs_png/"
@@ -61,7 +62,7 @@ pars_H = np.load(popt_filename)
 ###Construct the variational image
 #Parameters of Moirè Hamiltonian
 N = 5          #5-6 for cluster
-k_points_factor = 5         #compute len_k//k_points_factor k-points in variational image
+k_points_factor = 10         #compute len_k//k_points_factor k-points in variational image
 a_M = 79.8      #Moirè unit length --> Angstrom  #############
 G_M = fs.get_Moire(a_M)     #Moirè lattice vectors
 a_mono = [3.32, 3.18]       #monolayer lattice lengths --> [WSe2, WS2] Angstrom
@@ -69,12 +70,12 @@ path = fs.path_BZ_KGK(a_mono[0],len_k//k_points_factor,K_lim)     #K-points in B
 K_list = np.linspace(-K_lim,K_lim,len_k)
 E_list = np.linspace(E_f,E_i,len_e)
 #Parameters and bounds for minimization
-init_pars = [0.04,3.2,0.04,0.01]        #mod V -> eV, phase V, spread E, spread K
-bounds_pars = ((0.001,0.1),(0,2*np.pi),(0.001,0.1),(0.001,0.1))
+init_pars = [0.02,np.pi,0.01,np.pi,0.02,0.02]        #mod V -> eV, phase V, spread E, spread K
+bounds_pars = ((0.001,0.1),(np.pi/2,np.pi*3/2),(0.001,0.1),(np.pi/2,np.pi*3/2),(0.01,0.06),(0.01,0.06))
 minimization = True
 Args = (N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,minimization)
 
-if 1:       #Test by hand
+if 0:       #Test by hand
     import time
     list_V = np.linspace(0.02,0.04,10)
     list_ph = np.linspace(0,np.pi,10,endpoint=False)
@@ -84,11 +85,12 @@ if 1:       #Test by hand
         for ph in list_ph:
             for e_ in list_E_:
                 for k_ in list_K_:
-                    V = 0.015
-                    ph = 0#np.pi
-                    e_ = 0.015
-                    k_ = 0.01
-                    par = [V,ph,e_,k_]
+                    V = 0.02
+                    phi = np.pi
+                    e_ = 0.02
+                    k_ = 0.02
+                    VI, phi_VI = (0.05,np.pi) #interlayer Moire
+                    par = [V,phi,VI,phi_VI,e_,k_]
                     pic_par = fs.image_difference(par,*Args)
                     #
                     new_image = Image.fromarray(np.uint8(pic_par))
@@ -100,7 +102,6 @@ if 1:       #Test by hand
     exit()
 
 print("Initiating minimization")
-n_workers = 4 if cluster else 1
 res = d_e(
             fs.image_difference,
             x0 = np.array(init_pars),

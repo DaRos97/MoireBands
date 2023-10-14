@@ -19,7 +19,7 @@ def V_g(g,pars):          #g is a integer from 0 to 5
     V,psi = pars
     return V*np.exp(1j*(-1)**g*psi)
 
-def big_H(K_,N,pars_H,pars_V,G_M):
+def big_H(K_,N,pars_H,pars_V,G_M,args_VI):
     n_cells = int(1+3*N*(N+1))
     H_up = np.zeros((n_cells,n_cells),dtype=complex)
     H_down = np.zeros((n_cells,n_cells),dtype=complex)
@@ -58,6 +58,7 @@ def big_H(K_,N,pars_H,pars_V,G_M):
                 g = m.index(i)
                 H_up[s,nn] = V_g(g,pars_V)
                 H_down[s,nn] = V_g(g,pars_V)
+                H_interlayer[s,nn] = V_g(g,args_VI)
     #All together
     final_H = np.zeros((2*n_cells,2*n_cells),dtype=complex)
     final_H[:n_cells,:n_cells] = H_up
@@ -67,17 +68,19 @@ def big_H(K_,N,pars_H,pars_V,G_M):
     return final_H
 
 def lorentzian_weight(k,e,*pars):
-    K2,E2,weight_,K_,E_ = pars
+    spread_K,spread_E,weight_,K_,E_ = pars
     type_spread = 'gauss'
     if type_spread == 'lor':
+        E2 = spread_E**2
+        K2 = spread_K**2
         f = 1000
         weight_rescaled = weight_**2*f**2/(weight_**2*f**2+3*weight_*f+4)
         weight_rescaled = weight_**(1/2)
         return weight_rescaled/((k-K_)**2+K2)/((e-E_)**2+E2)
     elif type_spread == 'gauss':
         weight_rescaled = weight_#**(1/2)
-        s_e = 0.01
-        s_k = 0.01
+        s_e = 0.02
+        s_k = 0.02
         return weight_rescaled*np.exp(-((k-K_)/s_k)**2)*np.exp(-((e-E_)/s_e)**2)
 
 def path_BZ_KGK(a_monolayer,pts_path,lim):
@@ -86,8 +89,7 @@ def path_BZ_KGK(a_monolayer,pts_path,lim):
     K = np.tensordot(R_z(-np.pi/2),G,1)/np.sqrt(3)#
     Kp = -K
     Gamma = np.array([0,0])                                #Gamma
-    M = G/2
-    
+    M = G/2 
     Ki = K
     Ki = Ki/np.linalg.norm(Ki)*lim
     Kf = -Ki
@@ -97,16 +99,17 @@ def path_BZ_KGK(a_monolayer,pts_path,lim):
     return path
 
 def image_difference(Pars, *args):
-    V,phase,E_,K_ = Pars
+    V,phase,VI,phase_VI,spread_E,spread_K = Pars
     N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,minimization = args
     fac_k = len_k//len(path)
     pars_V = (V,phase)
+    args_VI = (VI,phase_VI)
     n_cells = int(1+3*N*(N+1))
     res = np.zeros((len(path),2*n_cells))
     weight = np.zeros((len(path),2*n_cells))
     for i in range(len(path)):
         K = path[i] 
-        H = big_H(K,N,pars_H,pars_V,G_M)
+        H = big_H(K,N,pars_H,pars_V,G_M,args_VI)
         res[i,:],evecs = np.linalg.eigh(H)
         for e in range(2*n_cells):
             for l in range(2):
@@ -136,7 +139,7 @@ def image_difference(Pars, *args):
             weight_0 = np.zeros((len(path),2*n_cells0))
             for i in range(len(path)):
                 K = path[i]                                 #Considered K-point
-                H = big_H(K,0,pars_H,pars_V,G_M)
+                H = big_H(K,0,pars_H,pars_V,G_M,args_VI)
                 res_0[i,:],evecs = np.linalg.eigh(H)#,subset_by_index=[n_cells_below,n_cells-1])
             plt.plot(K_space,res_0[:,0],'r',linewidth=0.5)
             plt.plot(K_space,res_0[:,1],'r',linewidth=0.5)
@@ -145,13 +148,11 @@ def image_difference(Pars, *args):
         plt.show()
         exit()
     #Lorentzian spread
-    K2 = K_**2
-    E2 = E_**2
     lor = np.zeros((len_k,len_e))
     for i in range(len(path)):
         for j in range(2*n_cells):
             if weight[i,j] > 1e-3:
-                pars = (K2,E2,weight[i,j],K_list[i*fac_k],res[i,j])
+                pars = (spread_K,spread_E,weight[i,j],K_list[i*fac_k],res[i,j])
                 lor += lorentzian_weight(K_list[:,None],E_list[None,:],*pars)
     #Transform lor to a png format in the range of white/black of the original picture
     max_lor = np.max(np.ravel(lor))
