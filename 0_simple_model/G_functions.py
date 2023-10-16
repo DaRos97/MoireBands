@@ -115,8 +115,7 @@ def image_difference(Pars, *args):
             for l in range(2):
                 weight[i,e] += np.abs(evecs[n_cells*l,e])**2
     weight /= np.max(np.ravel(weight))
-    # Plot single bands and weights
-    if 0:
+    if 0:   # Plot single bands and weights
         #
         K_space = np.linspace(-np.linalg.norm(path[0]),np.linalg.norm(path[-1]),len(path))
         plt.figure()
@@ -164,7 +163,7 @@ def image_difference(Pars, *args):
         for j in range(len_e):
             norm_lor[i,j] = int((whitest-blackest)*(1-lor[i,j]/(max_lor-min_lor))+blackest)
     pic_lor = np.flip(norm_lor.T,axis=0)   #invert e-axis
-    if 0: #png image
+    if 0: #print png image
         from PIL import Image
         import os
         new_image = Image.fromarray(np.uint8(pic_lor))
@@ -187,7 +186,6 @@ def image_difference(Pars, *args):
         plt.pcolormesh(X, Y,lor.T,alpha=0.8,cmap=plt.cm.Greys,norm=LogNorm(vmin=VMIN, vmax=VMAX))
         plt.show()
         exit()
-    return pic_lor
     #Compute difference pixel by pixel of the two images
     #minus_image = np.zeros((len_e,len_k//2))
     minus = 0
@@ -198,8 +196,17 @@ def image_difference(Pars, *args):
     #minus = np.abs(np.sum(np.ravel(minus_image)))
     #
     if minimization:
-#        print(Pars)
-#        print("Minus: ",minus)
+        if 0:   #interacting minimization
+            print(Pars)
+            print("Minus: ",minus)
+            a = input("plot? (y/N)")
+            if a=='y': #print png image
+                from PIL import Image
+                import os
+                new_image = Image.fromarray(np.uint8(pic_lor))
+                new_imagename = "temp.png"
+                new_image.save(new_imagename)
+                os.system("xdg-open "+new_imagename)
         return minus
     else:
         return pic_lor

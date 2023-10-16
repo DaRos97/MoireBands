@@ -2,10 +2,12 @@ import numpy as np
 from PIL import Image
 import G_functions as fs
 import os
-from scipy.optimize import differential_evolution as d_e
+from scipy.optimize import differential_evolution as d_e        #'stochastic'
+from scipy.optimize import minimize as m_z      #'grad_descent'
+type_minimization = 'grad_descent'
 
 cluster = False
-n_workers = 4 if cluster else 1
+n_workers = 8 if (cluster and type_minimization=='stochastic') else 1
 ###Open image of data and cut it to relevant window
 home_dirname = "/home/users/r/rossid/0_simple_model/" if cluster else "/home/dario/Desktop/git/MoireBands/0_simple_model/"
 dirname = home_dirname + "figs_png/"
@@ -102,14 +104,31 @@ if 0:       #Test by hand
     exit()
 
 print("Initiating minimization")
-res = d_e(
+args_min = (N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,minimization)
+if type_minimization == 'stochastic':
+    res = d_e(
+                fs.image_difference,
+                x0 = np.array(init_pars),
+                args = args_min,
+                bounds = bounds_pars,
+                disp = False if cluster else True,
+                workers = n_workers,
+                updating = 'immediate' if n_workers==1 else 'deferred'
+                )
+elif type_minimization == 'grad_descent':
+    res = m_z(
             fs.image_difference,
+            args = args_min,
             x0 = np.array(init_pars),
-            args = (N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,minimization),
             bounds = bounds_pars,
-            disp = False if cluster else True,
-            workers = n_workers,
-            updating = 'immediate' if n_workers==1 else 'deferred'
+            method = 'Nelder-Mead',
+            options = {
+                'disp': False if cluster else True,
+                'adaptive' : True,
+                'fatol': 1e-8,
+                'xatol': 1e-8,
+                'maxiter': 1e6,
+                },
             )
 
 print("Minimization finished with difference ",res.fun)
