@@ -72,7 +72,7 @@ pars_H = np.load(popt_filename)
 #Parameters of Moirè Hamiltonian
 inputs = True
 N = 5 if inputs == False else int(sys.argv[1])
-k_points_factor = 5         #compute len_k//k_points_factor k-points in variational image
+k_points_factor = 10         #compute len_k//k_points_factor k-points in variational image
 a_M = 79.8      #Moirè unit length --> Angstrom  #############
 G_M = fs.get_Moire(a_M)     #Moirè lattice vectors
 a_mono = [3.32, 3.18]       #monolayer lattice lengths --> [WSe2, WS2] Angstrom
@@ -94,7 +94,7 @@ if 1:       #Test by hand
     #VI, phi_VI = (0.0,np.pi) #interlayer Moire
     e_ = float(sys.argv[4])
     k_ = float(sys.argv[5])
-    dirnamee = '/home/dario/Desktop/git/MoireBands/0_simple_model/temp_gauss/'
+    dirnamee = '/home/dario/Desktop/git/MoireBands/0_simple_model/temp_/'
     fignamee = dirnamee + str(N)+'_'+"{:.4f}".format(V).replace('.',',')+'_'+"{:.4f}".format(phase).replace('.',',')+'_'+"{:.4f}".format(e_).replace('.',',')+'_'+"{:.4f}".format(k_).replace('.',',')+'.png'
     try:
         new_image = Image.open(fignamee)

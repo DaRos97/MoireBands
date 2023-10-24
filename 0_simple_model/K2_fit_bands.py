@@ -94,8 +94,8 @@ K_i_image = -1.1
 K_f_image = -0.1
 #New K_f
 K_f = K_i_image + (K_f_image-K_i_image)*K_lim/len_k       #value of K where we put the top of the band (K_lim)
-#Then, take a different K_i to consider only the parabolic part of the band
-K_i = -0.8
+#Then, take a different K_i to consider only the parabolic part of the band --> take K_i_image to consider all of it
+K_i = K_i_image#-0.8
 K_i_pix = int(len_k*(K_i-K_i_image)/(K_f_image-K_i_image))
 #Now, center k to top of band so that K_f = 0, we just need the distance b/w K_f and K_i
 K_cut = K_i-K_f     #negative
@@ -109,14 +109,14 @@ if 0:   #plot considered points
     plt.show()
     exit()
 
-def func1(k,m1,mu):
-    return -k**2/2/m1 + mu
+def func1(k,m1,m2,m3,mu):
+    return -k**2/2/m1 + k**4*m2 + k**6*m3 + mu
 #Combined fit
 popt,pcov = curve_fit(
         func1,
         X,Y,
-        p0=(1,-0.2),
-        bounds=([0.01,-1],[5,-0.05]),
+        p0=(0.04,56,-123,-0.47),
+        bounds=([0.001,0,-200,-0.5],[1,100,100,-0.45]),
         )
 print(popt)
 
@@ -124,7 +124,7 @@ if 0:#plot
     plt.figure()
     for j in range(len(k_line)):
         plt.scatter(X[j],Y[j],color='r')
-    plt.plot(k_line,func1(k_line,*popt),'k-')
+    plt.plot(k_line,func1(k_line,*popt),'b-')
     plt.xlim(k_line[0],k_line[-1])
     plt.ylim(-1.4,-0.2)
     plt.show()

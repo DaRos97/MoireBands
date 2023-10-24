@@ -78,7 +78,7 @@ def lorentzian_weight(k,e,*pars):
         weight_rescaled = weight_**(1/2)
         return weight_rescaled/((k-K_)**2+K2)/((e-E_)**2+E2)
     elif type_spread == 'gauss':
-        weight_rescaled = weight_**(1/2)
+        weight_rescaled = weight_**(0.5)
         s_e = spread_E
         s_k = spread_K
         return weight_rescaled*np.exp(-((k-K_)/s_k)**2)*np.exp(-((e-E_)/s_e)**2)
@@ -145,8 +145,8 @@ def image_difference(Pars, *args):
         plt.ylim(E_list[0],E_list[-1])       #-1.7,-0.5
         plt.xlim(K_space[0],K_space[-1])       #-0.5,0.5
         fignamee = str(N)+'_'+"{:.4f}".format(V).replace('.',',')+'_'+"{:.4f}".format(phase).replace('.',',')+'_'+"{:.4f}".format(VI).replace('.',',')+'_'+"{:.4f}".format(phase_VI).replace('.',',')+'.png'
-        plt.savefig('/home/dario/Desktop/Figs_Moire/'+fignamee)
-        #plt.show()
+        #plt.savefig('/home/dario/Desktop/Figs_Moire/'+fignamee)
+        plt.show()
         exit()
     #Lorentzian spread
     lor = np.zeros((len_k,len_e))
@@ -158,8 +158,8 @@ def image_difference(Pars, *args):
     #Transform lor to a png format in the range of white/black of the original picture
     max_lor = np.max(np.ravel(lor))
     min_lor = np.min(np.ravel(np.nonzero(lor)))
-    whitest = 255#np.max(np.ravel(pic))     
-    blackest = 0#np.min(np.ravel(pic))     
+    whitest = np.max(np.ravel(pic))     
+    blackest = np.min(np.ravel(pic))     
     norm_lor = np.zeros((len_k,len_e))
     for i in range(len_k):
         for j in range(len_e):

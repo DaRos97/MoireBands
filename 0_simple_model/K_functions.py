@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 
 
 def Hk_up(k,pars):
-    m1,mu = pars
-    return -k**2/2/m1 + mu
+    m1,m2,m3,mu = pars
+    return -k**2/2/m1 + k**4*m2 + k**6*m3 + mu
 
 def V_g(g,pars):          #g is a integer from 0 to 5
     V,psi = pars
@@ -47,8 +47,20 @@ def big_H(K_,N,pars_H,pars_V,G_M):
     return H_up
 
 def lorentzian_weight(k,e,*pars):
-    K2,E2,weight,K_,E_ = pars
-    return abs(weight)/((k-K_)**2+K2)/((e-E_)**2+E2)
+    spread_K,spread_E,weight_,K_,E_ = pars
+    type_spread = 'gauss'
+    if type_spread == 'lor':
+        E2 = spread_E**2
+        K2 = spread_K**2
+        #f = 1000
+        #weight_rescaled = weight_**2*f**2/(weight_**2*f**2+3*weight_*f+4)
+        weight_rescaled = weight_**(1/2)
+        return weight_rescaled/((k-K_)**2+K2)/((e-E_)**2+E2)
+    elif type_spread == 'gauss':
+        weight_rescaled = weight_**(1/2)
+        s_e = spread_E
+        s_k = spread_K
+        return weight_rescaled*np.exp(-((k-K_)/s_k)**2)*np.exp(-((e-E_)/s_e)**2)
 
 def path_BZ_GK(a_monolayer,pts_path,lim):
     path = []
@@ -81,6 +93,7 @@ def image_difference(Pars, *args):
         res[i,:],evecs = np.linalg.eigh(H)
         for e in range(n_cells):
             weight[i,e] += np.abs(evecs[0,e])**2
+    weight /= np.max(np.ravel(weight))
     # Plot single bands and weights
     if 0:
         #
@@ -108,26 +121,23 @@ def image_difference(Pars, *args):
         plt.show()
         exit()
     #Lorentzian spread
-    K2 = K_**2
-    E2 = E_**2
     lor = np.zeros((len_k,len_e))
     for i in range(len(path)):
         for j in range(n_cells):
             if weight[i,j] > 1e-13:
-                pars = (K2,E2,weight[i,j],K_list[i*fac_k],res[i,j])
+                pars = (K_,E_,weight[i,j],K_list[i*fac_k],res[i,j])
                 lor += lorentzian_weight(K_list[:,None],E_list[None,:],*pars)
     #Transform lor to a png format in the range of white/black of the original picture
     max_lor = np.max(np.ravel(lor))
     min_lor = np.min(np.ravel(np.nonzero(lor)))
-    whitest = np.max(np.ravel(pic))     
-    blackest = np.min(np.ravel(pic))     
+    whitest = 255#np.max(np.ravel(pic))     
+    blackest = 0#np.min(np.ravel(pic))     
     norm_lor = np.zeros((len_k,len_e))
     for i in range(len_k):
         for j in range(len_e):
             norm_lor[i,j] = int((whitest-blackest)*(1-lor[i,j]/(max_lor-min_lor))+blackest)
     pic_lor = np.flip(norm_lor.T,axis=0)   #invert e-axis
-    return pic_lor
-    if 1: #png image
+    if 0: #png image
         from PIL import Image
         import os
         new_image = Image.fromarray(np.uint8(pic_lor))
@@ -146,21 +156,27 @@ def image_difference(Pars, *args):
         plt.show()
         exit()
     #Compute difference pixel by pixel of the two images
-    #minus_image = np.zeros((len_e,len_k//2))
-    minus = 0
-    for i in range(len_e):
-        for j in range(len_k//2):
-            minus += np.abs(pic[i,j,0]-pic_lor[i,j])
-            #minus_image[i,j] = np.abs(pic[i,j,0]-pic_lor[i,j])
-    #minus = np.abs(np.sum(np.ravel(minus_image)))
+    minus = compute_difference(pic,pic_lor,len_e,len_k)
     #
     if minimization:
-#        print(Pars)
-#        print("Minus: ",minus)
+        if 0:   #interacting minimization
+            print(Pars)
+            print("Minus: ",minus)
+            a = input("plot? (y/N)")
+            if a=='y': #print png image
+                from PIL import Image
+                import os
+                new_image = Image.fromarray(np.uint8(pic_lor))
+                new_imagename = "temp.png"
+                new_image.save(new_imagename)
+                os.system("xdg-open "+new_imagename)
         return minus
     else:
         return pic_lor
 
+def compute_difference(pic,pic_lor,len_e,len_k):
+    minus = np.absolute(np.ravel(pic[:,:len_k//2-120,0]-pic_lor[:,:len_k//2-120])).sum()        #the 120 comes from k2_fit_bands.py, line 53
+    return minus/pic_lor.shape[0]/pic_lor.shape[1]
 
 
 
