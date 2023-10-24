@@ -1,6 +1,7 @@
 import numpy as np
 from PIL import Image
 import G_functions as fs
+import sys
 import os
 from scipy.optimize import differential_evolution as d_e        #'stochastic'
 from scipy.optimize import minimize as m_z      #'grad_descent'
@@ -13,32 +14,38 @@ home_dirname = "/home/users/r/rossid/0_simple_model/" if cluster else "/home/dar
 dirname = home_dirname + "figs_png/"
 dirname_data = home_dirname + "data_fits/"
 image_name = dirname + "cut_KGK.png"         #experimental data
-im  = Image.open(image_name)
-pic_0 = np.array(np.asarray(im))
-len_e, len_k, z = pic_0.shape
+cut_imagename = dirname + "cut_KGK_Moire.png"
+
 #Borders of image in terms of energy and momentum
 E_min_fig = -1.7
 E_max_fig = -0.5
 K_lim = 0.5
 E_i = -0.55   #relevant window: energy top
 E_f = -1.25   #relevant window: energy bottom
-ind_Ei = len_e - int((E_min_fig-E_i)/(E_min_fig-E_max_fig)*len_e)
-ind_Ef = len_e - int((E_min_fig-E_f)/(E_min_fig-E_max_fig)*len_e)
-if 0: #cut to see relevant window
-    new_pic = np.array(np.asarray(im)[ind_Ei:ind_Ef,:])
-    new_image = Image.fromarray(np.uint8(new_pic))
-    new_imagename = "temp.png"
-    new_image.save(new_imagename)
-    os.system("xdg-open "+new_imagename)
-    exit()
-#get Energy of relevant window
-pic = np.array(np.asarray(im)[ind_Ei:ind_Ef,:])
-len_e, len_k, z = pic.shape
-#save cut image
-new_image = Image.fromarray(np.uint8(pic))
-new_imagename = dirname + "cut_KGK_Moire.png"
-new_image.save(new_imagename)
-#os.system("xdg-open "+new_imagename)
+try:
+    new_image = Image.open(cut_imagename)
+    pic = np.array(np.asarray(new_image))
+    len_e, len_k, z = pic.shape
+except:
+    im  = Image.open(image_name)
+    pic_0 = np.array(np.asarray(im))
+    len_e, len_k, z = pic_0.shape
+    ind_Ei = len_e - int((E_min_fig-E_i)/(E_min_fig-E_max_fig)*len_e)
+    ind_Ef = len_e - int((E_min_fig-E_f)/(E_min_fig-E_max_fig)*len_e)
+    if 0: #cut to see relevant window
+        new_pic = np.array(np.asarray(im)[ind_Ei:ind_Ef,:])
+        new_image = Image.fromarray(np.uint8(new_pic))
+        new_imagename = "temp.png"
+        new_image.save(new_imagename)
+        os.system("xdg-open "+new_imagename)
+        exit()
+    #get Energy of relevant window
+    pic = np.array(np.asarray(im)[ind_Ei:ind_Ef,:])
+    len_e, len_k, z = pic.shape
+    #save cut image
+    new_image = Image.fromarray(np.uint8(pic))
+    new_image.save(cut_imagename)
+    #os.system("xdg-open "+new_imagename)
 
 if 0: #remake original image with smaller number of pixels to fit actual colors
     fig_E,fig_K,z = pic.shape
@@ -63,8 +70,9 @@ pars_H = np.load(popt_filename)
 
 ###Construct the variational image
 #Parameters of Moirè Hamiltonian
-N = 5          #5-6 for cluster
-k_points_factor = 10         #compute len_k//k_points_factor k-points in variational image
+inputs = True
+N = 5 if inputs == False else int(sys.argv[1])
+k_points_factor = 5         #compute len_k//k_points_factor k-points in variational image
 a_M = 79.8      #Moirè unit length --> Angstrom  #############
 G_M = fs.get_Moire(a_M)     #Moirè lattice vectors
 a_mono = [3.32, 3.18]       #monolayer lattice lengths --> [WSe2, WS2] Angstrom
@@ -77,30 +85,32 @@ bounds_pars = ((0.001,0.1),(np.pi/2,np.pi*3/2),(0.001,0.1),(np.pi/2,np.pi*3/2),(
 minimization = True
 Args = (N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,minimization)
 
-if 0:       #Test by hand
-    import time
-    list_V = np.linspace(0.02,0.04,10)
-    list_ph = np.linspace(0,np.pi,10,endpoint=False)
-    list_E_ = np.linspace(0.01,0.04,10)
-    list_K_ = np.linspace(0.005,0.03,10)
-    for V in list_V:
-        for ph in list_ph:
-            for e_ in list_E_:
-                for k_ in list_K_:
-                    V = 0.02
-                    phi = np.pi
-                    e_ = 0.02
-                    k_ = 0.02
-                    VI, phi_VI = (0.05,np.pi) #interlayer Moire
-                    par = [V,phi,VI,phi_VI,e_,k_]
-                    pic_par = fs.image_difference(par,*Args)
-                    #
-                    new_image = Image.fromarray(np.uint8(pic_par))
-                    pars_name = "{:.4f}".format(V)+'_'+"{:.4f}".format(ph)+'_'+"{:.4f}".format(e_)+'_'+"{:.4f}".format(k_)
-                    new_imagename = home_dirname+"temp_image_fc/"+pars_name+".png"
-                    new_image.save(new_imagename)
-                    os.system("xdg-open "+new_imagename)
-                    exit()
+if 1:       #Test by hand
+    #V,phi = (0.02,np.pi)
+    V = float(sys.argv[2])
+    phase = float(sys.argv[3])
+    VI = 0#float(sys.argv[4])
+    phase_VI = 0#float(sys.argv[5])
+    #VI, phi_VI = (0.0,np.pi) #interlayer Moire
+    e_ = float(sys.argv[4])
+    k_ = float(sys.argv[5])
+    dirnamee = '/home/dario/Desktop/git/MoireBands/0_simple_model/temp_gauss/'
+    fignamee = dirnamee + str(N)+'_'+"{:.4f}".format(V).replace('.',',')+'_'+"{:.4f}".format(phase).replace('.',',')+'_'+"{:.4f}".format(e_).replace('.',',')+'_'+"{:.4f}".format(k_).replace('.',',')+'.png'
+    try:
+        new_image = Image.open(fignamee)
+        pic_par = np.array(np.asarray(new_image))
+    except:
+        par = [V,phase,VI,phase_VI,e_,k_]
+        Args = (N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,False)
+        pic_par,minus = fs.image_difference(par,*Args)
+        #
+        new_image = Image.fromarray(np.uint8(pic_par))
+        new_image.save(fignamee)
+        #os.system("xdg-open "+fignamee)
+        pic_par = np.array(np.asarray(new_image))
+    minus = fs.compute_difference(pic,pic_par,len_e,len_k)
+    np.save('/home/dario/Desktop/git/MoireBands/0_simple_model/minuses/'+"{:.7f}".format(minus)+str(N)+'_'+"{:.4f}".format(V).replace('.',',')+'_'+"{:.4f}".format(phase).replace('.',',')+'_'+"{:.4f}".format(e_).replace('.',',')+'_'+"{:.4f}".format(k_).replace('.',',')+'.npy',minus)
+    print(minus)
     exit()
 
 print("Initiating minimization")

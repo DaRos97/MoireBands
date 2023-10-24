@@ -58,7 +58,7 @@ def big_H(K_,N,pars_H,pars_V,G_M,args_VI):
                 g = m.index(i)
                 H_up[s,nn] = V_g(g,pars_V)
                 H_down[s,nn] = V_g(g,pars_V)
-                H_interlayer[s,nn] = V_g(g,args_VI)
+                #H_interlayer[s,nn] = V_g(g,args_VI)
     #All together
     final_H = np.zeros((2*n_cells,2*n_cells),dtype=complex)
     final_H[:n_cells,:n_cells] = H_up
@@ -73,14 +73,14 @@ def lorentzian_weight(k,e,*pars):
     if type_spread == 'lor':
         E2 = spread_E**2
         K2 = spread_K**2
-        f = 1000
-        weight_rescaled = weight_**2*f**2/(weight_**2*f**2+3*weight_*f+4)
+        #f = 1000
+        #weight_rescaled = weight_**2*f**2/(weight_**2*f**2+3*weight_*f+4)
         weight_rescaled = weight_**(1/2)
         return weight_rescaled/((k-K_)**2+K2)/((e-E_)**2+E2)
     elif type_spread == 'gauss':
-        weight_rescaled = weight_#**(1/2)
-        s_e = 0.02
-        s_k = 0.02
+        weight_rescaled = weight_**(1/2)
+        s_e = spread_E
+        s_k = spread_K
         return weight_rescaled*np.exp(-((k-K_)/s_k)**2)*np.exp(-((e-E_)/s_e)**2)
 
 def path_BZ_KGK(a_monolayer,pts_path,lim):
@@ -127,7 +127,7 @@ def image_difference(Pars, *args):
             for e in range(2*n_cells):
                 if weight[i,e]>1e-3:
                     if i > 3*len(path)//4 and i < 5*len(path)//6-4 and weight[i,e]>0.01 and res[i,e] > -1.2: #color some dots
-                        print(i,e,weight[i,e])
+                        #print(i,e,weight[i,e])
                         col='r'
                     else:
                         col='b'
@@ -144,7 +144,9 @@ def image_difference(Pars, *args):
             plt.plot(K_space,res_0[:,1],'r',linewidth=0.5)
         plt.ylim(E_list[0],E_list[-1])       #-1.7,-0.5
         plt.xlim(K_space[0],K_space[-1])       #-0.5,0.5
-        plt.show()
+        fignamee = str(N)+'_'+"{:.4f}".format(V).replace('.',',')+'_'+"{:.4f}".format(phase).replace('.',',')+'_'+"{:.4f}".format(VI).replace('.',',')+'_'+"{:.4f}".format(phase_VI).replace('.',',')+'.png'
+        plt.savefig('/home/dario/Desktop/Figs_Moire/'+fignamee)
+        #plt.show()
         exit()
     #Lorentzian spread
     lor = np.zeros((len_k,len_e))
@@ -167,10 +169,11 @@ def image_difference(Pars, *args):
         from PIL import Image
         import os
         new_image = Image.fromarray(np.uint8(pic_lor))
-        pars_name = "{:.4f}".format(V)+'_'+"{:.4f}".format(phase)+'_'+"{:.4f}".format(E_)+'_'+"{:.4f}".format(K_)
-        new_imagename = "temp_image/"+pars_name+".png"
+        fignamee = str(N)+'_'+"{:.4f}".format(V).replace('.',',')+'_'+"{:.4f}".format(phase).replace('.',',')+'_'+"{:.4f}".format(VI).replace('.',',')+'_'+"{:.4f}".format(phase_VI).replace('.',',')+'.png'
+        #pars_name = "{:.4f}".format(V)+'_'+"{:.4f}".format(phase)+'_'+"{:.4f}".format(E_)+'_'+"{:.4f}".format(K_)
+        new_imagename = "/home/dario/Desktop/git/MoireBands/0_simple_model/temp_images/"+fignamee
         new_image.save(new_imagename)
-        os.system("xdg-open "+new_imagename)
+        #os.system("xdg-open "+new_imagename)
         exit()
     if 0:#plot with pcolormesh on matplotlib
         X,Y = np.meshgrid(K_list,E_list)
@@ -187,13 +190,7 @@ def image_difference(Pars, *args):
         plt.show()
         exit()
     #Compute difference pixel by pixel of the two images
-    #minus_image = np.zeros((len_e,len_k//2))
-    minus = 0
-    for i in range(len_e):
-        for j in range(len_k//2):
-            minus += np.abs(pic[i,j,0]-pic_lor[i,j])
-            #minus_image[i,j] = np.abs(pic[i,j,0]-pic_lor[i,j])
-    #minus = np.abs(np.sum(np.ravel(minus_image)))
+    minus = compute_difference(pic,pic_lor,len_e,len_k)
     #
     if minimization:
         if 0:   #interacting minimization
@@ -209,9 +206,11 @@ def image_difference(Pars, *args):
                 os.system("xdg-open "+new_imagename)
         return minus
     else:
-        return pic_lor
+        return pic_lor, minus
 
-
+def compute_difference(pic,pic_lor,len_e,len_k):
+    minus = np.absolute(np.ravel(pic[:,:len_k//2,0]-pic_lor[:,:len_k//2])).sum()
+    return minus/pic_lor.shape[0]/pic_lor.shape[1]
 
 
 
