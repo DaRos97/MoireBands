@@ -44,8 +44,8 @@ except:
     #save cut image
     new_image = Image.fromarray(np.uint8(pic))
     new_image.save(cut_imagename)
-    if 0:   #see cut picture for moire
-        os.system("xdg-open "+cut_imagename)
+if 0:   #see cut picture for moire
+    os.system("xdg-open "+cut_imagename)
 
 if 0: #remake original image with smaller number of pixels to fit actual colors
     fig_E,fig_K,z = pic.shape
@@ -85,28 +85,28 @@ minimization = True
 Args = (N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,minimization)
 
 if 1:       #Test by hand
-    V = float(sys.argv[2])
-    phase = float(sys.argv[3])
-    e_ = float(sys.argv[4])
-    k_ = float(sys.argv[5])
-    dirnamee = '/home/dario/Desktop/git/MoireBands/0_simple_model/temp_gauss_K/'
-    fignamee = dirnamee + str(N)+'_'+"{:.4f}".format(V).replace('.',',')+'_'+"{:.4f}".format(phase).replace('.',',')+'_'+"{:.4f}".format(e_).replace('.',',')+'_'+"{:.4f}".format(k_).replace('.',',')+'.png'
-    try:
-        new_image = Image.open(fignamee)
-        #pic_par = np.array(np.asarray(new_image))
-    except:
-        par = [V,phase,e_,k_]
-        Args = (N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,False)
-        pic_par = fs.image_difference(par,*Args)
-        #
-        new_image = Image.fromarray(np.uint8(pic_par))
-        new_image.save("temp.png")#fignamee)
-        os.system("xdg-open "+"temp.png")#fignamee)
+    for V in np.linspace(0.05,0.03,6):
+        for phase in np.linspace(0,np.pi,12):
+            for e_ in [0.02, 0.03, 0.04]:
+                for k_ in [0.01,0.02]:
+                    #V = float(sys.argv[2])
+                    #phase = float(sys.argv[3])
+                    #e_ = float(sys.argv[4])
+                    #k_ = float(sys.argv[5])
+                    dirnamee = home_dirname+'/temp_gauss/'
+                    fignamee = dirnamee + str(N)+'_'+"{:.4f}".format(V).replace('.',',')+'_'+"{:.4f}".format(phase).replace('.',',')+'_'+"{:.4f}".format(e_).replace('.',',')+'_'+"{:.4f}".format(k_).replace('.',',')+'.png'
+                    try:
+                        new_image = Image.open(fignamee)
+                        #pic_par = np.array(np.asarray(new_image))
+                    except:
+                        par = [V,phase,e_,k_]
+                        Args = (N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,False)
+                        pic_par = fs.image_difference(par,*Args)
+                        #
+                        new_image = Image.fromarray(np.uint8(pic_par))
+                        new_image.save(fignamee)
+                        #os.system("xdg-open "+fignamee)
 
-        #pic_par = np.array(np.asarray(new_image))
-    #minus = fs.compute_difference(pic,pic_par,len_e,len_k)
-    #np.save('/home/dario/Desktop/git/MoireBands/0_simple_model/minuses_K/'+"{:.7f}".format(minus)+str(N)+'_'+"{:.4f}".format(V).replace('.',',')+'_'+"{:.4f}".format(phase).replace('.',',')+'_'+"{:.4f}".format(e_).replace('.',',')+'_'+"{:.4f}".format(k_).replace('.',',')+'.npy',minus)
-    #print(minus)
     exit()
 
 print("Initiating minimization")
