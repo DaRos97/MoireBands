@@ -71,7 +71,7 @@ pars_H = np.load(popt_filename)
 ###Construct the variational image
 #Parameters of Moirè Hamiltonian
 N = 5          #5-6 for cluster
-k_points_factor = 10         #compute len_k//k_points_factor k-points in variational image
+k_points_factor = 1         #compute len_k//k_points_factor k-points in variational image
 a_M = 79.8      #Moirè unit length --> Angstrom  #############
 G_M = fs.get_Moire(a_M)     #Moirè lattice vectors
 a_mono = [3.32, 3.18]       #monolayer lattice lengths --> [WSe2, WS2] Angstrom
@@ -85,28 +85,33 @@ minimization = True
 Args = (N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,minimization)
 
 if 1:       #Test by hand
-    for V in np.linspace(0.05,0.03,6):
-        for phase in np.linspace(0,np.pi,12):
-            for e_ in [0.02, 0.03, 0.04]:
-                for k_ in [0.01,0.02]:
-                    #V = float(sys.argv[2])
-                    #phase = float(sys.argv[3])
-                    #e_ = float(sys.argv[4])
-                    #k_ = float(sys.argv[5])
-                    dirnamee = home_dirname+'/temp_gauss/'
-                    fignamee = dirnamee + str(N)+'_'+"{:.4f}".format(V).replace('.',',')+'_'+"{:.4f}".format(phase).replace('.',',')+'_'+"{:.4f}".format(e_).replace('.',',')+'_'+"{:.4f}".format(k_).replace('.',',')+'.png'
-                    try:
-                        new_image = Image.open(fignamee)
-                        #pic_par = np.array(np.asarray(new_image))
-                    except:
-                        par = [V,phase,e_,k_]
-                        Args = (N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,False)
-                        pic_par = fs.image_difference(par,*Args)
-                        #
-                        new_image = Image.fromarray(np.uint8(pic_par))
-                        new_image.save(fignamee)
-                        #os.system("xdg-open "+fignamee)
-
+    V = float(sys.argv[2])
+    phase = float(sys.argv[3])
+    VI = 0#float(sys.argv[4])
+    phase_VI = 0#float(sys.argv[5])
+    #VI, phi_VI = (0.0,np.pi) #interlayer Moire
+    e_ = float(sys.argv[4])
+    k_ = float(sys.argv[5])
+    dirnamee = '/home/dario/Desktop/git/MoireBands/0_simple_model/temp_/'
+    fignamee = dirnamee + 'K_'+str(N)+'_'+"{:.4f}".format(V).replace('.',',')+'_'+"{:.4f}".format(phase).replace('.',',')+'_'+"{:.4f}".format(e_).replace('.',',')+'_'+"{:.4f}".format(k_).replace('.',',')+'.npy'
+    Args = (N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,False)
+    par = [V,phase,e_,k_]
+    import matplotlib.pyplot as plt
+    plt.figure(figsize=(7,11))
+    try:
+        pic_par = np.load(fignamee)
+    except:
+        pic_par = fs.image_difference(par,*Args)
+    s_ = 15
+    plt.imshow(pic_par,cmap='gray')
+    plt.text(10,80,"V="+"{:.1f}".format(V*1000)+" meV, $\phi$="+"{:.2f}".format(phase)+" rad",size = s_)
+    plt.xticks([0,len_k//2,len_k],["{:.2f}".format(K_i),"{:.2f}".format((K_i+K_f)/2),"{:.2f}".format(K_f)])
+    plt.xlabel(r"$\mathring{A}^{-1}$",size=s_)
+    plt.yticks([0,len_e//2,len_e],["{:.2f}".format(E_i),"{:.2f}".format((E_i+E_f)/2),"{:.2f}".format(E_f)])
+    plt.ylabel("eV",size=s_)
+    plt.show()
+    if input("Save? (y/N)")=='y':
+        np.save(fignamee,pic_par)
     exit()
 
 print("Initiating minimization")

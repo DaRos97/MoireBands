@@ -156,7 +156,7 @@ def image_difference(Pars, *args):
         plt.show()
         exit()
     #Compute difference pixel by pixel of the two images
-    minus = compute_difference(pic,pic_lor,len_e,len_k)
+    minus = 0#compute_difference(pic,pic_lor,len_e,len_k)
     #
     if minimization:
         if 0:   #interacting minimization

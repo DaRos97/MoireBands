@@ -64,6 +64,8 @@ if 0: #remake original image with smaller number of pixels to fit actual colors
         os.system("xdg-open "+new_imagename)
         exit()
 
+len_e *= 2
+len_k *= 2
 ###Import fitting parameters
 popt_filename = dirname_data + "G_popt_interlayer.npy"
 pars_H = np.load(popt_filename)
@@ -95,22 +97,25 @@ if 1:       #Test by hand
     e_ = float(sys.argv[4])
     k_ = float(sys.argv[5])
     dirnamee = '/home/dario/Desktop/git/MoireBands/0_simple_model/temp_/'
-    fignamee = dirnamee + str(N)+'_'+"{:.4f}".format(V).replace('.',',')+'_'+"{:.4f}".format(phase).replace('.',',')+'_'+"{:.4f}".format(e_).replace('.',',')+'_'+"{:.4f}".format(k_).replace('.',',')+'.png'
+    fignamee = dirnamee + 'G_'+str(N)+'_'+"{:.4f}".format(V).replace('.',',')+'_'+"{:.4f}".format(phase).replace('.',',')+'_'+"{:.4f}".format(e_).replace('.',',')+'_'+"{:.4f}".format(k_).replace('.',',')+'.npy'
+    Args = (N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,False)
+    par = [V,phase,VI,phase_VI,e_,k_]
+    import matplotlib.pyplot as plt
+    plt.figure(figsize=(10,9))
     try:
-        new_image = Image.open(fignamee)
-        pic_par = np.array(np.asarray(new_image))
+        pic_par = np.load(fignamee)
     except:
-        par = [V,phase,VI,phase_VI,e_,k_]
-        Args = (N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,False)
         pic_par,minus = fs.image_difference(par,*Args)
-        #
-        new_image = Image.fromarray(np.uint8(pic_par))
-        new_image.save(fignamee)
-        #os.system("xdg-open "+fignamee)
-        pic_par = np.array(np.asarray(new_image))
-    minus = fs.compute_difference(pic,pic_par,len_e,len_k)
-    np.save('/home/dario/Desktop/git/MoireBands/0_simple_model/minuses/'+"{:.7f}".format(minus)+str(N)+'_'+"{:.4f}".format(V).replace('.',',')+'_'+"{:.4f}".format(phase).replace('.',',')+'_'+"{:.4f}".format(e_).replace('.',',')+'_'+"{:.4f}".format(k_).replace('.',',')+'.npy',minus)
-    print(minus)
+    s_ = 15
+    plt.imshow(pic_par,cmap='gray')
+    plt.text(len_k-260,30,"V="+"{:.1f}".format(V*1000)+" meV, $\phi$="+"{:.2f}".format(phase)+" rad",size = s_)
+    plt.xticks([0,len_k//2,len_k],["-0.5","0","0.5"])
+    plt.xlabel(r"$\mathring{A}^{-1}$",size=s_)
+    plt.yticks([0,len_e//2,len_e],["-0.55","-0.9","-1.25"])
+    plt.ylabel("eV",size=s_)
+    plt.show()
+    if input("Save? (y/N)")=='y':
+        np.save(fignamee,pic_par)
     exit()
 
 print("Initiating minimization")

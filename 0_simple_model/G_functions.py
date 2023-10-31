@@ -75,7 +75,7 @@ def lorentzian_weight(k,e,*pars):
         K2 = spread_K**2
         #f = 1000
         #weight_rescaled = weight_**2*f**2/(weight_**2*f**2+3*weight_*f+4)
-        weight_rescaled = weight_**(1/2)
+        weight_rescaled = weight_#**(1/2)
         return weight_rescaled/((k-K_)**2+K2)/((e-E_)**2+E2)
     elif type_spread == 'gauss':
         weight_rescaled = weight_**(0.5)
@@ -114,7 +114,9 @@ def image_difference(Pars, *args):
         for e in range(2*n_cells):
             for l in range(2):
                 weight[i,e] += np.abs(evecs[n_cells*l,e])**2
+    ####NORMALIZE
     weight /= np.max(np.ravel(weight))
+    ####
     if 0:   # Plot single bands and weights
         #
         K_space = np.linspace(-np.linalg.norm(path[0]),np.linalg.norm(path[-1]),len(path))
@@ -190,7 +192,7 @@ def image_difference(Pars, *args):
         plt.show()
         exit()
     #Compute difference pixel by pixel of the two images
-    minus = compute_difference(pic,pic_lor,len_e,len_k)
+    minus = 0#compute_difference(pic,pic_lor,len_e,len_k)
     #
     if minimization:
         if 0:   #interacting minimization
@@ -239,3 +241,33 @@ def R_z(t):
 def tqdm(n):
     return n
 
+
+def gridBZ(grid_pars,a_monolayer):
+    K_center,dist_kx,dist_ky,pts_per_direction = grid_pars
+    #K_center: string with name of central point of the grid
+    #dist_k*: float of distance from central point of furthest point in each direction *
+    #pts_per_direction: array of 2 floats with TOTAL number of steps in the two directions -> better if odd so central point is included
+    G = [4*np.pi/np.sqrt(3)/a_monolayer*np.array([0,1]),]      
+    for i in range(1,6):
+        G.append(np.tensordot(R_z(np.pi/3*i),G[0],1))
+    K = np.array([G[-1][0]/3*2,0])                      #K-point
+    Gamma = np.array([0,0])                             #Gamma
+    Kp =    np.tensordot(R_z(np.pi/3),K,1)              #K'-point
+    dic_symm_pts = {'G':Gamma,'K':K,'C':Kp}
+    #
+    grid = np.zeros((pts_per_direction[0],pts_per_direction[1],2))
+    KKK = dic_symm_pts[K_center]
+    for x in range(-pts_per_direction[0]//2,pts_per_direction[0]//2+1):
+        for y in range(-pts_per_direction[1]//2,pts_per_direction[1]//2+1):
+            K_pt_x = KKK[0] + 2*dist_kx*x/pts_per_direction[0]
+            K_pt_y = KKK[1] + 2*dist_ky*y/pts_per_direction[1]
+            grid[x+pts_per_direction[0]//2,y+pts_per_direction[1]//2,0] = K_pt_x
+            grid[x+pts_per_direction[0]//2,y+pts_per_direction[1]//2,1] = K_pt_y
+    return grid
+
+def spread_lor(K,sp_kx,sp_ky,kx_list,ky_list):
+    return 1/((kx_list[:,None]-K[0])**2+(ky_list[None,:]-K[1])**2+sp_kx**2)**(3/2)
+def spread_gauss(K,sp_kx,sp_ky,kx_list,ky_list):
+    return np.exp(-((K[0]-kx_list[:,None])/sp_kx)**2)*np.exp(-((K[1]-ky_list[None,:])/sp_ky)**2)
+
+spread_fun_dic = {'lor':spread_lor, 'gauss':spread_gauss}
