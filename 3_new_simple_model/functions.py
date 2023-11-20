@@ -1,0 +1,607 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from PIL import Image
+from scipy.optimize import curve_fit
+
+A_M = 79.8  #Moirè lattice length (Angstrom)
+a_mono = [3.32, 3.18]       #monolayer lattice lengths --> [WSe2, WS2] (Angstrom)
+m_ = [[-1,1],[-1,0],[0,-1],[1,-1],[1,0],[0,1]]
+
+def compute_image(pars_V,pars_H,pars_spread,args):
+    """Compute image given a Moirè potential and Hamiltonian parameters.
+
+    Parameters
+    ----------
+    pars_V : np.ndarray
+        Moire potential parameters: V,phi.
+    pars_H : np.ndarray
+        Parameters of the Hamiltonian: a,b,c,m1,m2,mu.
+    pars_spread : tuple
+        Parameters of the spreading of weights: spread_K, spread_E and type_of_spread.
+    args : tuple
+        Fixed arguments:
+
+    Returns
+    -------
+    np.ndarray
+        Image of spreaded bands.
+    """
+    fac_k = len_k//len(path)
+    n_cells = int(1+3*N*(N+1))
+    Energies = np.zeros((len(path),2*n_cells))
+    Weights = np.zeros((len(path),2*n_cells))
+    LU = lu_table(N,G_M)
+    for i in range(len(path)):
+        K = path[i]
+        Energies[i,:],evecs = np.linalg.eigh(big_H(K,N,pars_H,pars_V,G_M,LU))
+        for l in range(2):
+            for n in range(2*n_cells):
+                Weights[i,n] += np.absolute(evecs[l*n_cells,n])**2
+    ####NORMALIZE
+    Weights /= np.max(np.ravel(Weights))
+    ####
+    #Lorentzian (or gaussian) spread
+    lor = np.zeros((len_k,len_e))
+    for i in range(len(path)):
+        for n in range(2*n_cells):
+            if Weights[i,n] > 1e-5:
+                lor += weight_spreading(weight[i,n],K_list[i*fac_k],res[i,n],K_list[:,None],E_list[None,:],pars_spread)
+    #Transform lor to a png format in the range of white/black of the original picture
+    max_lor = np.max(np.ravel(lor))
+    min_lor = np.min(np.ravel(np.nonzero(lor)))
+    whitest = 255
+    blackest = 0     
+    normalized_lor = np.zeros((len_k,len_e))
+    for i in range(len_k):
+        for j in range(len_e):
+            normalized_lor[i,j] = int((whitest-blackest)*(1-lor[i,j]/(max_lor-min_lor))+blackest)
+    picture = np.flip(normalized_lor.T,axis=0)   #invert e-axis
+    if 0:
+        plot_image(picture,len_k,len_e,Energy_bounds)
+    if 0:
+        plot_bands(path,N,Energies,Weights,pars_H,pars_V,G_M)
+    return pic_lor
+
+def main_bands(path,pars_H):
+    """Compute energy bands of main BZ -> N=0.
+
+    Parameters
+    ----------
+    pars_H : np.ndarray
+        Parameters of the Hamiltonian: a,b,c,m1,m2,mu.
+
+    Returns
+    -------
+    np.ndarray
+        Energies of the 2 bands for all the k points.
+    """
+    energies_0 = np.zeros((len(path),2))
+    for i in range(len(path)):
+        K_i = path[i]
+        energies_0[i,:],evecs = np.linalg.eigh(big_H(K_i,0,pars_H,(0,0),G_M,lu_table(0)),get_RLV(A_M))
+    return energies_0
+
+def plot_image(picture,bounds_pic,m_b=False):
+    """Plot picture.
+
+    Parameters
+    ----------
+    picture : np.ndarray
+        Picture to plot.
+    """
+    s_ = 15
+    E_min,E_max,K_lim = bounds_pic
+    plt.figure(figsize=(10,9))
+    len_e, len_k, z = picture.shape
+    plt.imshow(picture,cmap='gray')
+    plt.xticks([0,len_k//2,len_k],["{:.2f}".format(-K_lim),"0","{:.2f}".format(K_lim)])
+    plt.yticks([0,len_e//2,len_e],["{:.2f}".format(E_max),"{:.2f}".format((E_min+E_max)/2),"{:.2f}".format(E_min)])
+    plt.xlabel(r"$\mathring{A}^{-1}$",size=s_)
+    plt.ylabel("eV",size=s_)
+    if m_b:
+        K_space = np.linspace(0,len_k,len(path))
+        energies_0 = main_bands(path,pars_H)
+        en_px = np.zeros((len(path),2))
+        E_min_cut,E_max_cut = Energy_bounds
+        for i in range(len(path)):
+            en_px[i,:] = len_e*(E_max_cut-Energies_0[i,:])/(E_max_cut-E_min_cut)
+        for d in range(2):
+            plt.plot(K_space,en_px[:,d],'r',linewidth=0.5)
+        plt.xlim(0,len_k)
+        plt.ylim(len_e,0)
+    plt.show()
+    exit()
+
+def plot_bands(path,N,Energies,Weights,pars_H,pars_V,G_M):
+    """Plot all bands and maybe the associated weights, highlighting the main band (of N=0).
+
+    Parameters
+    ----------
+    path : list
+        List of Kx,Ky values of the cut.
+    N : int
+        Number of considered circles of mini-BZ around the central one (N=0).
+    Energies : np.ndarray
+        Energies of all the bands.
+    Weights : np.ndarray
+        Weights of all the bands.
+    """
+    K_space = np.linspace(-np.linalg.norm(path[0]),np.linalg.norm(path[-1]),len(path))
+    plt.figure()
+    #plot all bands
+    for e in range(2*n_cells):
+        plt.plot(K_space,res[:,e],'k',linewidth=0.1)
+    #plot all weigts
+    for i in range(len(path)):
+        for e in range(n_cells,2*n_cells):
+            if weight[i,e]>1e-3:
+                plt.scatter(K_space[i],res[i,e],s=100*weight[i,e],color='b')
+    #N=0 bands
+    Energies_0 = main_bands(path,pars_H)
+    for d in range(2):
+        plt.plot(K_space,Energies_0[:,d],'r',linewidth=0.5)
+    plt.xlim(K_space[0],K_space[-1])       #-0.5,0.5
+    plt.show()
+    exit()
+
+def big_H(K,N,pars_H,pars_V,G_M,LU):
+    """Compute the multi-miniBZ Hamiltonian of two layers with Moirè potential and interlayer hopping.
+
+    Parameters
+    ----------
+    K : np.ndarray
+        Kx,Ky values.
+    N : int
+        Number of considered circles of mini-BZ around the central one (N=0).
+    pars_H : np.ndarray
+        Parameters of the Hamiltonian: a,b,c,m1,m2,mu.
+    pars_V : np.ndarray
+        Moire potential parameters: V,phi.
+    G_M : np.ndarray
+        Reciprocal Moirè lattice vectors.
+    LU : list
+        Look up table for idexes of mini-BZs in terms of G0 and G1.
+
+    Returns
+    -------
+    np.ndarray
+        Big ass Hamiltonian.
+    """
+    n_cells = int(1+3*N*(N+1))
+    H_up = np.zeros((n_cells,n_cells),dtype=complex)
+    H_down = np.zeros((n_cells,n_cells),dtype=complex)
+    H_interlayer = np.zeros((n_cells,n_cells),dtype=complex)
+    #
+    for n in range(n_cells):      #circles go from 0 (central BZ) to N included
+        KmBZ = K + G_M[0]*LU[n][0] + G_M[1]*LU[n][1]
+        H_up[n,n] = H_ul(KmBZ,pars_H)
+        H_down[n,n] = H_ll(KmBZ,pars_H)
+        H_interlayer[n:n] = H_interlayer(KmBZ,pars_H)
+    #Moirè
+    for n in range(0,N+1):      #Circles
+        for s in range(np.sign(n)*(1+(n-1)*n*3),n*(n+1)*3+1):       #Indices inside the circle
+            ind_s = lu[s]
+            for i in m_:
+                ind_nn = (ind_s[0]+i[0],ind_s[1]+i[1])  #nn-> nearest neighbour
+                try:
+                    nn = LU.index(ind_nn)
+                except:
+                    continue
+                g = m_.index(i)
+                H_up[s,nn] = V_g(g,pars_V)
+                H_down[s,nn] = V_g(g,pars_V)
+    #All together
+    final_H = np.zeros((2*n_cells,2*n_cells),dtype=complex)
+    final_H[:n_cells,:n_cells] = H_up
+    final_H[n_cells:,n_cells:] = H_down
+    final_H[n_cells:,:n_cells] = H_interlayer
+    final_H[:n_cells,n_cells:] = np.conjugate(H_interlayer.T)
+    return final_H
+def Hk_up(K,pars):
+    """Compute upper layer hamiltonian of single band model.
+
+    Parameters
+    ----------
+    K : np.ndarray
+        Kx,Ky values
+    pars : np.ndarray
+        Parameters of the Hamiltonian: a,b,c,m1,m2,mu.
+
+    Returns
+    -------
+    float
+        Upper layer energy.
+    """
+    k = np.linalg.norm(K)
+    a,b,c,m1,m2,mu = pars
+    return -k**2/2/m1 + mu
+def Hk_down(K,pars,t):
+    """Compute lower layer hamiltonian of single band model.
+
+    Parameters
+    ----------
+    K : np.ndarray
+        Kx,Ky values
+    pars : np.ndarray
+        Parameters of the Hamiltonian: a,b,c,m1,m2,mu.
+
+    Returns
+    -------
+    float
+        Lower layer energy.
+    """
+    k = np.linalg.norm(K)
+    a,b,c,m1,m2,mu = pars
+    return -k**2/2/m2 -c + mu
+def Hk_interlayer(K,pars):
+    """Compute inter-layer hamiltonian of single band model.
+
+    Parameters
+    ----------
+    K : np.ndarray
+        Kx,Ky values
+    pars : np.ndarray
+        Parameters of the Hamiltonian: a,b,c,m1,m2,mu.
+
+    Returns
+    -------
+    float
+        Inter-layer energy.
+    """
+    k = np.linalg.norm(K)
+    a,b,c,m1,m2,mu = pars
+    return -a*(1-b*k**2)
+def V_g(g,pars):
+    """Compute Moire potential part of Hamiltonian.
+
+    Parameters
+    ----------
+    g : int
+        Moire reciprocal lattice vector index, which decides the sign of the phase.
+    pars : np.ndarray
+        Moire potential parameters: V,phi.
+
+    Returns
+    -------
+    float
+        Moirè potential energy.
+    """
+    V,psi = pars
+    return np.identity(MM,dtype=complex)*V*np.exp(1j*(-1)**g*psi)
+def lu_table(N):
+    """Compute the look-up table containing the coordinates of each mini-BZ in terms of G0 and G1=(0,4pi/sqrt(3)/A_M).
+
+    Parameters
+    ----------
+    N : int
+        Number of considered circles of mini-BZ around the central one (N=0).
+
+    Returns
+    -------
+    list
+        Look up table in the form of list->each element is a 2-tuple containing the coefficients of G0 and G1.
+    """
+    n_cells = int(1+3*N*(N+1))
+    lu = []     
+    m = [[-1,1],[-1,0],[0,-1],[1,-1],[1,0],[0,1]]
+    for n in range(0,N+1):      #circles go from 0 (central BZ) to N included
+        i = 0
+        j = 0
+        for s in range(np.sign(n)*(1+(n-1)*n*3),n*(n+1)*3+1):       
+            if s == np.sign(n)*(1+(n-1)*n*3):
+                lu.append((n,0))           
+            else:
+                lu.append((lu[-1][0]+m[i][0],lu[-1][1]+m[i][1]))
+                if j == n-1:
+                    i += 1
+                    j = 0
+                else:
+                    j += 1
+    return lu
+
+def weight_spreading(weight,K,E,k_grid,e_grid,pars_spread):
+    """Compute the weight spreading in k and e.
+
+    Parameters
+    ----------
+    weight : float
+        Weight to spread.
+    K : float
+        Momentum position of weight.
+    E : float
+        Energy position of weight.
+    k_grid : np.ndarray
+        Grid of values over which evaluate the spreading in momentum.
+    e_grid : np.ndarray
+        Grid of values over which evaluate the spreading in energy.
+    pars_spread : tuple
+        Parameters of spreading: gamma_k, gamma_e, type_of_spread (Gauss or Lorentz).
+
+    Returns
+    -------
+    np.ndarray
+        Grid of energy and momentum values over which the weight located at K,E has been spread using the type_of_spread function by values spread_K and spread_E.
+    """
+    spread_K,spread_E,type_of_spread = pars
+    if type_of_spread == 'Lorentz':
+        E2 = spread_E**2
+        K2 = spread_K**2
+        return weight/((k_grid-K)**2+K2)/((e_grid-E)**2+E2)
+    elif type_spread == 'Gauss':
+        return weight*np.exp(-((k_grid-K)/spread_k)**2)*np.exp(-((e_grid-E)/spread_e)**2)
+
+def path_BZ_KGK(a_monolayer,pts_path,lim):
+    """Compute cut in BZ.
+
+    Parameters
+    ----------
+    a_monolayer : float
+        Lattice length of reference (mono)layer.
+    pts_path : int
+       Points in momentum to consider. 
+    lim : float
+        Absolute value of K wrt Gamma to consider.
+
+    Returns
+    -------
+    list
+        List of K=(kx,Ky) (np.array) values in the path.
+    """
+    Ki = np.array([lim,0])
+    Kf = -Ki
+    path = []
+    for i in range(pts_path):
+        path.append(Ki+(Kf-Ki)/pts_path*i)
+    return path
+
+def get_RLV(a):
+    """Compute first two reciprocal lattice vectors for a given lattice length.
+
+    Parameters
+    ----------
+    a : float
+        Lattice length.
+
+    Returns
+    -------
+    list
+        List of G0 and G1=(0,4pi/sqrt(3)/a.
+    """
+    G_a = [4*np.pi/np.sqrt(3)/a_M*np.array([0,1]),]    
+    G_a.insert(np.tensordot(R_z(-np.pi/3),G_a[0],1))
+    return G_a
+
+def R_z(t):
+    """Compute rotation matrix around z of angle t.
+
+    Parameters
+    ----------
+    t : float
+        Rotation angle.
+
+    Returns
+    -------
+    np.ndarray
+        2x2 rotation matrix.
+    """
+    R = np.zeros((2,2))
+    R[0,0] = np.cos(t)
+    R[0,1] = -np.sin(t)
+    R[1,0] = np.sin(t)
+    R[1,1] = np.cos(t)
+    return R
+
+def cut_image(bounds_pic,version,dirname,save=False):
+    """Extracts the relevant window of parameters from experimental image.
+
+    Parameters
+    ----------
+    bounds_pic : tuple
+        Bounds of picture in physical parameters:
+            -E_min : minimum energy in window.
+            -E_max : maximum energy in window.
+            -K_lim : range of K right and left of Gamma.
+    version : string
+        Defines which image to take from.
+    dirname : string
+        Name of directory where to take the experimental picture.
+    save : bool
+        Default False. Save or not the cut image in npy format.
+
+    Returns
+    -------
+    np.ndarray
+        Extracted picture.
+    """
+    E_min,E_max,K_lim = bounds_pic
+    original_image = dirname + "KGK_WSe2onWS2_"+version+".png"
+    K_i,K_f,E_i,E_f = (-1,1,0,-3.5) if version == 'v1' else (0,0,0,0)
+    pic_0 = np.array(np.asarray(Image.open(original_image)))
+    len_e, len_k, z = pic_0.shape
+    #Empirically extracted for v1
+    ki = 810
+    kf = 2370
+    ei = 85
+    ef = 1908
+    len_e = ef-ei
+    len_k = kf-ki
+    ind_Ei = ei + int((E_max-E_i)/(E_f-E_i)*len_e)
+    ind_Ef = ei + int((E_min-E_i)/(E_f-E_i)*len_e)
+    ind_Ki = ki + int(abs(K_i+K_lim)/(K_f-K_i)*len_k)
+    ind_Kf = ind_Ki + int(2*K_lim/(K_f-K_i)*len_k)
+    #get Energy of relevant window
+    pic = pic_0[ind_Ei:ind_Ef,ind_Ki:ind_Kf]
+    if save:
+        np.save(compute_picture_name(version,E_min,E_max,K_lim,dirname),pic)
+    return pic
+
+def compute_picture_filename(version,bounds_pic,dirname):
+    """Computes name of picture given cut parameters.
+
+    Parameters
+    ----------
+    version : string
+        Defines which image to take from.
+    bounds_pic : tuple
+        Bounds of picture in physical parameters:
+            -E_min : minimum energy in window.
+            -E_max : maximum energy in window.
+            -K_lim : range of K right and left of Gamma.
+    dirname : string
+        Name of directory where to take the experimental picture.
+
+    Returns
+    -------
+    string
+        Picture name.
+    """
+    E_min,E_max,K_lim = bounds_pic
+    return dirname + "cut_KGK_"+version+"_"+"{:.2f}".format(E_min)+"_"+"{:.2f}".format(E_max)+"_"+"{:.2f}".format(K_lim)+".npy"
+
+def compute_popts_filename(layer,version,bounds_pic,dirname):
+    """Computes name of picture given cut parameters.
+
+    Parameters
+    ----------
+    layer : string
+        Which layer: ul or ll.
+    version : string
+        Defines which image to take from.
+    bounds_pic : tuple
+        Bounds of picture in physical parameters:
+            -E_min : minimum energy in window.
+            -E_max : maximum energy in window.
+            -K_lim : range of K right and left of Gamma.
+    dirname : string
+        Name of directory of file.
+
+    Returns
+    -------
+    string
+        Picture name.
+    """
+    E_min,E_max,K_lim = bounds_pic
+    return dirname + "popts_"+layer+"_"+version+"_"+"{:.2f}".format(E_min)+"_"+"{:.2f}".format(E_max)+"_"+"{:.2f}".format(K_lim)+".npy"
+
+def compute_popts(picture,bounds_pic,version,dirname,save=False):
+    """Computes optimal parameters fitting the experimental image, using a polinomial.
+
+    Parameters
+    ----------
+    picture : np.ndarray
+        Picture to fit.
+    bounds_pic : tuple
+        Bounds of picture in physical parameters:
+            -E_min : minimum energy in window.
+            -E_max : maximum energy in window.
+            -K_lim : range of K right and left of Gamma.
+    dirname : string
+        Name of directory where to save the result.
+
+    Returns
+    -------
+    string
+        Picture name.
+    """
+    E_min,E_max,K_lim = bounds_pic
+    len_e, len_k, z = picture.shape
+    #
+    red = np.array([255,0,0,255])
+    green = np.array([0,255,0,255])
+    blue = np.array([0,0,255,255])
+    if 0:#print border between the two bands
+        for x in range(len_k):
+            bb = border(x,len_e,len_k)
+            picture[bb,x] = green
+        plt.imshow(picture,cmap='gray')
+        plt.show()
+        exit()
+    #Extract Darkest points
+    removed_k = 100     #Not consider beginning and end of lower band
+    data_ul = np.zeros(len_k,dtype=int)
+    data_ll = np.zeros(len_k-2*removed_k,dtype=int)
+    for x in range(len_k):
+        bb = border(x,len_e,len_k)
+        col_up = picture[:bb,x,0]
+        d_up = find_max(col_up)
+        picture[d_up,x,:] = red
+        data_ul[x] = int(len_e-d_up)
+    for x in range(removed_k,len_k-removed_k):
+        bb = border(x,len_e,len_k)
+        col_low = picture[bb:,x,0]
+        d_low = find_max(col_low)
+        picture[bb+d_low,x,:] = blue
+        data_ll[x-removed_k] = int(len_e-(bb+d_low))
+    if 0:   #plot taken points
+        plot_image(picture,bounds_pic)
+    #Fit poly on points of ul
+    popt_ul,pcov_ul = curve_fit(
+            poly,
+            np.linspace(-K_lim,K_lim,len_k),
+            np.linspace(E_min,E_max,len_e)[data_ul],
+            p0=(-0.9,0,-1,0,-0.1),
+            bounds=([-10,-10,-10,-10,-10],[10,10,10,10,10]),
+            )
+    #Fit poly on points of ll
+    K_lim_r = K_lim - removed_k/len_k*2*K_lim
+    popt_ll,pcov_ll = curve_fit(
+            poly,
+            np.linspace(-K_lim_r,K_lim_r,len_k-2*removed_k),
+            np.linspace(E_min,E_max,len_e)[data_ll],
+            p0=(-0.9,0,-1,0,-0.1),
+            bounds=([-10,-10,-10,-10,-10],[10,10,10,10,10]),
+            )
+    if save:
+        np.save(compute_popts_filename('ul',version,bounds_pic,dirname),popt_ul)
+        np.save(compute_popts_filename('ll',version,bounds_pic,dirname),popt_ll)
+    if 0:   #plot ll
+        plt.figure(figsize=(20,20))
+        plt.imshow(picture)
+        new_k = np.arange(removed_k,len_k-removed_k)
+        new_ll = len_e*(E_max-poly(np.linspace(-K_lim_r,K_lim_r,len_k-2*removed_k),*popt_ll))/(E_max-E_min)
+        plt.plot(new_k,new_ll,'r')
+        plt.show()
+        exit()
+
+def poly(x,a,b,c,d,e):
+    return a + b*x + c*x**2 + d*x**3 + e*x**4
+def border(x,len_e,len_k):
+    return len_e//2+(x-len_k//2)**2//600 #400
+def inv_gauss(x,a,b,x0,s):
+    return -(a*np.exp(-((x-x0)/s)**2)+b)
+def find_max(col):
+    med = np.argmin(col)
+    domain = 10
+    in_ = med-domain if med-domain > 0 else 0
+    fin_ = med+domain if med+domain < len(col) else -1
+    new_arr = col[in_:fin_]
+    P0 = [np.max(new_arr)-np.min(new_arr),-np.max(new_arr),np.argmin(new_arr),50]
+    try:
+        popt,pcov = curve_fit(
+            inv_gauss, 
+            np.arange(len(new_arr)), new_arr,
+            p0 = P0,
+            )
+        return in_+int(popt[2]) if abs(in_+int(popt[2]))<len(col) else med
+    except:
+        return med
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
