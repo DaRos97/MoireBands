@@ -4,10 +4,11 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 import os
 
-dirname = "figs_png/"
+dirname = "input_figures/"
 dirname_data = "data_fits/"
 #Open image and take pixels
 filename = dirname + "cut_KGK_v1.png"
+
 im  = Image.open(filename)
 
 #to array

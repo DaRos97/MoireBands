@@ -24,31 +24,40 @@ if 0: #plot image
     fs.plot_image(pic,bounds_pic)
 
 #Extract fit parameters of experimental data
+removed_k = (0,100)
 try:
-    popts_ul = np.load(fs.compute_popts_filename('ul',version,bounds_pic,data_dirname))
-    popts_ll = np.load(fs.compute_popts_filename('ll',version,bounds_pic,data_dirname))
+    pts_ul = np.load(fs.compute_pts_filename('ul',version,bounds_pic,data_dirname,removed_k[0]))
+    pts_ll = np.load(fs.compute_pts_filename('ll',version,bounds_pic,data_dirname,removed_k[1]))
 except:
-    fs.compute_popts(pic,bounds_pic,version,data_dirname,True)
+    pts_ul, pts_ll = fs.compute_pts(pic,bounds_pic,version,data_dirname,removed_k,True)
 
 #Minimize abs difference between darkest points of computed image and experimental data
-pars_V = (0.033,np.pi)
+pars_V = (0.03,np.pi)
+N = 5
 #
-spread_pars = (0.04,0.02,'Lorentz')
-arguments = (bounds_pic,pic,popts_ul,popts_ll,pars_V,spread_pars)
+factor_k = 10
+pts_path = len_k//factor_k
+path = fs.path_BZ_KGK(fs.a_mono[0],pts_path,K_lim)
+G_M = fs.get_RLV(fs.A_M)
+other_pars = (N,path)
+pars_spread = (0.01,0.01,'Lorentz')
+pts_layers = (pts_ul,pts_ll)
+arguments = (bounds_pic,pic,pts_layers,pars_V,pars_spread,N,path,G_M,removed_k)
 
-optimistic_bounds = ((),(),)
+initial_point = np.array([0.126, -3.52, 0.608, 0.135, 0.532, -1.2])
+optimistic_bounds = ((0.1,0.15),(-4,-3),(0.3,0.9),(0,0.3),(0.3,0.75),(-1.3,-1))
 result = minimize(
         fs.abs_diff,
         args = arguments,
-        x0 = np.array([]),
+        x0 = initial_point,
         bounds = optimistic_bounds,
         method = 'Nelder-Mead',
         options = {
             'disp': False if cluster else True,
             'adaptive' : True,
-            'fatol': 1e-8,
-            'xatol': 1e-8,
             'maxiter': 1e6,
             },
         )
 
+print("total: ",result)
+np.save(fs.compute_Hopt_filename(N,pars_V,pars_spread,version,bounds_pic,data_dirname,removed_k),result.x)
