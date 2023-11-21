@@ -7,25 +7,25 @@ argv = sys.argv[1:]
 try:
     opts, args = getopt.getopt(argv, "N:",["spread=","path","grid","cluster","fold="])
     #General parameters
-    N = 0              #Number of circles of mini-BZ around the central one
+    N = 3              #Number of circles of mini-BZ around the central one -> at least 5
     upper_layer = 'WSe2'
     lower_layer = 'WS2'
     data_dirname = "Data/"
     cluster = False
     #Parameters for path bands
-    compute_path = False
+    compute_path = True
     pts_ps = 50         #points per step
     Path = 'KGC'
     n_bands = 6         #Number of valence bands to consider
     pars_path_bands = (pts_ps,Path,n_bands)
     #Parameters for path lorentz (K-E plot)
     factor_gridy = 2        #number of points in y (energy) axis given by (len(Path)-1)*pts_ps*factor_gridy
-    spread_E = 0.05
-    spread_K = 1e-4      #spread in momentum
-    larger_E = 0.2      #in eV. Enlargment of E axis wrt min and max band energies
+    spread_E = 0.005
+    spread_K = 0.005      #spread in momentum
+    larger_E = 0.2      #in eV. Enlargment of E axis wrt min and max considered band energies
     shade_LL = 1        #NOT using it
     plot_EK = True
-    plot_mono_EK = True
+    plot_mono_EK = 0#True
     #Parameters for grid bands
     compute_grid = False
     K_center = 'G'
@@ -71,7 +71,7 @@ for opt, arg in opts:
         spread_K = list_s_k[spread_ind//10]
         spread_E = list_s_E[spread_ind%10]
 
-if 1:#Shady stuff
+if 0:#Shady stuff to check band occupation at Gamma -> check that d_z^2 and p_z are the most relevant
     ens = np.load("temp_ens.npy")
     evs = np.load("temp_evs.npy")
     n_ = [24,25,26,27]

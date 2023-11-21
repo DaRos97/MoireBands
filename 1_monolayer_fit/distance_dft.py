@@ -25,9 +25,14 @@ with open(tabname, 'w') as f:
             list_names = list_names_all[:40]
             list_names.append(list_names_all[-1])
         for i in range(len(pars_dft)):
-            percentage = np.abs((pars_computed[i]-pars_dft[i])/pars_dft[i]*100)
-            l = 15 - len(list_names[i])
-            print(list_names[i],':',' '*l,"{:.3f}".format(percentage),'%\t',"{:.5f}".format(pars_dft[i]),'\t->\t',pars_computed[i])
+            if i != len(pars_dft)-1:
+                percentage = np.abs((pars_computed[i]-pars_dft[i])/pars_dft[i]*100)
+                l = 15 - len(list_names[i])
+                print(list_names[i],':',' '*l,"{:.3f}".format(percentage),'%\t',"{:.5f}".format(pars_dft[i]),'\t->\t',pars_computed[i])
+            else:
+                percentage = np.abs((pars_computed[-1]-pars_dft[i])/pars_dft[i]*100)
+                l = 15 - len(list_names[i])
+                print(list_names[i],':',' '*l,"{:.3f}".format(percentage),'%\t',"{:.5f}".format(pars_dft[i]),'\t->\t',pars_computed[-1])
         print('\n\n#############################\n\n')
 
 

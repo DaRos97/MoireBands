@@ -98,12 +98,15 @@ def H_monolayer(K_p,hopping,epsilon,HSO,a_mono):
 # Interlayer Hamiltonian
 def interlayer_H(K,N,pars):
     a,b = pars
-    n_cells = int(1+3*N*(N+1))*22
+    N_mBZ = int(1+3*N*(N+1))
+    n_cells = N_mBZ*22
     H_in = np.zeros((n_cells,n_cells),dtype=complex)
     term = -a*(1-b*np.linalg.norm(K)**2)
-    for i in range(1+3*N*(N+1)):    #only in pz-pz (odd) coupling
-        H_in[i*22+8,i*22+8] = term
-        H_in[i*22+19,i*22+19] = term
+    for i in range(N_mBZ):    #only in pz-pz (even) coupling
+        H_in[i*22+5,i*22+5] = term      #dz^2 spin up
+        H_in[i*22+16,i*22+16] = term    #dz^2  spin down
+        #H_in[i*22+8,i*22+8] = term      #pz even spin up
+        #H_in[i*22+19,i*22+19] = term    #pz even spin down
     return H_in
 
 #####
@@ -133,7 +136,7 @@ def V_g(g,params):          #g is a integer from 0 to 5
 #Here I put all together to form the giga-Hamiltonian matrix by considering momentum space neighbors up to the cutoff N
 #To do it I give a number to each of the mini BZs, starting from the central one and then one circle at a time, going anticlockwise.
 #In the look-up table "lu" I put the positions of these mini-BZs, using coordinates in units of G1=(1,0), G2=(1/2,sqrt(3)/2). 
-def total_H(K_,N,hopping,epsilon,HSO,params_V,G_M,a_mono,offset):
+def total_H(K_,N,hopping,epsilon,HSO,params_V,G_M,a_mono):#,offset):
     #Dimension of the Hamiltonian, which is 22 (11 bands + SO) times the number of mini-BZs. 
     #For N=0 the number of mini-BZ is 1, for N=1 it is 6+1, for N=2 it is 12+6+1 ecc..
     n_cells = int(1+3*N*(N+1))*22
@@ -193,13 +196,27 @@ def total_H(K_,N,hopping,epsilon,HSO,params_V,G_M,a_mono,offset):
                 #...-> add the Moiré potential in the giga-Hamiltonian
                 H[s*22:(s+1)*22,nn*22:(nn+1)*22] = V_g(g,params_V)
     #Add energy offset
-    H += np.identity(n_cells)*offset
+    #H += np.identity(n_cells)*offset
     return H
 
 #Lorentzian
 def lorentzian_weight(k,e,*pars):
-    K2,E2,weight,K_,E_ = pars
-    return abs(weight)/((k-K_)**2+K2)/((e-E_)**2+E2)
+    #K2,E2,weight,K_,E_ = pars                              #old
+    #return abs(weight)/((k-K_)**2+K2)/((e-E_)**2+E2)       #old
+    spread_K,spread_E,weight_,K_,E_ = pars
+    type_spread = 'gauss'
+    if type_spread == 'lor':
+        E2 = spread_E**2
+        K2 = spread_K**2
+        #f = 1000
+        #weight_rescaled = weight_**2*f**2/(weight_**2*f**2+3*weight_*f+4)
+        weight_rescaled = weight_**(1/2)
+        return weight_rescaled/((k-K_)**2+K2)/((e-E_)**2+E2)
+    elif type_spread == 'gauss':
+        weight_rescaled = weight_#**(0.5)
+        s_e = spread_E
+        s_k = spread_K
+        return weight_rescaled*np.exp(-((k-K_)/s_k)**2)*np.exp(-((e-E_)/s_e)**2)
 
 #z rotations
 def R_z(t):

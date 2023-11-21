@@ -140,7 +140,7 @@ if not final:   #Minimization
     print("Saving with final value: ",result.fun)
     par_filename = save_data_dirname + 'fit_pars_'+TMD+'_'+txt_SO+'.npy'
     np.save(par_filename,final_pars)
-else:
+else:               #Final display
     import matplotlib.pyplot as plt
     from contextlib import redirect_stdout
     import os
@@ -153,6 +153,7 @@ else:
         pars_final.append(SO_pars[0])
         pars_final.append(SO_pars[1])
         pars_final.append(initial_point[-1])
+    print("Final pars: ",pars_final)
     final_en = fs.energies(pars_final,TMD,a_mono,k_pts_vec)
     plt.figure(figsize=(15,8))
     plt.suptitle(TMD)

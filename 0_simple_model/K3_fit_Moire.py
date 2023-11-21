@@ -3,13 +3,15 @@ from PIL import Image
 import K_functions as fs
 import os,sys
 from scipy.optimize import differential_evolution as d_e
+s_ = 15
+fss = (8,14)
 
 cluster = False
 ###Open image of data and cut it to relevant window
 home_dirname = "/home/users/r/rossid/0_simple_model/" if cluster else "/home/dario/Desktop/git/MoireBands/0_simple_model/"
 dirname = home_dirname + "figs_png/"
 dirname_data = home_dirname + "data_fits/"
-light = "LH"    #LH,LV,CL
+light = "CL"    #LH,LV,CL
 image_name = dirname + "cut_KK_"+light+".png"
 cut_imagename = dirname + "cut_KK_"+light+"_Moire.png"
 
@@ -44,8 +46,16 @@ except:
     #save cut image
     new_image = Image.fromarray(np.uint8(pic))
     new_image.save(cut_imagename)
-if 0:   #see cut picture for moire
-    os.system("xdg-open "+cut_imagename)
+if 1: #plot cut image
+    import matplotlib.pyplot as plt
+    plt.figure(figsize=fss)
+    plt.imshow(pic)
+    plt.xticks([0,len_k//2,len_k],["{:.2f}".format(K_i),"{:.2f}".format((K_i+K_f)/2),"{:.2f}".format(K_f)])
+    plt.xlabel(r"$\mathring{A}^{-1}$",size=s_)
+    plt.yticks([0,len_e//2,len_e],["{:.2f}".format(E_i),"{:.2f}".format((E_i+E_f)/2),"{:.2f}".format(E_f)])
+    plt.ylabel("eV",size=s_)
+    plt.show()
+    exit()
 
 if 0: #remake original image with smaller number of pixels to fit actual colors
     fig_E,fig_K,z = pic.shape
@@ -97,7 +107,7 @@ if 1:       #Test by hand
     Args = (N,pic,len_e,len_k,E_list,K_list,pars_H,G_M,path,False)
     par = [V,phase,e_,k_]
     import matplotlib.pyplot as plt
-    plt.figure(figsize=(7,11))
+    plt.figure(figsize=fss)
     try:
         pic_par = np.load(fignamee)
     except:

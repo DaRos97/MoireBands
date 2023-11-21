@@ -101,13 +101,11 @@ def chi2(pars,*args):
         plt.show()
         exit()
         return res
-    if res < ps.temp_res/2:    #save temp values
+    if res < ps.temp_res:    #save temp values
         par_filename = data_dirname + 'temp_fit_pars_'+TMD+'_'+txt_SO+'.npy'
         np.save(par_filename,parameters)
         print("saving res ",res)
         ps.temp_res = res
-    if 0:
-        print(res)
     return res
 #
 def energies(parameters,TMD,a_mono,k_pts):

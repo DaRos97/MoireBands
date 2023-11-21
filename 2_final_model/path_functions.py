@@ -7,7 +7,8 @@ def path_bands(args):
     general_pars,pars_path_bands = args
     N,upper_layer,lower_layer,dirname,cluster = general_pars
     pts_ps,Path,n_bands = pars_path_bands
-    dim_H = int(1+3*N*(N+1))*22
+    N_mBZ = int(1+3*N*(N+1))    #number of mini-BZs give N circles around origin
+    dim_H = N_mBZ*22        #dimension of each layer Hamiltonian
     if cluster:
         tqdm = fs.tqdm
     else:
@@ -19,7 +20,7 @@ def path_bands(args):
     #
     params_interlayer_hopping_name = "input_data/G_popt_interlayer.npy"
     p_IH = np.load(params_interlayer_hopping_name)[:2]  #interlayer hopping parameters -> only a and b needed
-    p_IH = (0,0)
+    p_IH = (0,0)        #for testing
     #
     params_V =  PARS.dic_params_V[upper_layer+'/'+lower_layer]
     a_M =       PARS.dic_a_Moire[upper_layer+'/'+lower_layer]
@@ -34,14 +35,14 @@ def path_bands(args):
     ######################
     ###################### Construct Hamiltonians with Moirè potential
     ######################
-    n_cells = int(1+3*N*(N+1))*44#*28        #Dimension of H with only valence bands -> first n_cells bands are interesting 
-    n_cells_below = 0#int(1+3*N*(N+1))*(28-n_bands)        #Index of lowest band to consider (after that is too low in spectrum)
+    n_cells = N_mBZ*28#*44        #Dimension of H with only valence bands -> first n_cells bands are interesting --> 44 comes from: first 7 out of 11 are valence -> 14 with SO -> 28 for bilayer
+    n_cells_below = N_mBZ*(28-n_bands)        #Index of lowest band to consider (after that is too low in spectrum)
     #
     data_name = dirname + "en_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+Path+'_'+str(pts_ps)+'_'+str(n_bands)+".npy"
     weights_name = dirname + "arpes_"+upper_layer+"-"+lower_layer+"_"+str(N)+'_'+Path+'_'+str(pts_ps)+'_'+str(n_bands)+".npy"
     try:    #name: LL/UL, N, Path, k-points per segment, number of valence bands considered
-        res = np.load(data_name)
-        weight = np.load(weights_name)
+        res = np.load(data_name)        #eigenvalues
+        weight = np.load(weights_name)  #ARPES weights
     except:
         print("\nComputing path bands and ARPES weights")
         res = np.zeros((len(path),n_cells-n_cells_below))           #Energies: len(path) -> k-points, n_cells -> dimension of Hamiltonian
@@ -51,22 +52,23 @@ def path_bands(args):
             K = path[i]                                 #Considered K-point
             H_UL = fs.total_H(K,N,hopping[0],epsilon[0],HSO[0],params_V,G_M,a_mono[0],PARS.dic_params_offset[upper_layer])     #Compute UL Hamiltonian for given K
             H_LL = fs.total_H(K,N,hopping[1],epsilon[1],HSO[1],params_V,G_M,a_mono[1],PARS.dic_params_offset[lower_layer])     #Compute LL Hamiltonian for given K
-            H_IL = fs.interlayer_H(K,N,p_IH)
+            H_IL = fs.interlayer_H(K,N,p_IH)        #Interlayer interaction of Hamiltonian -> also dim_H*dim_H
             big_H[:dim_H,:dim_H] = H_UL
             big_H[dim_H:,dim_H:] = H_LL
-            big_H[:dim_H,dim_H:] = H_IL
+            big_H[:dim_H,dim_H:] = H_IL             #H_IL is real so no need to take the Hermitian part
             big_H[dim_H:,:dim_H] = H_IL
             res[i,:],evecs = la.eigh(big_H,subset_by_index=[n_cells_below,n_cells-1])
             for e in range(n_cells-n_cells_below):
                 for l in range(2):
-                    for d in range(22):
+                    for d in range(22):             #22 changes if we project just on some bands -> what we want in order to get the 3-fold symmetry -> just in CEM
                         weight[i,e] += np.abs(evecs[l*dim_H+d,e])**2
-            if i == len(path)//2:
+            if 0:#i == len(path)//2:       #save bands at Gamma to check band content
                 print(K,res[i])
                 np.save("temp_ens.npy",res[i])
                 np.save("temp_evs.npy",evecs)
                 exit()
-        if 0:#plot bands
+        weight /= np.max(np.ravel(weight))       #Normalize b/w 0 and 1
+        if 0:   #plot bands
             import matplotlib.pyplot as plt
             for b in range(n_cells-n_cells_below):
                 plt.plot(np.linspace(-np.linalg.norm(path[0]),np.linalg.norm(path[-1]),len(path)),res[:,b], color= 'k')
@@ -77,7 +79,7 @@ def path_bands(args):
         np.save(data_name,res)
         np.save(weights_name,weight)
 
-    #########Mono-upper-layer bands
+    #########Mono-upper/lower-layer bands
     mono_UL_name = dirname + "mono_"+upper_layer+'_'+Path+'_'+str(pts_ps)+'_'+str(n_bands)+".npy"
     mono_LL_name = dirname + "mono_"+lower_layer+'_'+Path+'_'+str(pts_ps)+'_'+str(n_bands)+".npy"
     try:
@@ -107,7 +109,8 @@ def path_bands(args):
 def path_lorentz(args):
     general_pars,pars_path_bands,spread_pars_path = args
     N,upper_layer,lower_layer,dirname,cluster = general_pars
-    dim_H = int(1+3*N*(N+1))*22
+    N_mBZ = int(1+3*N*(N+1))
+    dim_H = N_mBZ*22
     pts_ps,Path,n_bands = pars_path_bands
     factor_gridy, E_, K_, larger_E, shade_LL, plot, plot_mono = spread_pars_path
     if cluster:
@@ -124,8 +127,8 @@ def path_lorentz(args):
     #parameters of Lorentzian
     lp = len(path);     gridx = lp;    #grid in momentum fixed by points evaluated previously 
     gridy = lp*factor_gridy
-    K2 = K_**2
-    E2 = E_**2
+#    K2 = K_**2
+#    E2 = E_**2
     min_e = np.amin(np.ravel(res))
     max_e = np.amax(np.ravel(res))
     MIN_E = min_e - larger_E
@@ -147,8 +150,8 @@ def path_lorentz(args):
         print("\nComputing Lorentzian spread ...")
         lor = np.zeros((lp,gridy))
         for i in tqdm(range(lp)):
-            for j in range(2*dim_H):
-                pars = (K2,E2,weight[i,j],K_list[i],res[i,j])
+            for j in range(N_mBZ*n_bands):
+                pars = (K_,E_,weight[i,j],K_list[i],res[i,j])
                 lor += fs.lorentzian_weight(K_list[:,None],E_list[None,:],*pars)
         np.save(lor_name,lor)
     if plot:
@@ -177,7 +180,7 @@ def path_lorentz(args):
             plt.text(K_list[i*lp//(len(Path)-1)-a],MIN_E-delta/12,dic_sym[c])
         #
         X,Y = np.meshgrid(K_list,E_list)
-        if 1:       #plot single bands -> a lot
+        if 0:       #plot single bands -> a lot
             dim_H = int(1+3*N*(N+1))*22
             for i in range(dim_H):
                 plt.plot(K_list,res[:,i],'r')
@@ -189,8 +192,8 @@ def path_lorentz(args):
         plt.pcolormesh(X, Y,lor.T,alpha=0.8,cmap=plt.cm.Greys,norm=LogNorm(vmin=VMIN, vmax=VMAX))
         plt.ylabel('eV')
         plt.ylim(-2,MAX_E)
-        plt.savefig(figname)
-#        plt.show()
+#        plt.savefig(figname)
+        plt.show()
 
 
 

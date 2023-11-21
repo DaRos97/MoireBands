@@ -2,10 +2,11 @@ import numpy as np
 import G_functions as fs
 from tqdm import tqdm
 import sys
+import itertools
 
 #Args: 1->E_cut, 2->spread_E, 3->spread_K
 
-cluster = True
+cluster = 0#True
 home_dir = "/home/users/r/rossid/0_simple_model/" if cluster else "/home/dario/Desktop/git/MoireBands/0_simple_model/"
 dirname = home_dir + 'data_CEM/'
 N = 5
@@ -17,12 +18,23 @@ n_pts_x = 301                #Number of k-pts in x-direction
 n_pts_y = 301
 pts_per_direction = (n_pts_x,n_pts_y)
 grid_pars = (K_center,dist_kx,dist_ky,pts_per_direction)
-#
-list_E = np.linspace(-1,-0.6,21)
-if cluster:
-    E_cut = list_E[int(sys.argv[1])]
-    spread_E = 0.01
-    spread_Kx = 0.01
+#Pars of E and weight
+V = 0.02
+phase = 2.6
+pars_V = (V,phase)
+
+#Pars of spread
+list_E = [-1,-0.9,-0.8]#np.linspace(-1,-0.6,21)
+list_spread_E = [0.01,0.02,0.03,0.04]
+list_spread_K = [0.01,0.015,0.02]
+together = list(itertools.product(*[list_E,list_spread_E,list_spread_K]))
+if 1:#cluster:
+    #E_cut = list_E[int(sys.argv[1])]
+    #spread_E = 0.01
+    #spread_Kx = spread_Ky = 0.01
+    E_cut, spread_E, spread_Kx = together[int(sys.argv[1])]
+    spread_Ky = spread_Kx
+    figpar = "{:.4f}".format(E_cut)+'_'+"{:.4f}".format(spread_E)+'_'+"{:.4f}".format(spread_Kx)+'.png'
 else:
     E_cut = float(sys.argv[1])     #eV
     spread_E = float(sys.argv[2])
@@ -32,12 +44,6 @@ get_spread = fs.spread_fun_dic[sp]
 #
 popt_filename =  home_dir + "data_fits/G_popt_interlayer.npy"
 pars_H = np.load(popt_filename)
-
-###
-
-V = 0.02
-phase = 2.6
-pars_V = (V,phase)
 
 #Moiré reciprocal lattice vectors. I start from the first one along ky and obtain the others by doing pi/3 rotations
 a_mono = [3.32, 3.18]       #monolayer lattice lengths --> [WSe2, WS2] Angstrom
@@ -85,7 +91,7 @@ gen_lor_name = dirname + "CEM_"+str(N)+'_'+K_center+'_'+str(dist_kx).replace('.'
 par_name = '_'+str(spread_Kx).replace('.',',')+'_'+str(spread_E).replace('.',',')+'_E'+str(E_cut).replace('.',',')+".npy"
 lor_name = gen_lor_name + par_name
 try:
-    lor = np.load(lor_name)
+    pic_lor = np.load(lor_name)
 except:
     print("\nComputing banana lorentzian spread of E="+str(E_cut)+" ...")
     lor = np.zeros((pts_per_direction[0],pts_per_direction[1]))
@@ -117,22 +123,21 @@ except:
     
     np.save(lor_name,pic_lor)
 
-if not cluster:
+if 1:#not cluster:
     import matplotlib.pyplot as plt
     #PLOTTING
+    s_ = 20
     fig = plt.figure(figsize = (15,15))
     X,Y = np.meshgrid(Kx_list,Ky_list)
     plt.gca().set_aspect('equal')
-    plt.title("CEM: "+str(E_cut)+" eV")
+    plt.title("CEM: "+str(E_cut)+" eV",size=s_+10)
     plt.imshow(pic_lor,cmap='gray')
-#    plt.pcolormesh(X, Y,lor_[i].T,alpha=0.8,cmap=plt.cm.Greys)#,norm=LogNorm(vmin=lor_[i][np.nonzero(lor_[i])].min(), vmax=lor_[i].max()))
-#            plt.ylim(-0.6,0.6)
-#            plt.xlim(-1.5,1.5)
-    plt.ylabel('Ky')
-    plt.xlabel('Kx')
-#            plt.colorbar()
-#        plt.savefig(figname)
-    plt.show()
+    plt.ylabel(r'$K_y$'+r' $(\mathring{A}^{-1})$',size=s_)
+    plt.xlabel(r'$K_x$'+r' $(\mathring{A}^{-1})$',size=s_)
+    plt.xticks([0,n_pts_x//2,n_pts_x],["{:.1f}".format(-dist_kx),"0","{:.1f}".format(dist_kx)])
+    plt.yticks([0,n_pts_y//2,n_pts_y],["{:.1f}".format(-dist_ky),"0","{:.1f}".format(dist_ky)])
+    plt.savefig("temp_/"+figpar)
+#    plt.show()
 
 
 

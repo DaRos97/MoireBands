@@ -7,7 +7,7 @@ import os
 dirname = "figs_png/"
 dirname_data = "data_fits/"
 #Open image and take pixels
-filename = dirname + "cut_KGK.png"
+filename = dirname + "cut_KGK_v1.png"
 im  = Image.open(filename)
 
 #to array
@@ -49,23 +49,21 @@ def find_max(col):
 
 if 0:#print border between the two bands
     for x in range(len_k):
-        border = len_e//2+(x-len_k//2)**2//400
+        border = len_e//2+(x-len_k//2)**2//600 #400
         pic[border,x] = green
-    new_image = Image.fromarray(np.uint8(pic))
-    new_imagename = "temp.png"
-    new_image.save(new_imagename)
-    os.system("xdg-open "+new_imagename)
+    plt.imshow(pic,cmap='gray')
+    plt.show()
     exit()
 
-new_filename = dirname + "G_extracted_points.png"
-data_filename = dirname_data + "G_extracted_points.npy"
+new_filename = dirname + "G_extracted_points_v1.png"
+data_filename = dirname_data + "G_extracted_points_v1.npy"
 try:#compute darkest points of the two bands
     im  = Image.open(filename)
     data = np.load(data_filename)
 except:
     for x in range(len_k):
         #upper band
-        border = len_e//2+(x-len_k//2)**2//400
+        border = len_e//2+(x-len_k//2)**2//600  #400
         col_up = pic[:border,x,0]
         d_up = find_max(col_up)
 #        d_up = np.argmin(col_up)
@@ -85,16 +83,14 @@ except:
     new_im.save(new_filename)
 
 #fitting of bands with simple model 
+popt_filename = dirname_data + "G_popt_interlayer_v1.npy"
 #Parameters of image
-E_min_cut = -1.7
-E_max_cut = -0.5
+E_min_cut = -2.2#-1.7
+E_max_cut = -0.9#-0.5
 K_cut = 0.5
 r = 0.1         #removed k space from fit
 k_line = np.linspace(-K_cut+r,K_cut-r,int(len_k*(1-r/K_cut)))
 e_line = np.linspace(E_min_cut,E_max_cut,len_e)
-comboX = np.append(k_line,k_line)   #k-data for the two parabolas
-rem_e = int(len_k/2/K_cut*r)+1      #removed energy data because of r
-comboY = np.append(e_line[data[0,rem_e:-rem_e]],e_line[data[1,rem_e:-rem_e]])  #e-data for the two parabolas
 def func1(k,a,b,c,m1,m2,mu):#up
     alpha = k**2/2/m1+k**2/2/m2+c
     beta = k**2/2/m1*(k**2/2/m2+c) - a**2*(1-b*k**2)**2
@@ -111,25 +107,36 @@ def combinedFunc(combK,a,b,c,m1,m2,mu):
     res1 = func1(extract1,a,b,c,m1,m2,mu)
     res2 = func2(extract2,a,b,c,m1,m2,mu)
     return np.append(res1, res2)
-#Combined fit
-popt,pcov = curve_fit(
-        combinedFunc,
-        comboX,comboY,
-        p0=(-0.1,-1,0.7,0.1,0.1,-0.5),
-        bounds=([-10,-10,0.1,0.01,0.01,-1],[10,10,2.7,5,5,-0.1]),
-        )
-print(popt)
+try:
+    popt = np.load(popt_filename)
+except:
+    comboX = np.append(k_line,k_line)   #k-data for the two parabolas
+    rem_e = int(len_k/2/K_cut*r)+1      #removed energy data because of r
+    comboY = np.append(e_line[data[0,rem_e:-rem_e]],e_line[data[1,rem_e:-rem_e]])  #e-data for the two parabolas
+    #Combined fit
+    popt,pcov = curve_fit(
+            combinedFunc,
+            comboX,comboY,
+            p0=(-0.1,-1,0.7,0.1,0.1,-0.5),
+            bounds=([-10,-10,0.1,0.01,0.01,-2],[10,10,2.7,5,5,2]),
+            )
+    print(popt)
+    #Save result of fitting
+    np.save(popt_filename,popt)
 
-if 0:#plot
-    plt.figure()
-    col = ['r','b']
-    for i in range(2):
-        for j in range(len(k_line)):
-            plt.scatter(k_line[j],e_line[data[i,j+len_k//10]],color=col[i])
-    plt.plot(k_line,func1(k_line,*popt),'k-')
-    plt.plot(k_line,func2(k_line,*popt),'k-')
-    plt.xlim(-0.5,0.5)
-    plt.ylim(-1.7,-0.5)
+if 1:#plot
+    plt.figure(figsize=(12,12))
+    s_ = 20
+    plt.imshow(pic)
+    new_k = np.arange(r/(2*K_cut)*len_k,len_k-r/(2*K_cut)*len_k-1)
+    new_ul = len_e*(E_max_cut-func1(k_line,*popt))/(E_max_cut-E_min_cut)
+    new_ll = len_e*(E_max_cut-func2(k_line,*popt))/(E_max_cut-E_min_cut)
+    plt.plot(new_k,new_ul,'r')
+    plt.plot(new_k,new_ll,'b')
+    plt.xticks([0,len_k//2,len_k],["{:.1f}".format(K_cut),"0","{:.1f}".format(K_cut)])
+    plt.yticks([0,len_e//2,len_e],["{:.1f}".format(E_max_cut),"{:.1f}".format((E_max_cut+E_min_cut)/2),"{:.1f}".format(E_min_cut)])
+    plt.xlabel(r"$K_x\;(\mathring{A}^{-1})$",size=s_)
+    plt.ylabel(r"$eV$",size=s_)
     plt.show()
 if 0:#png image
     k_all = np.linspace(-K_cut,K_cut,len_k)
@@ -140,15 +147,10 @@ if 0:#png image
         ind_e_low = len_e - int((E_min_cut-func2(k_all[x],*popt))/(E_min_cut-E_max_cut)*len_e)
         pic[ind_e_up,x,:] = red
         pic[ind_e_low,x,:] = green
-    new_image = Image.fromarray(np.uint8(pic))
-    new_imagename = "temp.png"
-    new_image.save(new_imagename)
-    os.system("xdg-open "+new_imagename)
+    plt.imshow(pic,cmap='gray')
+    plt.show()
     exit()
 
-#Save result of fitting
-popt_filename = dirname_data + "G_popt_interlayer.npy"
-np.save(popt_filename,popt)
 
 
 
