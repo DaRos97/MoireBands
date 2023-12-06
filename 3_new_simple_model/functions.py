@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from PIL import Image
 from scipy.optimize import curve_fit
 
@@ -169,12 +168,15 @@ def plot_image(pictures,bounds_pic,m_b=False):
     pictures : np.ndarray
         Pictures to plot.
     """
+    import matplotlib.pyplot as plt
     s_ = 15
     E_min,E_max,K_lim = bounds_pic
     plt.figure(figsize=(20,20))
-    for i in range(len(pictures)):
+    nn = len(pictures)
+    col = 1 if nn == 1 else 2
+    for i in range(nn):
         len_e, len_k = pictures[i].shape[:2]
-        plt.subplot(1,len(pictures),i+1)
+        plt.subplot(nn//2+1,col,i+1)
         plt.imshow(pictures[i],cmap='gray')
         plt.xticks([0,len_k//2,len_k],["{:.2f}".format(-K_lim),"0","{:.2f}".format(K_lim)])
         plt.yticks([0,len_e//2,len_e],["{:.2f}".format(E_max),"{:.2f}".format((E_min+E_max)/2),"{:.2f}".format(E_min)])
@@ -207,6 +209,7 @@ def plot_bands(path,N,Energies,Weights,pars_H,pars_V):
     Weights : np.ndarray
         Weights of all the bands.
     """
+    import matplotlib.pyplot as plt
     K_space = np.linspace(-np.linalg.norm(path[0]),np.linalg.norm(path[-1]),len(path))
     n_cells = int(1+3*N*(N+1))
     plt.figure()
@@ -616,7 +619,32 @@ def compute_bopt_filename(dirname,args_minimization):
     """
     N,pars_spread,phi,Hopt,bounds_pic,path,pic,bool_min = args_minimization
     factor_k =  pic.shape[1]//len(path)
-    return dirname + "bopt_"+str(N)+'_'+"{:.4f}".format(phi)+'_'+str(factor_k)+"_"+"{:.5f}".format(pars_spread[0])+"_"+"{:.5f}".format(pars_spread[1])+"_"+pars_spread[2]+".npy"
+    return dirname + "bopt_"+str(N)+'_'+"{:.4f}".format(phi)+'_'+str(factor_k)+"_"+"{:.5f}".format(pars_spread[0])+"_"+pars_spread[2]+".npy"
+def compute_bopt_figname(dirname,args_minimization):
+    """Computes name of picture given cut parameters.
+
+    Parameters
+    ----------
+    layer : string
+        Which layer: ul or ll.
+    version : string
+        Defines which image to take from.
+    bounds_pic : tuple
+        Bounds of picture in physical parameters:
+            -E_min : minimum energy in window.
+            -E_max : maximum energy in window.
+            -K_lim : range of K right and left of Gamma.
+    dirname : string
+        Name of directory of file.
+
+    Returns
+    -------
+    string
+        Picture name.
+    """
+    N,pars_spread,phi,Hopt,bounds_pic,path,pic,bool_min = args_minimization
+    factor_k =  pic.shape[1]//len(path)
+    return dirname + "bopt_fig_"+str(N)+'_'+"{:.4f}".format(phi)+'_'+str(factor_k)+"_"+"{:.5f}".format(pars_spread[0])+"_"+pars_spread[2]+".npy"
 
 def compute_pts(picture,bounds_pic,version,dirname,removed_k,save=False):
     """Computes optimal parameters fitting the experimental image, using a polinomial.
@@ -752,13 +780,17 @@ def plot_final(pic1, pic2, bounds_pic,filename,pars_V,A_M):
         plt.show()
 
 def difference_bopt(pars,*args):
-    A_M, V = pars
-    N, pars_spread, phi, Hopt, bounds_pic, path, pic, minimization = args
+    A_M, V, spread_E = pars
+    N, in_pars_spread, phi, Hopt, bounds_pic, path, pic, minimization = args
+    pars_spread = (in_pars_spread[0],spread_E,in_pars_spread[2])
     pars_V = (V,phi)
     args_pic = (N,pic.shape[:2],path,get_RLV(A_M))
     picture = compute_image(pars_V,Hopt,pars_spread,bounds_pic,*args_pic)
     if minimization:
-        return np.sum(np.absolute(picture-pic[:,:,0]))
+        result = np.sum(np.absolute(picture-pic[:,:,0]))
+        print(pars,result)
+        plot_image((picture,pic),bounds_pic)
+        return result
     else:
         return picture
 
