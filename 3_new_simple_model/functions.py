@@ -780,8 +780,9 @@ def plot_final(pic1, pic2, bounds_pic,filename,pars_V,A_M):
         plt.show()
 
 def difference_bopt(pars,*args):
-    A_M, V, spread_E = pars
-    N, in_pars_spread, phi, Hopt, bounds_pic, path, pic, minimization = args
+    A_M, V, spread_E, a,b,c,d,e,f = pars
+    Hopt = (a,b,c,d,e,f)
+    N, in_pars_spread, phi, in_Hopt, bounds_pic, path, pic, minimization = args
     pars_spread = (in_pars_spread[0],spread_E,in_pars_spread[2])
     pars_V = (V,phi)
     args_pic = (N,pic.shape[:2],path,get_RLV(A_M))
