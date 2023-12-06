@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from scipy.optimize import curve_fit
 
-A_M = 79.8  #Moirè lattice length (Angstrom)
+#A_M = 79.8#79.8  #Moirè lattice length (Angstrom)
 a_mono = [3.32, 3.18]       #monolayer lattice lengths --> [WSe2, WS2] (Angstrom)
 m_ = [[-1,1],[-1,0],[0,-1],[1,-1],[1,0],[0,1]]
 
@@ -26,13 +26,15 @@ def abs_diff(pars_H,*args):
     other_args = (N,pic.shape[:2],path,G_M)
     picture = compute_image(pars_V,pars_H,pars_spread,bounds_pic,*other_args)
     DP = extract_darkest_points(picture,removed_k)
-    if 0:   #plot picture with extracted points and border
+    if 1:   #plot picture with extracted points and border
         plot_step(picture,removed_k,DP,bounds_pic,pts_layers)
     #
     result = 0
     len_e, len_k = pic.shape[:2]
     for l in range(2):
         result += np.sum(np.absolute(pts_layers[l]-DP[l]))
+    print(result)
+    exit()
     return result
 
 def plot_step(picture,removed_k,DP,bounds_pic,pts_layers):
@@ -124,9 +126,9 @@ def compute_image(pars_V,pars_H,pars_spread,bounds_pic,*args):
     lor = np.zeros((len_k,len_e))
     for i in range(len(path)):
         for n in range(2*n_cells):
-            if Weights[i,n] > 1e-5:
+            if 1:#Weights[i,n] > 1e-5:
                 lor += weight_spreading(Weights[i,n],K_list[i*fac_k],Energies[i,n],K_list[:,None],E_list[None,:],pars_spread)
-    #Transform lor to a png format in the range of white/black of the original picture
+    #Transform lor to a png formati. in the range of white/black of the original picture
     max_lor = np.max(np.ravel(lor))
     min_lor = np.min(np.ravel(np.nonzero(lor)))
     whitest = 255
@@ -135,7 +137,7 @@ def compute_image(pars_V,pars_H,pars_spread,bounds_pic,*args):
     for i in range(len_k):
         for j in range(len_e):
             normalized_lor[i,j] = int((whitest-blackest)*(1-lor[i,j]/(max_lor-min_lor))+blackest)
-    picture = np.flip(normalized_lor.T,axis=0)   #invert e-axis
+    picture = np.flip(normalized_lor.T,axis=0)   #invert e-axis to have the same structure
     if 0:
         plot_image(picture,bounds_pic)
     return picture
@@ -159,36 +161,37 @@ def main_bands(path,pars_H):
         energies_0[i,:],evecs = np.linalg.eigh(big_H(K_i,0,pars_H,(0,0),get_RLV(A_M),lu_table(0)))
     return energies_0
 
-def plot_image(picture,bounds_pic,m_b=False):
+def plot_image(pictures,bounds_pic,m_b=False):
     """Plot picture.
 
     Parameters
     ----------
-    picture : np.ndarray
-        Picture to plot.
+    pictures : np.ndarray
+        Pictures to plot.
     """
     s_ = 15
     E_min,E_max,K_lim = bounds_pic
-    plt.figure(figsize=(10,9))
-    len_e, len_k = picture.shape[:2]
-    plt.imshow(picture,cmap='gray')
-    plt.xticks([0,len_k//2,len_k],["{:.2f}".format(-K_lim),"0","{:.2f}".format(K_lim)])
-    plt.yticks([0,len_e//2,len_e],["{:.2f}".format(E_max),"{:.2f}".format((E_min+E_max)/2),"{:.2f}".format(E_min)])
-    plt.xlabel(r"$\mathring{A}^{-1}$",size=s_)
-    plt.ylabel("eV",size=s_)
-    if m_b:
-        K_space = np.linspace(0,len_k,len(path))
-        Energies_0 = main_bands(path,pars_H)
-        en_px = np.zeros((len(path),2))
-        E_min_cut,E_max_cut = Energy_bounds
-        for i in range(len(path)):
-            en_px[i,:] = len_e*(E_max_cut-Energies_0[i,:])/(E_max_cut-E_min_cut)
-        for d in range(2):
-            plt.plot(K_space,en_px[:,d],'r',linewidth=0.5)
-        plt.xlim(0,len_k)
-        plt.ylim(len_e,0)
+    plt.figure(figsize=(20,20))
+    for i in range(len(pictures)):
+        len_e, len_k = pictures[i].shape[:2]
+        plt.subplot(1,len(pictures),i+1)
+        plt.imshow(pictures[i],cmap='gray')
+        plt.xticks([0,len_k//2,len_k],["{:.2f}".format(-K_lim),"0","{:.2f}".format(K_lim)])
+        plt.yticks([0,len_e//2,len_e],["{:.2f}".format(E_max),"{:.2f}".format((E_min+E_max)/2),"{:.2f}".format(E_min)])
+        plt.xlabel(r"$\mathring{A}^{-1}$",size=s_)
+        plt.ylabel("eV",size=s_)
+        if m_b:
+            K_space = np.linspace(0,len_k,len(path))
+            Energies_0 = main_bands(path,pars_H)
+            en_px = np.zeros((len(path),2))
+            E_min_cut,E_max_cut = Energy_bounds
+            for i in range(len(path)):
+                en_px[i,:] = len_e*(E_max_cut-Energies_0[i,:])/(E_max_cut-E_min_cut)
+            for d in range(2):
+                plt.plot(K_space,en_px[:,d],'r',linewidth=0.5)
+            plt.xlim(0,len_k)
+            plt.ylim(len_e,0)
     plt.show()
-    #exit()
 
 def plot_bands(path,N,Energies,Weights,pars_H,pars_V):
     """Plot all bands and maybe the associated weights, highlighting the main band (of N=0).
@@ -210,7 +213,7 @@ def plot_bands(path,N,Energies,Weights,pars_H,pars_V):
     #plot all bands
     for e in range(2*n_cells):
         plt.plot(K_space,Energies[:,e],'k',linewidth=0.1)
-    if 1:
+    if 0:
         #plot all weigts
         for i in range(len(path)):
             for e in range(2*n_cells):
@@ -222,6 +225,7 @@ def plot_bands(path,N,Energies,Weights,pars_H,pars_V):
         plt.plot(K_space,Energies_0[:,d],'r',linewidth=0.5)
     plt.xlim(K_space[0],K_space[-1])       #-0.5,0.5
     plt.show()
+    exit()
 
 def big_H(momentum,N,pars_H,pars_V,G_M,LU):
     """Compute the multi-miniBZ Hamiltonian of two layers with Moirè potential and interlayer hopping.
@@ -407,8 +411,8 @@ def weight_spreading(weight,K,E,k_grid,e_grid,pars_spread):
         E2 = spread_E**2
         K2 = spread_K**2
         return weight/((k_grid-K)**2+K2)/((e_grid-E)**2+E2)
-    elif type_spread == 'Gauss':
-        return weight*np.exp(-((k_grid-K)/spread_k)**2)*np.exp(-((e_grid-E)/spread_e)**2)
+    elif type_of_spread == 'Gauss':
+        return weight*np.exp(-((k_grid-K)/spread_K)**2)*np.exp(-((e_grid-E)/spread_E)**2)
 
 def path_BZ_KGK(a_monolayer,pts_path,lim):
     """Compute cut in BZ.
@@ -512,7 +516,7 @@ def cut_image(bounds_pic,version,dirname,save=False):
     #get Energy of relevant window
     pic = pic_0[ind_Ei:ind_Ef,ind_Ki:ind_Kf]
     if save:
-        np.save(compute_picture_name(version,E_min,E_max,K_lim,dirname),pic)
+        np.save(compute_picture_filename(version,bounds_pic,dirname),pic)
     return pic
 
 def compute_picture_filename(version,bounds_pic,dirname):
@@ -587,6 +591,32 @@ def compute_Hopt_filename(N,pars_V,pars_spread,version,bounds_pic,dirname,remove
     """
     E_min,E_max,K_lim = bounds_pic
     return dirname + "Hopt_"+str(N)+"_"+"{:.5f}".format(pars_V[0])+"_"+"{:.5f}".format(pars_V[1])+"_"+"{:.5f}".format(pars_spread[0])+"_"+"{:.5f}".format(pars_spread[1])+"_"+pars_spread[2]+"_"+version+"_"+"{:.2f}".format(E_min)+"_"+"{:.2f}".format(E_max)+"_"+"{:.2f}".format(K_lim)+"_"+"{:.1f}".format(removed_k[0])+"_"+"{:.1f}".format(removed_k[1])+".npy"
+
+def compute_bopt_filename(dirname,args_minimization):
+    """Computes name of picture given cut parameters.
+
+    Parameters
+    ----------
+    layer : string
+        Which layer: ul or ll.
+    version : string
+        Defines which image to take from.
+    bounds_pic : tuple
+        Bounds of picture in physical parameters:
+            -E_min : minimum energy in window.
+            -E_max : maximum energy in window.
+            -K_lim : range of K right and left of Gamma.
+    dirname : string
+        Name of directory of file.
+
+    Returns
+    -------
+    string
+        Picture name.
+    """
+    N,pars_spread,phi,Hopt,bounds_pic,path,pic,bool_min = args_minimization
+    factor_k =  pic.shape[1]//len(path)
+    return dirname + "bopt_"+str(N)+'_'+"{:.4f}".format(phi)+'_'+str(factor_k)+"_"+"{:.5f}".format(pars_spread[0])+"_"+"{:.5f}".format(pars_spread[1])+"_"+pars_spread[2]+".npy"
 
 def compute_pts(picture,bounds_pic,version,dirname,removed_k,save=False):
     """Computes optimal parameters fitting the experimental image, using a polinomial.
@@ -693,9 +723,47 @@ def find_max(col):
     except:
         return med
 
+def plot_final(pic1, pic2, bounds_pic,filename,pars_V,A_M):
+    from matplotlib.colors import LogNorm
+    from matplotlib import cm
+    s_ = 15
+    E_min,E_max,K_lim = bounds_pic
+    fig = plt.figure(figsize=(20,10))
+    len_e, len_k = pic1.shape[:2]
+    plt.suptitle("A_M: "+"{:.2f}".format(A_M)+", (V,phi)=("+"{:.4f}".format(pars_V[0])+","+"{:.4f}".format(pars_V[1])+")")
+    plt.subplot(1,2,1)
+    #plt.imshow(pic1,cmap='gray')
+    plt.imshow(pic1[:,:,0],cmap=cm.gray)
+    plt.xticks([0,len_k//2,len_k],["{:.2f}".format(-K_lim),"0","{:.2f}".format(K_lim)])
+    plt.yticks([0,len_e//2,len_e],["{:.2f}".format(E_max),"{:.2f}".format((E_min+E_max)/2),"{:.2f}".format(E_min)])
+    plt.xlabel(r"$\mathring{A}^{-1}$",size=s_)
+    plt.ylabel("eV",size=s_)
+    plt.subplot(1,2,2)
+    #plt.imshow(pic2,cmap = cm.gray_r, norm=LogNorm(vmin=1e-3, vmax=1e4))
+    plt.imshow(pic2,cmap=cm.gray)
+    plt.xticks([0,len_k//2,len_k],["{:.2f}".format(-K_lim),"0","{:.2f}".format(K_lim)])
+    plt.yticks([0,len_e//2,len_e],["{:.2f}".format(E_max),"{:.2f}".format((E_min+E_max)/2),"{:.2f}".format(E_min)])
+    plt.xlabel(r"$\mathring{A}^{-1}$",size=s_)
+#    plt.ylabel("eV",size=s_)
+    if 0:
+        plt.savefig(filename)
+        plt.close(fig)
+    else:
+        plt.show()
+
+def difference_bopt(pars,*args):
+    A_M, V = pars
+    N, pars_spread, phi, Hopt, bounds_pic, path, pic, minimization = args
+    pars_V = (V,phi)
+    args_pic = (N,pic.shape[:2],path,get_RLV(A_M))
+    picture = compute_image(pars_V,Hopt,pars_spread,bounds_pic,*args_pic)
+    if minimization:
+        return np.sum(np.absolute(picture-pic[:,:,0]))
+    else:
+        return picture
 
 
-
+    
 
 
 
