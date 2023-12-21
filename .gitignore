@@ -3,6 +3,7 @@ Data_Experiments/
 Figures/
 */__pycache__/
 */*/__pycache__/
+*/*/*/__pycache__/
 
 0_simple_model/*temp*
 1_monolayer_fit/Data/
@@ -10,11 +11,11 @@ Figures/
 2_final_model/temp*
 3_new_simple_model/temp*
 
-eleven_band_model/Figs_p/
-eleven_band_model/Figs_g/
-eleven_band_model/Figs_3fold/
-eleven_band_model/Figs_6fold/
-eleven_band_model/Data/
-eleven_band_model/old_Data/
+/*/eleven_band_model/Figs_p/
+/*/eleven_band_model/Figs_g/
+/*/eleven_band_model/Figs_3fold/
+/*/eleven_band_model/Figs_6fold/
+/*/eleven_band_model/Data/
+/*/eleven_band_model/old_Data/
 
-three_band_model/Data/
+/*/three_band_model/Data/
