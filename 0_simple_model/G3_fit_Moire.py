@@ -18,8 +18,8 @@ image_name = dirname + "cut_KGK_v1.png"         #experimental data
 cut_imagename = dirname + "cut_KGK_Moire_v1.png"
 
 #Borders of image in terms of energy and momentum
-E_min_fig = -2.2#-1.7
-E_max_fig = -0.9#-0.5
+E_min_fig = -1.7
+E_max_fig = -0.95#-0.5
 K_lim = 0.5
 E_i = E_max_fig#-0.95#-0.55   #relevant window: energy top
 E_f = E_min_fig#-1.7#-1.25   #relevant window: energy bottom
@@ -40,7 +40,7 @@ except:
     new_image = Image.fromarray(np.uint8(pic))
     new_image.save(cut_imagename)
     #os.system("xdg-open "+new_imagename)
-if 0: #plot cut image
+if 1: #plot cut image
     import matplotlib.pyplot as plt
     plt.figure(figsize=(12,12))
     plt.imshow(pic)

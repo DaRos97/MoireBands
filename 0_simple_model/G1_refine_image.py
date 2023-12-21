@@ -47,8 +47,8 @@ if 0: #see K_lim on image
     exit()
 
 
-E_min_cut = -2.2#-1.7
-E_max_cut = -0.9#-0.5
+E_min_cut = -1.7
+E_max_cut = -0.95#-0.5
 K_cut = 0.5
 #
 offset_k = 0#26 #additional pixels because the picture is not exactly KGK, goes a bit further

@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 s_ = 15
 from scipy.optimize import curve_fit
 
-#figname = "/home/dario/Desktop/git/MoireBands/0_simple_model/figs_png/cut_KGK_Moire.png"
-figname = "/home/dario/Desktop/git/MoireBands/0_simple_model/figs_png/cut_KGK_Moire_v1.png"
+#figname = "/home/dario/Desktop/git/MoireBands/0_simple_model/figs_png/cut_KGK_Moire_v1.png"        #v1
+figname = "/home/dario/Desktop/git/MoireBands/0_simple_model/figs_png/cut_KGK_Moire.png"            #v2
 
 im = Image.open(figname)
 
@@ -13,11 +13,10 @@ pic = np.array(np.asarray(im))
 
 len_e, len_k, z = pic.shape
 
-print(len_e,len_k)
 K_i = -0.5
 K_f = 0.5
-E_i = -0.95#-0.55
-E_f = -1.7#-1.25
+E_i = -0.55         #v1:    -0.95   #v2:    -0.55
+E_f = -1.25         #v1:    -1.7    #v2:    -1.25
 
 plt.figure(figsize=(20,20))
 #Cut at given E
@@ -80,7 +79,7 @@ print("Constant3 E plot:")
 for i in range(len(popt)):
     print(txt_par[i]+" ",popt[i])
 
-print("Distance between first two peaks: ",abs(popt[2]-popt[5])/len_k)
+print("Distance in k between first two peaks: ",abs(popt[2]-popt[5])/len_k)
 plt.plot(X,Y,'b')
 plt.plot(X[:x],fun(X[:x],*popt),'r',label='rw='+"{:.1f}".format(popt[0]/popt[3]*100)+"%")
 #plt.xticks([0,len_k//2,len_k],["{:.2f}".format(K_i),"{:.2f}".format((K_i+K_f)/2),"{:.2f}".format(K_f)])
@@ -158,7 +157,7 @@ plt.ylim(0,len_e)
 if 1:
     #Intensities
 
-    DE = (1.25-0.55)/len_e*abs(popt2[2]-popt2[5])*1000
+    DE = (1.25-0.55)/len_e*abs(popt2[2]-popt2[-1])*1000
     list_V = np.linspace(1,50,101)
     rw = []
     for V in list_V:
@@ -167,7 +166,7 @@ if 1:
         rw_t = (a-np.sqrt(a**2+1))**(2)
         rw.append(rw_t)
     #print("V=",V)
-    print("Distance in energy between the two peaks: ",DE)
+    print("Distance in energy between the first two peaks: ",DE," meV")
     #print("dE=",dE)
     #print("rel weight=",rw)
     plt.subplot(2,3,6)
