@@ -160,7 +160,7 @@ def main_bands(path,pars_H):
         energies_0[i,:],evecs = np.linalg.eigh(big_H(K_i,0,pars_H,(0,0),get_RLV(A_M),lu_table(0)))
     return energies_0
 
-def plot_image(pictures,bounds_pic,m_b=False):
+def plot_image(pictures,bounds_pic,pars_spread,bopt,m_b=False):
     """Plot picture.
 
     Parameters
@@ -193,6 +193,10 @@ def plot_image(pictures,bounds_pic,m_b=False):
                 plt.plot(K_space,en_px[:,d],'r',linewidth=0.5)
             plt.xlim(0,len_k)
             plt.ylim(len_e,0)
+    plt.subplot(nn//2+1,col,nn+1)
+    A_M, V, spread_E, a,b,c,d,e,f = bopt
+    plt.text(0.5,0.5,"A_M: "+"{:.2f}".format(A_M)+'\nV: '+"{:.5f}".format(V)+'\ns_E: '+"{:.4f}".format(spread_E)+"\nphi=pi, "+pars_spread[-1],size=30)
+    plt.axis('off')
     plt.show()
 
 def plot_bands(path,N,Energies,Weights,pars_H,pars_V):
@@ -789,8 +793,6 @@ def difference_bopt(pars,*args):
     picture = compute_image(pars_V,Hopt,pars_spread,bounds_pic,*args_pic)
     if minimization:
         result = np.sum(np.absolute(picture-pic[:,:,0]))
-        print(pars,result)
-        plot_image((picture,pic),bounds_pic)
         return result
     else:
         return picture

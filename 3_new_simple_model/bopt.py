@@ -44,7 +44,7 @@ if Path(bopt_figname).is_file() and Path(bopt_filename).is_file():
         print(bopt)
         print(Hopt)
         picture = np.load(bopt_figname)
-        fs.plot_image((picture,pic,np.absolute(picture-pic[:,:,0])),bounds_pic)
+        fs.plot_image((picture,pic,np.absolute(picture-pic[:,:,0])),bounds_pic,pars_spread,bopt)
     exit()
 
 result = minimize(
