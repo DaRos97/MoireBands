@@ -31,7 +31,9 @@ STEPS:
     To compute: - Fixed values: N = 5, k_pts = 201, range_K = 0.2 A^-1, e_cuts from 50meV to 200 meV below VBM, every 5 meV.
                 - Spread pars: Use Gaussian spreading. spread_k = 0.01, spread_E = 0.05 -> from 3_new_simple_model calculation.
                 - Variable pars: (V,phase) from Louk paper (7.7 meV,-106˚). A_M = 79.8 A. 
-    Compute:    - Basic above
+    Compute:    - Basic above -> running Ygg
+                - Basic with t(k) = -a with a=0.1 (from fitting around Gamma.
+                - Basic with t(k) = -a with a=0.01 (from fitting around Gamma.
 3-Add IC in the form of:    
         a constant: t(k) = -a -> compute some cases (see value of a around Gamma for a starting value);
         a constant plus a squared k dependence which is 0 at k: t(k) = -a(1-b*k^2) -> compute some cases (again look at the value of a and b from Gamma for reference);
