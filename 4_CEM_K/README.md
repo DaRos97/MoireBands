@@ -29,9 +29,10 @@ STEPS:
                 coefficients towards Gamma and M respectively, t=atan2(k_y/k_x). In this way we can interpolate between the two 
                 different slopes.
     To compute: - Fixed values: N = 5, k_pts = 201, range_K = 0.2 A^-1, e_cuts from 50meV to 200 meV below VBM, every 5 meV.
-                - Spread pars: Use Gaussian spreading. spread_k = 0.01, spread_E = 0.05 -> from 3_new_simple_model calculation.
+                - Spread pars: Use Gaussian spreading. spread_k = 0.01, spread_E = 0.01 -> to see better side bands.
                 - Variable pars: (V,phase) from Louk paper (7.7 meV,-106˚). A_M = 79.8 A. 
     Compute:    - Basic above -> running Ygg
+                - Basic with t(k) = -a with a=1 (from fitting around Gamma.
                 - Basic with t(k) = -a with a=0.1 (from fitting around Gamma.
                 - Basic with t(k) = -a with a=0.01 (from fitting around Gamma.
 3-Add IC in the form of:    
