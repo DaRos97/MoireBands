@@ -1,8 +1,15 @@
 import numpy as np
-import parameters as ps
-import numpy.linalg as la
-from pathlib import Path
-import os
+from PIL import Image
+
+materials = ['WSe2','WS2']
+
+#Monolayer lattice lengths, in Angstrom
+dic_params_a_mono = {
+        'WS2': 3.18,
+        'WSe2': 3.32,
+        }
+#Moirè lattice length of bilayer, in Angstrom
+a_Moire = 79.8
 
 a_1 = np.array([1,0])
 a_2 = np.array([-1/2,np.sqrt(3)/2])
@@ -11,69 +18,12 @@ J_minus = ((1,2), (3,4), (4,5), (6,7), (7,8), (9,10), (10,11))
 J_MX_plus = ((3,1), (5,1), (4,2), (10,6), (9,7), (11,7), (10,8))
 J_MX_minus = ((4,1), (3,2), (5,2), (9,6), (11,6), (10,7), (9,8), (11,8))
 
-def chi2(pars,*args):
-    """Compute square difference of bands with exp data.
-
-    """
-    exp_data, TMD, machine, plot = args
-    tb_en = energy(pars,exp_data,TMD)
-    res = 0
-    for c in range(2):
-        for b in range(2):
-            args = np.argwhere(np.isfinite(exp_data[c][b][:,1]))
-            res += np.sum(np.absolute(tb_en[c][b,args]-exp_data[c][b][args,1])**2)
-    if plot:
-        plot_exp_tb(exp_data,tb_en,tb_en,TMD)
-    if res < ps.min_chi2:
-        os.system('rm '+get_temp_fit_fn(TMD,ps.min_chi2,machine))
-        ps.min_chi2 = res
-        np.save(get_temp_fit_fn(TMD,res,machine),pars)
-    return res
-
-def plot_exp_tb(exp_data,dft_en,tb_en,title=''):
-    import matplotlib.pyplot as plt
-    plt.figure(figsize=(40,20))
-    for b in range(2):
-        for c in range(2):
-            dft = (dft_en[c][b,:]-tb_en[c][b,:]).any()
-            plt.subplot(2,2,2*b+c+1)
-            plt.scatter(exp_data[c][b][:,0],exp_data[c][b][:,1],color='b',marker='*',label='experiment')
-            plt.scatter(exp_data[c][b][:,0],tb_en[c][b,:],color='r',marker='.',label='minimization',s=5)
-            if dft:
-                plt.scatter(exp_data[c][b][:,0],dft_en[c][b,:],color='g',marker='^',label='DFT',s=5)
-            plt.title('Cut '+ps.paths[c]+', band '+str(b))
-            plt.legend()
-    plt.suptitle(title)
-    plt.show()
-
-def energy(parameters,data,TMD):
-    """Compute energy along the two cuts of 2 TVB for all considered k.
-
-    """
-    hopping = find_t(parameters)
-    epsilon = find_e(parameters)
-    HSO = find_HSO(parameters)
-    
-    cut_energies = []
-    offset = parameters[-1]
-    for c in range(2):
-        kpts = data[c][0].shape[0]
-        ens = np.zeros((2,kpts))
-        for i in range(kpts):
-            K = data[c][0][i,2:]
-            H_mono = H_monolayer(K,hopping,epsilon,HSO,ps.dic_params_a_mono[TMD],offset)     #Compute UL Hamiltonian for given K
-            temp = la.eigvalsh(H_mono)
-            #index of TVB is 13, the other is 12 (out of 22: 11 bands times 2 for SOC. 7/11 are valence -> 14 is the TVB)
-            ens[0,i] = temp[13]
-            ens[1,i] = temp[12]
-        cut_energies.append(ens)
-    return cut_energies
-
-def H_monolayer(K_p,hopping,epsilon,HSO,a_mono,offset):
+def H_monolayer(K_p,hopping,epsilon,HSO,offset):
     """Monolayer Hamiltonian.
     TO CHECK
 
     """
+    a_mono = dic_params_a_mono['WSe2']
     t = hopping
     k_x,k_y = K_p       #momentum
     delta = a_mono* np.array([a_1, a_1+a_2, a_2, -(2*a_1+a_2)/3, (a_1+2*a_2)/3, (a_1-a_2)/3, -2*(a_1+2*a_2)/3, 2*(2*a_1+a_2)/3, 2*(a_2-a_1)/3])
@@ -158,51 +108,6 @@ def H_monolayer(K_p,hopping,epsilon,HSO,a_mono,offset):
     #Offset
     H += np.identity(22)*offset
     return H
-
-def get_exp_data(TMD,machine):
-    """For given material, takes the two cuts and the two bands and returns the lists of energy and momentum for the 2 top valence bands. 
-    There are some NANs.
-
-    """
-    data = []
-    for cut in ['KGK','KMKp']:
-        data.append([])
-        for band in range(1,3):
-            data_fn = get_ext_data_fn(TMD,cut,band,machine)
-            if Path(data_fn).is_file():
-                data[-1].append(np.load(data_fn))
-                continue
-            with open(get_exp_fn(TMD,cut,band,machine), 'r') as f:
-                lines = f.readlines()
-            temp = []
-            for i in range(len(lines)):
-                ke = lines[i].split('\t')
-                if ke[1] == 'NAN\n':
-                    temp.append([float(ke[0]),np.nan,*find_vec_k(float(ke[0]),cut,TMD)])
-                else:
-                    temp.append([float(ke[0]),float(ke[1]),*find_vec_k(float(ke[0]),cut,TMD)])
-            data[-1].append(np.array(temp))
-            np.save(data_fn,np.array(temp))
-    return data
-
-def find_vec_k(k_scalar,cut,TMD):
-    """Compute vector k depending on modulus and cut.
-
-    """
-    a_mono = ps.dic_params_a_mono[TMD]
-    k_pts = np.zeros(2)
-    if cut == 'KGK':
-        k_pts[0] = k_scalar
-        k_pts[1] = 0
-    elif cut == 'KMKp':
-        M = np.array([np.pi,np.pi/np.sqrt(3)])/a_mono
-        K = np.array([4*np.pi/3,0])/a_mono
-        Kp = np.array([2*np.pi/3,2*np.pi/np.sqrt(3)])/a_mono
-        if k_scalar < 0:
-            k_pts = M + (M-K)*np.abs(k_scalar)/la.norm(M-K)
-        else:
-            k_pts = M + (M-Kp)*np.abs(k_scalar)/la.norm(M-Kp)
-    return k_pts
 
 def find_t(dic_params_H):
     """Define hopping matrix elements from inputs and complete all symmetry related ones.
@@ -370,25 +275,19 @@ def find_HSO(dic_params_H):
     ####
     return HSO
 
-def get_ext_data_fn(TMD,cut,band,machine):
-    return get_home_dn(machine)+'inputs/extracted_data_'+cut+'_'+TMD+'_band'+str(band)+'.npy'
+def get_pars_mono_fn(TMD,machine):
+    return get_home_dn(machine)+'inputs/pars_mono_'+TMD+'.npy'
 
-def get_exp_fn(TMD,cut,band,machine):
-    return get_home_dn(machine)+'inputs/'+cut+'_'+TMD+'_band'+str(band)+'_v1.txt'
+def get_pars_interlayer_fn(machine):
+    return get_home_dn(machine)+'inputs/pars_interlayer.npy'
 
 def get_home_dn(machine):
     if machine == 'loc':
-        return '/home/dario/Desktop/git/MoireBands/last_lap/1_tight_binding/'
+        return '/home/dario/Desktop/git/MoireBands/last_lap/3_moire/'
     elif machine == 'hpc':
-        return '/home/users/r/rossid/1_tight_binding/'
+        return '/home/users/r/rossid/3_moire/'
     elif machine == 'maf':
         pass
-
-def get_fit_fn(range_par,TMD,res,machine):
-    return get_home_dn(machine)+'results/pars_'+TMD+'_'+str(range_par)+'_'+"{:.4f}".format(res)+'.npy'
-
-def get_temp_fit_fn(TMD,res,machine):
-    return get_home_dn(machine)+'results/temp/pars_'+TMD+'_'+"{:.4f}".format(res)+'.npy'
 
 def get_machine(cwd):
     """Selects the machine the code is running on by looking at the working directory. Supports local, hpc (baobab or yggdrasil) and mafalda.
@@ -409,3 +308,5 @@ def get_machine(cwd):
         return 'hpc'
     elif cwd[:13] == '/users/rossid':
         return 'maf'
+
+

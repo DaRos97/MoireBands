@@ -55,6 +55,12 @@ if 1:   #minimization of interlayer based on first 3 bands
                     fig = fs.plot_bands_on_exp(energies,pic,K_list,bounds,True)
                     fig.savefig('temp/fig_'+"{:.2f}".format(a)+'_'+"{:.2f}".format(b)+'_'+"{:.2f}".format(c)+'_'+"{:.2f}".format(global_offset)+'.png')
                     plt.close(fig)
-
+#Best found pars are 
+a = 1
+b = 0.7
+c = 0.75
+global_offset = 0.25
+pars_interlayer = np.array([a,b,c,global_offset])
+np.save(fs.get_home_dn(machine)+'results/pars_interlayer.npy',pars_interlayer)
 
 
