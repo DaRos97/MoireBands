@@ -4,7 +4,6 @@ import parameters as ps
 from pathlib import Path
 import os,sys
 
-
 machine = fs.get_machine(os.getcwd())
 TMD = sys.argv[1] if not machine == 'loc' else 'WSe2'                #Material
 
@@ -30,30 +29,6 @@ len_pars = len(initial_point)
 initial_chi2 = fs.chi2(initial_point,*args_chi2)
 
 print("Initial chi2: ",initial_chi2)
-
-if 0: #Single parameter search
-    n_attempts = 7
-    range_par = 0.1     #10%
-    arr_chi2 = np.zeros((len_pars,n_attempts))
-    for i in range(len_pars):
-        for j in range(n_attempts):
-            if j == n_attempts//2:
-                arr_chi2[i,j] = 1e5
-                continue
-            new_pars = np.copy(initial_point)
-            new_pars[i] = new_pars[i] + (j-n_attempts//2)/(n_attempts//2)*new_pars[i]*range_par
-            arr_chi2[i,j] = fs.chi2(new_pars,*args_chi2)
-            print(i,j)
-
-    argmin = np.argmin(arr_chi2)
-    i_ = argmin//n_attempts
-    j_ = argmin%n_attempts
-
-    print(argmin,i_,j_,arr_chi2[i_,j_])
-    final_par = np.copy(initial_point)
-    final_par[i_] = final_par[i_] + (j_-n_attempts//2)/(n_attempts//2)*final_par[i_]*range_par
-    args_chi2 = (exp_data,TMD,machine,True)
-    fs.chi2(final_par,*args_chi2)
 
 if 1:   #minimization
     from scipy.optimize import minimize
@@ -88,6 +63,30 @@ if 1:   #minimization
     if machine == 'loc':
         args_chi2 = (exp_data,TMD,machine,True)
     fs.chi2(final_pars,*args_chi2)
+
+if 0: #Single parameter search
+    n_attempts = 7
+    range_par = 0.1     #10%
+    arr_chi2 = np.zeros((len_pars,n_attempts))
+    for i in range(len_pars):
+        for j in range(n_attempts):
+            if j == n_attempts//2:
+                arr_chi2[i,j] = 1e5
+                continue
+            new_pars = np.copy(initial_point)
+            new_pars[i] = new_pars[i] + (j-n_attempts//2)/(n_attempts//2)*new_pars[i]*range_par
+            arr_chi2[i,j] = fs.chi2(new_pars,*args_chi2)
+            print(i,j)
+
+    argmin = np.argmin(arr_chi2)
+    i_ = argmin//n_attempts
+    j_ = argmin%n_attempts
+
+    print(argmin,i_,j_,arr_chi2[i_,j_])
+    final_par = np.copy(initial_point)
+    final_par[i_] = final_par[i_] + (j_-n_attempts//2)/(n_attempts//2)*final_par[i_]*range_par
+    args_chi2 = (exp_data,TMD,machine,True)
+    fs.chi2(final_par,*args_chi2)
 
 
 

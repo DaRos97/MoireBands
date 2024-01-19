@@ -2,7 +2,7 @@ import numpy as np
 import parameters as ps
 import numpy.linalg as la
 from pathlib import Path
-
+import os
 
 a_1 = np.array([1,0])
 a_2 = np.array([-1/2,np.sqrt(3)/2])
@@ -20,9 +20,8 @@ def chi2(pars,*args):
     res = 0
     for c in range(2):
         for b in range(2):
-            for k in range(exp_data[c][b].shape[0]):
-                temp = abs(tb_en[c][b,k] - exp_data[c][b][k,1]) if not np.isnan(exp_data[c][b][k,1]) else 0
-                res += temp
+            args = np.argwhere(np.isfinite(exp_data[c][b][:,1]))
+            res += np.sum(np.absolute(tb_en[c][b,args]-exp_data[c][b][args,1])**2)
     if plot:
         import matplotlib.pyplot as plt
         for b in range(2):
@@ -35,6 +34,7 @@ def chi2(pars,*args):
         plt.suptitle(TMD)
         plt.show()
     if res < ps.min_chi2:
+        os.system('rm '+get_temp_fit_fn(TMD,ps.min_chi2,machine))
         ps.min_chi2 = res
         np.save(get_temp_fit_fn(TMD,res,machine),pars)
     return res
