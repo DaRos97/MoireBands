@@ -60,8 +60,6 @@ if 1:   #minimization
     final_pars = np.array(result.x)
     fit_fn = fs.get_fit_fn(range_par,TMD,result.fun,machine)
     np.save(fit_fn,final_pars)
-    if machine == 'loc':
-        args_chi2 = (exp_data,TMD,machine,True)
     fs.chi2(final_pars,*args_chi2)
 
 if 0: #Single parameter search

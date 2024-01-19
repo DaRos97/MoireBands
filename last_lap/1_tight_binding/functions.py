@@ -23,21 +23,28 @@ def chi2(pars,*args):
             args = np.argwhere(np.isfinite(exp_data[c][b][:,1]))
             res += np.sum(np.absolute(tb_en[c][b,args]-exp_data[c][b][args,1])**2)
     if plot:
-        import matplotlib.pyplot as plt
-        for b in range(2):
-            for c in range(2):
-                plt.subplot(2,2,2*b+c+1)
-                plt.scatter(exp_data[c][b][:,0],exp_data[c][b][:,1],color='b',marker='*',label='experiment')
-                plt.scatter(exp_data[c][b][:,0],tb_en[c][b,:],color='r',marker='.',label='DFT')
-                plt.title('Cut '+ps.paths[c]+', band '+str(b))
-                plt.legend()
-        plt.suptitle(TMD)
-        plt.show()
+        plot_exp_tb(exp_data,tb_en,tb_en,TMD)
     if res < ps.min_chi2:
         os.system('rm '+get_temp_fit_fn(TMD,ps.min_chi2,machine))
         ps.min_chi2 = res
         np.save(get_temp_fit_fn(TMD,res,machine),pars)
     return res
+
+def plot_exp_tb(exp_data,dft_en,tb_en,title=''):
+    import matplotlib.pyplot as plt
+    plt.figure(figsize=(40,20))
+    for b in range(2):
+        for c in range(2):
+            dft = (dft_en[c][b,:]-tb_en[c][b,:]).any()
+            plt.subplot(2,2,2*b+c+1)
+            plt.scatter(exp_data[c][b][:,0],exp_data[c][b][:,1],color='b',marker='*',label='experiment')
+            plt.scatter(exp_data[c][b][:,0],tb_en[c][b,:],color='r',marker='.',label='minimization')
+            if dft:
+                plt.scatter(exp_data[c][b][:,0],dft_en[c][b,:],color='g',marker='^',label='DFT')
+            plt.title('Cut '+ps.paths[c]+', band '+str(b))
+            plt.legend()
+    plt.suptitle(title)
+    plt.show()
 
 def energy(parameters,data,TMD):
     """Compute energy along the two cuts of 2 TVB for all considered k.
