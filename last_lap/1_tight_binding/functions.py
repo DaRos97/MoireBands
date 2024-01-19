@@ -34,6 +34,9 @@ def chi2(pars,*args):
                 plt.legend()
         plt.suptitle(TMD)
         plt.show()
+    if res < ps.min_chi2:
+        ps.min_chi2 = res
+        np.save(get_temp_fit_fn(TMD,res,machine),pars)
     return res
 
 def energy(parameters,data,TMD):
@@ -370,13 +373,15 @@ def get_home_dn(machine):
     if machine == 'loc':
         return '/home/dario/Desktop/git/MoireBands/last_lap/1_tight_binding/'
     elif machine == 'hpc':
-        return 'home/users/rossid/r/1_tight_binding/'
+        return '/home/users/r/rossid/1_tight_binding/'
     elif machine == 'maf':
         pass
 
 def get_fit_fn(range_par,TMD,res,machine):
     return get_home_dn(machine)+'results/pars_'+TMD+'_'+str(range_par)+'_'+"{:.4f}".format(res)+'.npy'
 
+def get_temp_fit_fn(TMD,res,machine):
+    return get_home_dn(machine)+'results/temp/pars_'+TMD+'_'+"{:.4f}".format(res)+'.npy'
 
 def get_machine(cwd):
     """Selects the machine the code is running on by looking at the working directory. Supports local, hpc (baobab or yggdrasil) and mafalda.

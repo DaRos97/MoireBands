@@ -1,5 +1,8 @@
 import numpy as np
 
+#Temp values
+min_chi2 = 1e5
+
 #BZ cuts of exp data
 paths = ['KGK','KMKp']
 

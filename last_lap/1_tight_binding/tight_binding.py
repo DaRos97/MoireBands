@@ -2,11 +2,11 @@ import numpy as np
 import functions as fs
 import parameters as ps
 from pathlib import Path
-import os
+import os,sys
 
-TMD = 'WSe2'                #Material
-#TMD = 'WS2'                #Material
+
 machine = fs.get_machine(os.getcwd())
+TMD = sys.argv[1] if not machine == 'loc' else 'WSe2'                #Material
 
 #Experimental data of monolayer 
 #For each material, 2 TVB (because of SO) on the 2 cuts
