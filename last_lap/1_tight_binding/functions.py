@@ -436,6 +436,16 @@ def get_machine(cwd):
     elif cwd[:13] == '/users/rossid':
         return 'maf'
 
+def get_parameters(ind):
+    TMDs = ['WSe2','WS2']
+    cutss = [['KGK','KMKp'],'KGK']
+    range_pars = np.linspace(0.1,1,10,endpoint=True)
+    ind_tmd = ind//(len(cutss)*len(range_pars))
+    ind_cut = ind%(len(cutss)*len(range_pars)) // len(range_pars)
+    ind_rng = ind%(len(cutss)*len(range_pars)) % len(range_pars)
+    return (TMDs[ind_tmd], cutss[ind_cut], range_pars[ind_rng])
+
+
 
 
 
