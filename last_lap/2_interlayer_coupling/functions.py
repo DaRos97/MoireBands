@@ -22,8 +22,8 @@ def energy(list_K,hopping,epsilon,HSO,offset,pars_interlayer,global_offset):
     en_list = np.zeros((list_K.shape[0],44))
     for k in range(list_K.shape[0]):
         big_H = np.zeros((44,44),dtype=complex)
-        big_H[:22,:22] = H_monolayer(list_K[k],hopping['WSe2'],epsilon['WSe2'],HSO['WSe2'],offset['WSe2'])
-        big_H[22:,22:] = H_monolayer(list_K[k],hopping['WS2'],epsilon['WS2'],HSO['WS2'],offset['WS2']) 
+        big_H[:22,:22] = H_monolayer(list_K[k],hopping['WSe2'],epsilon['WSe2'],HSO['WSe2'],offset['WSe2'],dic_params_a_mono['WSe2'])
+        big_H[22:,22:] = H_monolayer(list_K[k],hopping['WS2'],epsilon['WS2'],HSO['WS2'],offset['WS2'],dic_params_a_mono['WS2']) 
         #Interlayer -> a and b
         interlayer_H = get_interlayer_H(list_K[k],pars_interlayer)
         big_H[:22,22:] = interlayer_H
@@ -32,10 +32,9 @@ def energy(list_K,hopping,epsilon,HSO,offset,pars_interlayer,global_offset):
         big_H[30,30] += pars_interlayer[2]
         big_H[41,41] += pars_interlayer[2]
         #Interlayer -> lower level WSe2 -> p_x(odd) -> index 3
-        d = 1
-        big_H[3,3] -= d
-        big_H[14,14] -= d
-        #Global offset
+        big_H[3,3] += pars_interlayer[3]
+        big_H[14,14] += pars_interlayer[3]
+        #
         big_H += np.identity(44)*global_offset
         en_list[k] = np.linalg.eigvalsh(big_H)
     return en_list
@@ -46,7 +45,7 @@ def get_K(cut,n_pts):
     if cut == 'KGK':
         K = np.array([4*np.pi/3,0])/a_mono
         for i in range(n_pts):
-            res[i,0] = -K[0]/(n_pts//2)*(i-n_pts//2)
+            res[i,0] = K[0]/(n_pts//2)*(i-n_pts//2)
     if cut == 'KMKp':
         M = np.array([np.pi,np.pi/np.sqrt(3)])/a_mono
         K = np.array([4*np.pi/3,0])/a_mono
@@ -63,12 +62,11 @@ def get_interlayer_H(k,pars):
     H[8+11,8+11] = -pars[0] + pars[1]*np.linalg.norm(k)**2
     return H
 
-def H_monolayer(K_p,hopping,epsilon,HSO,offset):
+def H_monolayer(K_p,hopping,epsilon,HSO,offset,a_mono):
     """Monolayer Hamiltonian.
     TO CHECK
 
     """
-    a_mono = dic_params_a_mono['WSe2']
     t = hopping
     k_x,k_y = K_p       #momentum
     delta = a_mono* np.array([a_1, a_1+a_2, a_2, -(2*a_1+a_2)/3, (a_1+2*a_2)/3, (a_1-a_2)/3, -2*(a_1+2*a_2)/3, 2*(2*a_1+a_2)/3, 2*(a_2-a_1)/3])
@@ -328,14 +326,14 @@ def extract_png(fig_fn,cut_bounds):
     Ei = 0
     Ef = -3.5
     #Empirically extracted for S11 from -1 to +1
-    P_ki = 810
-    P_kf = 2370
+    P_ki = 810      #pixel corresponding to ki=-1
+    P_kf = 2370     #pixel corresponding to ki=+1
     p_len = int((P_kf-P_ki)/2*(Kf-Ki))   #number of pixels from Ki to Kf
     p_ki = int((P_ki+P_kf)//2 - p_len//2)
     p_kf = int((P_ki+P_kf)//2 + p_len//2)
     #
-    p_ei = 85       #correct
-    p_ef = 1908     #correct
+    p_ei = 85       #pixel corresponding to ei=0
+    p_ef = 1908     #pixel corresponding to ef=-3.5
     if len(cut_bounds) == 4:#Image cut
         ki,kf,ei,ef = cut_bounds
         pc_lenk = int(p_len/(Kf-Ki)*(kf-ki)) #number of pixels in cut image
@@ -343,8 +341,8 @@ def extract_png(fig_fn,cut_bounds):
         pc_kf = int((p_ki+p_kf)//2+pc_lenk//2)
         #
         pc_lene = int((p_ef-p_ei)/(Ei-Ef)*(ei-ef))
-        pc_ei = int((p_ei+p_ef)//2-pc_lene//2)
-        pc_ef = int((p_ei+p_ef)//2+pc_lene//2)
+        pc_ei = p_ei + int((p_ef-p_ei)/(Ei-Ef)*(Ei-ei))
+        pc_ef = p_ei + int((p_ef-p_ei)/(Ei-Ef)*(Ei-ef))
         return pic_0[pc_ei:pc_ef,pc_ki:pc_kf]
     else:
         return pic_0[p_ei:p_ef,p_ki:p_kf]
@@ -354,13 +352,14 @@ def plot_bands_on_exp(energies,pic,K_list,bounds,save,title=''):
     K,EM,Em = bounds
     plt.figure(figsize=(20,15))
     plt.imshow(pic)
-    for i in range(24,28):
-        plt.plot(-(K_list[:,0]-K)/2/K*pic.shape[1],-energies[:,i]/(EM-Em)*pic.shape[0],'r-')
+    for i in range(22,28):
+        plt.plot((K_list[:,0]+K)/2/K*pic.shape[1],(EM-energies[:,i])/(EM-Em)*pic.shape[0],'r-')
     plt.xticks([0,pic.shape[1]//2,pic.shape[1]],["{:.2f}".format(-K),'0',"{:.2f}".format(K)])
     plt.yticks([0,pic.shape[0]//2,pic.shape[0]],["{:.2f}".format(EM),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(Em)])
     plt.xlabel("$A^{-1}$",size=15)
     plt.ylabel("$E\;(eV)$",size=15)
     plt.title(title,size=20)
+    plt.ylim(pic.shape[0],0)
     return plt.gcf()
 #    plt.show()
 

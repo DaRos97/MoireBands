@@ -8,8 +8,6 @@ dic_params_a_mono = {
         'WS2': 3.18,
         'WSe2': 3.32,
         }
-#Moirè lattice length of bilayer, in Angstrom
-a_Moire = 79.8
 
 a_1 = np.array([1,0])
 a_2 = np.array([-1/2,np.sqrt(3)/2])
@@ -18,13 +16,55 @@ J_minus = ((1,2), (3,4), (4,5), (6,7), (7,8), (9,10), (10,11))
 J_MX_plus = ((3,1), (5,1), (4,2), (10,6), (9,7), (11,7), (10,8))
 J_MX_minus = ((4,1), (3,2), (5,2), (9,6), (11,6), (10,7), (9,8), (11,8))
 
-def H_monolayer(K_p,hopping,epsilon,HSO,offset):
+def big_H(K_,lu,pars_monolayer,pars_interlayer,pars_moire):
+    """Computes the large Hamiltonian containing all the moire replicas.
+
+    """
+    N,pars_V,G_M = pars_moire
+    n_cells = int(1+3*N*(N+1))
+    H_up = np.zeros((n_cells*22,n_cells*22),dtype=complex)
+    H_down = np.zeros((n_cells*22,n_cells*22),dtype=complex)
+    H_int = np.zeros((n_cells*22,n_cells*22),dtype=complex)
+    #
+    for n in range(n_cells):      #circles go from 0 (central BZ) to N included
+        Kn = K_ + G_M[0]*lu[n][0] + G_M[1]*lu[n][1]
+        H_up[n*22:(n+1)*22,n*22:(n+1)*22] = H_monolayer(Kn,pars_monolayer,'WSe2',pars_interlayer)   #interlayer -> d
+        H_down[n*22:(n+1)*22,n*22:(n+1)*22] = H_monolayer(Kn,pars_monolayer,'WS2',pars_interlayer)  #interlayer -> c
+        H_int[n*22:(n+1)*22,n*22:(n+1)*22] = H_interlayer(Kn,pars_interlayer)   #interlayer -> a and b
+    #Moirè
+    m = [[-1,1],[-1,0],[0,-1],[1,-1],[1,0],[0,1]]
+    for n in range(0,N+1):      #Circles
+        for s in range(np.sign(n)*(1+(n-1)*n*3),n*(n+1)*3+1):       #Indices inside the circle
+            ind_s = lu[s]
+            for i in m:
+                ind_nn = (ind_s[0]+i[0],ind_s[1]+i[1])  #nn-> nearest neighbour
+                try:
+                    nn = lu.index(ind_nn)
+                except:
+                    continue
+                g = m.index(i)
+                H_up[s*22:(s+1)*22,nn*22:(nn+1)*22] = H_moire(g,pars_moire[1])
+                H_down[s*22:(s+1)*22,nn*22:(nn+1)*22] = H_moire(g,pars_moire[1])
+    #All together
+    final_H = np.zeros((2*n_cells*22,2*n_cells*22),dtype=complex)
+    final_H[:n_cells*22,:n_cells*22] = H_up
+    final_H[n_cells*22:,n_cells*22:] = H_down
+    final_H[n_cells*22:,:n_cells*22] = H_int
+    final_H[:n_cells*22,n_cells*22:] = np.conjugate(H_int.T)
+    #Global offset due to interlayer
+    final_H += np.identity(2*n_cells*22)*pars_interlayer[-1]
+    return final_H
+
+def H_monolayer(K_p,pars_H,TMD,pars_interlayer):
     """Monolayer Hamiltonian.
     TO CHECK
 
     """
-    a_mono = dic_params_a_mono['WSe2']
-    t = hopping
+    a_mono = dic_params_a_mono[TMD]
+    t = pars_H[0][TMD]      #hopping
+    epsilon = pars_H[1][TMD]
+    HSO = pars_H[2][TMD]
+    offset = pars_H[3][TMD]
     k_x,k_y = K_p       #momentum
     delta = a_mono* np.array([a_1, a_1+a_2, a_2, -(2*a_1+a_2)/3, (a_1+2*a_2)/3, (a_1-a_2)/3, -2*(a_1+2*a_2)/3, 2*(2*a_1+a_2)/3, 2*(a_2-a_1)/3])
     H_0 = np.zeros((11,11),dtype=complex)       #fist part without SO
@@ -107,7 +147,36 @@ def H_monolayer(K_p,hopping,epsilon,HSO,offset):
 
     #Offset
     H += np.identity(22)*offset
+    #Interlayer -> c
+    if TMD == 'WS2':
+        H[8,8] += pars_interlayer[2]
+        H[8+11,8+11] += pars_interlayer[2]
+    elif TMD == 'WSe2':     #-> d-factor on p_x(odd) orbitals
+        H[3,3] += pars_interlayer[3]
+        H[3+11,3+11] += pars_interlayer[3]
     return H
+
+def H_interlayer(K_p,pars):
+    H = np.zeros((22,22))
+    H[8,8] = -pars[0] + pars[1]*np.linalg.norm(K_p)**2
+    H[8+11,8+11] = -pars[0] + pars[1]*np.linalg.norm(K_p)**2
+    return H
+
+def H_moire(g,pars_V):          #g is a integer from 0 to 5
+    """Compute moire interlayer potential. 
+
+    """
+    V_G,psi_G,V_K,psi_K = pars_V
+    Id = np.zeros((22,22),dtype = complex)
+    out_of_plane = V_G*np.exp(1j*(-1)**(g%2)*psi_G)
+    in_plane = V_K*np.exp(1j*(-1)**(g%2)*psi_K)
+    list_out = (0,1,2,5,8)
+    list_in = (3,4,6,7,9,10)
+    for i in list_out:
+        Id[i,i] = Id[i+11,i+11] = out_of_plane
+    for i in list_in:
+        Id[i,i] = Id[i+11,i+11] = in_plane
+    return Id
 
 def find_t(dic_params_H):
     """Define hopping matrix elements from inputs and complete all symmetry related ones.
@@ -274,6 +343,159 @@ def find_HSO(dic_params_H):
     HSO[11:,:11] = Mdu
     ####
     return HSO
+
+def get_K(cut,n_pts):
+    res = np.zeros((n_pts,2))
+    a_mono = dic_params_a_mono['WSe2']
+    if cut == 'KGK':
+        K = np.array([4*np.pi/3,0])/a_mono
+        for i in range(n_pts):
+            res[i,0] = K[0]/(n_pts//2)*(i-n_pts//2)
+    if cut == 'KMKp':
+        M = np.array([np.pi,np.pi/np.sqrt(3)])/a_mono
+        K = np.array([4*np.pi/3,0])/a_mono
+        Kp = np.array([2*np.pi/3,2*np.pi/np.sqrt(3)])/a_mono
+        for i in range(n_pts//2):
+            res[i] = K + (M-K)*i/(n_pts//2)
+        for i in range(n_pts//2,n_pts):
+            res[i] = M + (Kp-M)*i/(n_pts//2)
+    return res
+
+def extract_png(fig_fn,cut_bounds):
+    pic_0 = np.array(np.asarray(Image.open(fig_fn)))
+    #We go from -1 to 1 in image K cause the picture is stupid
+    Ki = -1.4
+    Kf = 1.4
+    Ei = 0
+    Ef = -3.5
+    #Empirically extracted for S11 from -1 to +1
+    P_ki = 810
+    P_kf = 2370
+    p_len = int((P_kf-P_ki)/2*(Kf-Ki))   #number of pixels from Ki to Kf
+    p_ki = int((P_ki+P_kf)//2 - p_len//2)
+    p_kf = int((P_ki+P_kf)//2 + p_len//2)
+    #
+    p_ei = 85       #correct
+    p_ef = 1908     #correct
+    if len(cut_bounds) == 4:#Image cut
+        ki,kf,ei,ef = cut_bounds
+        pc_lenk = int(p_len/(Kf-Ki)*(kf-ki)) #number of pixels in cut image
+        pc_ki = int((p_ki+p_kf)//2-pc_lenk//2)
+        pc_kf = int((p_ki+p_kf)//2+pc_lenk//2)
+        #
+        pc_lene = int((p_ef-p_ei)/(Ei-Ef)*(ei-ef))
+        pc_ei = p_ei + int((p_ef-p_ei)/(Ei-Ef)*(Ei-ei))
+        pc_ef = p_ei + int((p_ef-p_ei)/(Ei-Ef)*(Ei-ef))
+        return pic_0[pc_ei:pc_ef,pc_ki:pc_kf]
+    else:
+        return pic_0[p_ei:p_ef,p_ki:p_kf]
+
+def lu_table(N):
+    """Computes the look-up table for the index of the mini-BZ in terms of the 
+    reciprocal lattice vector indexes
+
+    """
+    n_cells = int(1+3*N*(N+1))
+    lu = []     
+    m = [[-1,1],[-1,0],[0,-1],[1,-1],[1,0],[0,1]]
+    for n in range(0,N+1):      #circles go from 0 (central BZ) to N included
+        i = 0
+        j = 0
+        for s in range(np.sign(n)*(1+(n-1)*n*3),n*(n+1)*3+1):       
+            if s == np.sign(n)*(1+(n-1)*n*3):
+                lu.append((n,0))           
+            else:
+                lu.append((lu[-1][0]+m[i][0],lu[-1][1]+m[i][1]))
+                if j == n-1:
+                    i += 1
+                    j = 0
+                else:
+                    j += 1
+    return lu
+
+def weight_spreading(weight,K,E,k_grid,e_grid,pars_spread):
+    """Compute the weight spreading in k and e.
+
+    Parameters
+    ----------
+    weight : float
+        Weight to spread.
+    K : float
+        Momentum position of weight.
+    E : float
+        Energy position of weight.
+    k_grid : np.ndarray
+        Grid of values over which evaluate the spreading in momentum.
+    e_grid : np.ndarray
+        Grid of values over which evaluate the spreading in energy.
+    pars_spread : tuple
+        Parameters of spreading: gamma_k, gamma_e, type_of_spread (Gauss or Lorentz).
+
+    Returns
+    -------
+    np.ndarray
+        Grid of energy and momentum values over which the weight located at K,E has been spread using the type_of_spread function by values spread_K and spread_E.
+    """
+    spread_K,spread_E,type_of_spread = pars_spread
+    if type_of_spread == 'Lorentz':
+        E2 = spread_E**2
+        K2 = spread_K**2
+        return weight/((k_grid-K)**2+K2)/((e_grid-E)**2+E2)
+    elif type_of_spread == 'Gauss':
+        return weight*np.exp(-((k_grid-K)/spread_K)**2)*np.exp(-((e_grid-E)/spread_E)**2)
+
+def normalize_spread(spread,k_pts,e_pts):
+    #Transform lor to a png formati. in the range of white/black of the original picture
+    max_lor = np.max(np.ravel(spread))
+    min_lor = np.min(np.ravel(np.nonzero(spread)))
+    whitest = 255
+    blackest = 0     
+    normalized_lor = np.zeros((k_pts,e_pts))
+    for i in range(k_pts):
+        for j in range(e_pts):
+            normalized_lor[i,j] = int((whitest-blackest)*(1-spread[i,j]/(max_lor-min_lor))+blackest)
+    picture = np.flip(normalized_lor.T,axis=0)   #invert e-axis to have the same structure
+    return picture
+
+def get_Moire(a_M):     
+    """Compute Moire reciprocal lattice vectors.
+
+    """
+    G_M = [0,4*np.pi/np.sqrt(3)/a_M*np.array([0,1])]    
+    G_M[0] = np.tensordot(R_z(-np.pi/3),G_M[1],1)
+    return G_M
+
+def R_z(t):
+    R = np.zeros((2,2))
+    R[0,0] = np.cos(t)
+    R[0,1] = -np.sin(t)
+    R[1,0] = np.sin(t)
+    R[1,1] = np.cos(t)
+    return R
+
+def get_list_fn(l):
+    fn = ''
+    for i in range(len(l)):
+        fn += "{:.4f}".format(l[i])
+        if i != len(l)-1:
+            fn += '_'
+    return fn
+
+def get_spread_fn(N,pars_V,k_pts,pars_spread,machine):
+    name_v = get_list_fn(pars_V)
+    name_sp = get_list_fn(pars_spread[:2])
+    return get_home_dn(machine)+'results/spread_'+pars_spread[-1]+'_'+name_sp+'_'+str(N)+'_'+name_v+'_'+str(k_pts)+'.npy'
+
+def get_energies_fn(N,pars_V,k_pts,machine):
+    name_v = get_list_fn(pars_V)
+    return get_home_dn(machine)+'results/energies_'+str(N)+'_'+name_v+'_'+str(k_pts)+'.npy'
+
+def get_weights_fn(N,pars_V,k_pts,machine):
+    name_v = get_list_fn(pars_V)
+    return get_home_dn(machine)+'results/weights_'+str(N)+'_'+name_v+'_'+str(k_pts)+'.npy'
+
+def get_S11_fn(machine):
+    return get_home_dn(machine)+'inputs/S11_KGK_WSe2onWS2_v1.png'
 
 def get_pars_mono_fn(TMD,machine):
     return get_home_dn(machine)+'inputs/pars_mono_'+TMD+'.npy'

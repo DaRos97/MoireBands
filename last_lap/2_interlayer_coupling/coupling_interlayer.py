@@ -29,18 +29,18 @@ for TMD in fs.materials:
     offset[TMD] = pars_mono[TMD][-1]
 #Extract S11 image
 S11_fn = fs.get_S11_fn(machine)
-K = 4/3*np.pi/fs.dic_params_a_mono['WSe2']
+K = -K_list[0,0]
 EM = -0.5
 Em = -2.5
 bounds = (K,EM,Em)
 pic = fs.extract_png(S11_fn,[-K,K,EM,Em])
 
 if 0:   #Compare S11 bilayer KGK with monolayer bands
-    pars_interlayer = (0,0,0)
-    global_offset = 0.3
+    pars_interlayer = (0,0,0,0)
+    global_offset = -0.5
     energies = fs.energy(K_list,hopping,epsilon,HSO,offset,pars_interlayer,global_offset)
     #plot
-    title = "S11 data with monolayer bands (no interlayer), offset="+"{:.2f}".format(global_offset)+" eV"
+    title = "S11 data with monolayer bands (no interlayer), global offset: "+"{:.2f}".format(global_offset)+" eV"
     fig = fs.plot_bands_on_exp(energies,pic,K_list,bounds,False,title)
     plt.show()
     exit()
@@ -49,18 +49,30 @@ if 1:   #minimization of interlayer based on first 3 bands
     for a in [1]:
         for b in [0.7]:
             for c in [0.75]:
-                for global_offset in [0.25]:
-                    pars_interlayer = (a,b,c)
+                for d in [-0.2]:
+                    pars_interlayer = (a,b,c,d)
+                    global_offset = -0.5
                     energies = fs.energy(K_list,hopping,epsilon,HSO,offset,pars_interlayer,global_offset)
-                    fig = fs.plot_bands_on_exp(energies,pic,K_list,bounds,True)
-                    fig.savefig('temp/fig_'+"{:.2f}".format(a)+'_'+"{:.2f}".format(b)+'_'+"{:.2f}".format(c)+'_'+"{:.2f}".format(global_offset)+'.png')
+                    if 0:
+                        for i in range(24,28):
+                            plt.plot(K_list[:,0],energies[:,i],'r-')
+                        plt.ylim(Em,EM)
+                        plt.show()
+                        exit()
+                    title = "S11 data with monolayer bands with interlayer and 'd', global offset: "+"{:.2f}".format(global_offset)+" eV"
+                    fig = fs.plot_bands_on_exp(energies,pic,K_list,bounds,True,title)
+                    if 1:
+                        plt.show()
+                        exit()
+#                    fig.savefig('temp/fig_'+"{:.2f}".format(a)+'_'+"{:.2f}".format(b)+'_'+"{:.2f}".format(c)+'_'+"{:.2f}".format(d)+'.png')
                     plt.close(fig)
 #Best found pars are 
 a = 1
 b = 0.7
 c = 0.75
-global_offset = 0.25
-pars_interlayer = np.array([a,b,c,global_offset])
+d = -0.2
+global_offset = -0.5
+pars_interlayer = np.array([a,b,c,d,global_offset])
 np.save(fs.get_home_dn(machine)+'results/pars_interlayer.npy',pars_interlayer)
 
 

@@ -60,7 +60,8 @@ def plot_together(exp_data,dft_en,tb_en,title=''):
         #plt.title('Cut '+ps.paths[c]+', band '+str(b))
         plt.legend()
     plt.suptitle(title)
-    plt.show()
+    return plt.gcf()
+#    plt.show()
 
 def energy(parameters,data,cuts,TMD):
     """Compute energy along the two cuts of 2 TVB for all considered k.
@@ -399,6 +400,14 @@ def get_home_dn(machine):
         return '/home/users/r/rossid/1_tight_binding/'
     elif machine == 'maf':
         pass
+
+def get_fig_fn(TMD,cuts,range_par,machine):
+    cuts_fn = ''
+    for i in range(len(cuts)):
+        cuts_fn += cuts[i]
+        if i != len(cuts)-1:
+            cuts_fn += '_'
+    return get_home_dn(machine)+'results/fig_'+TMD+'_'+cuts_fn+'_'+"{:.2f}".format(range_par).replace('.',',')+'.png'
 
 def get_fit_fn(range_par,TMD,res,cuts,machine):
     cuts_fn = ''
