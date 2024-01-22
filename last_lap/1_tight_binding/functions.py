@@ -404,7 +404,7 @@ def get_fit_fn(range_par,TMD,res,machine):
     return get_home_dn(machine)+'results/pars_'+TMD+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+"{:.4f}".format(res)+'.npy'
 
 def get_temp_fit_fn(TMD,res,range_par,machine):
-    return get_home_dn(machine)+'results/temp_'+"{:.2f}".format(range_par).replace('.',',')+'/pars_'+TMD+'_'+"{:.4f}".format(res)+'.npy'
+    return get_home_dn(machine)+'results/temp'+'/pars_'+TMD+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+"{:.4f}".format(res)+'.npy'
 
 def get_machine(cwd):
     """Selects the machine the code is running on by looking at the working directory. Supports local, hpc (baobab or yggdrasil) and mafalda.
