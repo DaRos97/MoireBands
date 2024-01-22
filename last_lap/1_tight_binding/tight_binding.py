@@ -13,7 +13,7 @@ for i in range(len(cuts)):
     if i != len(cuts)-1:
         cuts_fn += '_'
 print("Computing TMD: ",TMD,", in cuts: ",cuts_fn," and range: ",range_par)
-exit()
+
 #Experimental data of monolayer 
 #For each material, 2 TVB (because of SO) on the 2 cuts
 exp_data = fs.get_exp_data(TMD,cuts,machine)
