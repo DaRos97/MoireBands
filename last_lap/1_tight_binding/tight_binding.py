@@ -7,18 +7,11 @@ import os,sys
 machine = fs.get_machine(os.getcwd())
 TMD = sys.argv[1] if not machine == 'loc' else 'WSe2'                #Material
 
+cuts = ['KGK']#,'KMKp']
+
 #Experimental data of monolayer 
 #For each material, 2 TVB (because of SO) on the 2 cuts
-exp_data = fs.get_exp_data(TMD,machine)
-
-if 0:   #plot exp bands
-    import matplotlib.pyplot as plt
-    fig = plt.figure()
-    for i in range(2):
-        for j in range(2):
-            plt.plot(exp_data[i][j][:,0],exp_data[i][j][:,1],'*',label=str(i))
-    plt.show()
-    exit()
+exp_data = fs.get_exp_data(TMD,cuts,machine)
 
 #Arguments of chi^2 function
 
@@ -28,7 +21,7 @@ len_pars = len(initial_point)
 if 1:   #minimization
     from scipy.optimize import minimize
     range_par = float(sys.argv[2]) if not machine=='loc' else 0.1
-    args_chi2 = (exp_data,TMD,machine,range_par,False)
+    args_chi2 = (exp_data,TMD,machine,range_par,cuts,False)
     Bounds = []
     for i in range(len_pars):
         temp_1 = initial_point[i]*(1-range_par)
@@ -54,9 +47,8 @@ if 1:   #minimization
             )
     print("Minimum chi2: ",result.fun)
     final_pars = np.array(result.x)
-    fit_fn = fs.get_fit_fn(range_par,TMD,result.fun,machine)
+    fit_fn = fs.get_fit_fn(range_par,TMD,result.fun,cuts,machine)
     np.save(fit_fn,final_pars)
-    fs.chi2(final_pars,*args_chi2)
 
 if 0: #Single parameter search
     n_attempts = 7

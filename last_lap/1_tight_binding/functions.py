@@ -15,19 +15,19 @@ def chi2(pars,*args):
     """Compute square difference of bands with exp data.
 
     """
-    exp_data, TMD, machine, range_par, plot = args
-    tb_en = energy(pars,exp_data,TMD)
+    exp_data, TMD, machine, range_par, cuts, plot = args
+    tb_en = energy(pars,exp_data,cuts,TMD)
     res = 0
-    for c in range(2):
+    for c in range(len(cuts)):
         for b in range(2):
             args = np.argwhere(np.isfinite(exp_data[c][b][:,1]))
             res += np.sum(np.absolute(tb_en[c][b,args]-exp_data[c][b][args,1])**2)
     if plot:
         plot_exp_tb(exp_data,tb_en,tb_en,TMD)
     if res < ps.min_chi2:
-        os.system('rm '+get_temp_fit_fn(TMD,ps.min_chi2,range_par,machine))
+        os.system('rm '+get_temp_fit_fn(TMD,ps.min_chi2,range_par,cuts,machine))
         ps.min_chi2 = res
-        np.save(get_temp_fit_fn(TMD,res,range_par,machine),pars)
+        np.save(get_temp_fit_fn(TMD,res,range_par,cuts,machine),pars)
     return res
 
 def plot_exp_tb(exp_data,dft_en,tb_en,title=''):
@@ -62,7 +62,7 @@ def plot_together(exp_data,dft_en,tb_en,title=''):
     plt.suptitle(title)
     plt.show()
 
-def energy(parameters,data,TMD):
+def energy(parameters,data,cuts,TMD):
     """Compute energy along the two cuts of 2 TVB for all considered k.
 
     """
@@ -72,7 +72,7 @@ def energy(parameters,data,TMD):
     
     cut_energies = []
     offset = parameters[-1]
-    for c in range(2):
+    for c in range(len(cuts)):
         kpts = data[c][0].shape[0]
         ens = np.zeros((2,kpts))
         for i in range(kpts):
@@ -175,13 +175,13 @@ def H_monolayer(K_p,hopping,epsilon,HSO,a_mono,offset):
     H += np.identity(22)*offset
     return H
 
-def get_exp_data(TMD,machine):
+def get_exp_data(TMD,cuts,machine):
     """For given material, takes the two cuts and the two bands and returns the lists of energy and momentum for the 2 top valence bands. 
     There are some NANs.
 
     """
     data = []
-    for cut in ['KGK','KMKp']:
+    for cut in cuts:
         data.append([])
         for band in range(1,3):
             data_fn = get_ext_data_fn(TMD,cut,band,machine)
@@ -400,11 +400,21 @@ def get_home_dn(machine):
     elif machine == 'maf':
         pass
 
-def get_fit_fn(range_par,TMD,res,machine):
-    return get_home_dn(machine)+'results/pars_'+TMD+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+"{:.4f}".format(res)+'.npy'
+def get_fit_fn(range_par,TMD,res,cuts,machine):
+    cuts_fn = ''
+    for i in range(len(cuts)):
+        cuts_fn += cuts[i]
+        if i != len(cuts)-1:
+            cuts_fn += '_'
+    return get_home_dn(machine)+'results/pars_'+TMD+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+cuts_fn+'_'+"{:.4f}".format(res)+'.npy'
 
-def get_temp_fit_fn(TMD,res,range_par,machine):
-    return get_home_dn(machine)+'results/temp'+'/pars_'+TMD+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+"{:.4f}".format(res)+'.npy'
+def get_temp_fit_fn(TMD,res,range_par,cuts,machine):
+    cuts_fn = ''
+    for i in range(len(cuts)):
+        cuts_fn += cuts[i]
+        if i != len(cuts)-1:
+            cuts_fn += '_'
+    return get_home_dn(machine)+'results/temp'+'/pars_'+TMD+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+cuts_fn+'_'+"{:.4f}".format(res)+'.npy'
 
 def get_machine(cwd):
     """Selects the machine the code is running on by looking at the working directory. Supports local, hpc (baobab or yggdrasil) and mafalda.

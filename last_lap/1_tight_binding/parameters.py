@@ -3,9 +3,6 @@ import numpy as np
 #Temp values
 min_chi2 = 1e5
 
-#BZ cuts of exp data
-paths = ['KGK','KMKp']
-
 ###Monolayer DFT paerameters. 11-band tight binding model. 
 # --> TO CHECK
 #WS2 --> Table III  (first two in Angstrom, all others in eV, last in .. (lambda of SO)
