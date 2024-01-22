@@ -21,18 +21,14 @@ if 0:   #plot exp bands
     exit()
 
 #Arguments of chi^2 function
-args_chi2 = (exp_data,TMD,machine,False)
 
 initial_point = ps.initial_pt[TMD]  #DFT values
 len_pars = len(initial_point)
 
-initial_chi2 = fs.chi2(initial_point,*args_chi2)
-
-print("Initial chi2: ",initial_chi2)
-
 if 1:   #minimization
     from scipy.optimize import minimize
-    range_par = 0.1     #10%
+    range_par = float(sys.argv[2]) if not machine=='loc' else 0.1
+    args_chi2 = (exp_data,TMD,machine,range_par,False)
     Bounds = []
     for i in range(len_pars):
         temp_1 = initial_point[i]*(1-range_par)

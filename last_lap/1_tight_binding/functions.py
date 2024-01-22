@@ -15,7 +15,7 @@ def chi2(pars,*args):
     """Compute square difference of bands with exp data.
 
     """
-    exp_data, TMD, machine, plot = args
+    exp_data, TMD, machine, range_par, plot = args
     tb_en = energy(pars,exp_data,TMD)
     res = 0
     for c in range(2):
@@ -25,9 +25,9 @@ def chi2(pars,*args):
     if plot:
         plot_exp_tb(exp_data,tb_en,tb_en,TMD)
     if res < ps.min_chi2:
-        os.system('rm '+get_temp_fit_fn(TMD,ps.min_chi2,machine))
+        os.system('rm '+get_temp_fit_fn(TMD,ps.min_chi2,range_par,machine))
         ps.min_chi2 = res
-        np.save(get_temp_fit_fn(TMD,res,machine),pars)
+        np.save(get_temp_fit_fn(TMD,res,range_par,machine),pars)
     return res
 
 def plot_exp_tb(exp_data,dft_en,tb_en,title=''):
@@ -43,6 +43,22 @@ def plot_exp_tb(exp_data,dft_en,tb_en,title=''):
                 plt.scatter(exp_data[c][b][:,0],dft_en[c][b,:],color='g',marker='^',label='DFT',s=5)
             plt.title('Cut '+ps.paths[c]+', band '+str(b))
             plt.legend()
+    plt.suptitle(title)
+    plt.show()
+
+def plot_together(exp_data,dft_en,tb_en,title=''):
+    import matplotlib.pyplot as plt
+    plt.figure(figsize=(40,20))
+    for c in range(2):
+        plt.subplot(1,2,c+1)
+        for b in range(2):
+            dft = (dft_en[c][b,:]-tb_en[c][b,:]).any()
+            plt.scatter(exp_data[c][b][:,0],exp_data[c][b][:,1],color='b',marker='*',label='experiment')
+            plt.scatter(exp_data[c][b][:,0],tb_en[c][b,:],color='r',marker='.',label='minimization',s=5)
+            if dft:
+                plt.scatter(exp_data[c][b][:,0],dft_en[c][b,:],color='g',marker='^',label='DFT',s=5)
+        #plt.title('Cut '+ps.paths[c]+', band '+str(b))
+        plt.legend()
     plt.suptitle(title)
     plt.show()
 
@@ -385,10 +401,10 @@ def get_home_dn(machine):
         pass
 
 def get_fit_fn(range_par,TMD,res,machine):
-    return get_home_dn(machine)+'results/pars_'+TMD+'_'+str(range_par)+'_'+"{:.4f}".format(res)+'.npy'
+    return get_home_dn(machine)+'results/pars_'+TMD+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+"{:.4f}".format(res)+'.npy'
 
-def get_temp_fit_fn(TMD,res,machine):
-    return get_home_dn(machine)+'results/temp/pars_'+TMD+'_'+"{:.4f}".format(res)+'.npy'
+def get_temp_fit_fn(TMD,res,range_par,machine):
+    return get_home_dn(machine)+'results/temp_'+"{:.2f}".format(range_par).replace('.',',')+'/pars_'+TMD+'_'+"{:.4f}".format(res)+'.npy'
 
 def get_machine(cwd):
     """Selects the machine the code is running on by looking at the working directory. Supports local, hpc (baobab or yggdrasil) and mafalda.
@@ -409,3 +425,24 @@ def get_machine(cwd):
         return 'hpc'
     elif cwd[:13] == '/users/rossid':
         return 'maf'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
