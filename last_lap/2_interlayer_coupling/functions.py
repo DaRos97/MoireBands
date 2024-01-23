@@ -363,8 +363,9 @@ def plot_bands_on_exp(energies,pic,K_list,bounds,save,title=''):
     return plt.gcf()
 #    plt.show()
 
-def get_pars_fn(TMD,machine):
-    return get_home_dn(machine)+'inputs/pars_'+TMD+'.npy'
+def get_pars_fn(TMD,machine,dft=False):
+    get_dft = '_DFT' if dft else ''
+    return get_home_dn(machine)+'inputs/pars_'+TMD+get_dft+'.npy'
 
 def get_S11_fn(machine):
     return get_home_dn(machine)+'inputs/S11_KGK_WSe2onWS2_v1.png'
