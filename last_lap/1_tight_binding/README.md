@@ -16,10 +16,9 @@ Here can decide to plot either temp/ or results/ fit parameters.
 Computes a table with difference of resulting pars from DFT ones, with percentage.
 Also here can decide which result to use for the table.
 
-#Copy to step 2
-- copy_res.py
-Copies the result to inputs of step 2. Chose inside what result to copy.
-
+#Orbital content
+- orbital_content.py
+Computes the relevant orbital content close to Gamma and K.
 
 #Computations
 ##Ygg:

@@ -48,18 +48,27 @@ def plot_exp_tb(exp_data,dft_en,tb_en,title=''):
 
 def plot_together(exp_data,dft_en,tb_en,title=''):
     import matplotlib.pyplot as plt
+    s_=15
     plt.figure(figsize=(40,20))
     for c in range(2):
         plt.subplot(1,2,c+1)
         for b in range(2):
             dft = (dft_en[c][b,:]-tb_en[c][b,:]).any()
-            plt.scatter(exp_data[c][b][:,0],exp_data[c][b][:,1],color='b',marker='*',label='experiment')
-            plt.scatter(exp_data[c][b][:,0],tb_en[c][b,:],color='r',marker='.',label='minimization',s=5)
+            plt.scatter(exp_data[c][b][:,0],exp_data[c][b][:,1],color='b',marker='*',label='experiment' if b == 0 else '')
+            plt.scatter(exp_data[c][b][:,0],tb_en[c][b,:],color='r',marker='.',label='minimization' if b == 0 else '',s=5)
             if dft:
-                plt.scatter(exp_data[c][b][:,0],dft_en[c][b,:],color='g',marker='^',label='DFT',s=5)
-        #plt.title('Cut '+ps.paths[c]+', band '+str(b))
-        plt.legend()
-    plt.suptitle(title)
+                plt.scatter(exp_data[c][b][:,0],dft_en[c][b,:],color='g',marker='^',label='DFT' if b == 0 else '',s=5)
+        plt.legend(fontsize=s_,markerscale=2)
+        if c == 0:
+            plt.xticks([exp_data[c][b][0,0],(exp_data[c][b][-1,0]+exp_data[c][b][0,0])/2,exp_data[c][b][-1,0]],['$K$','$\Gamma$','$K$'],size=s_)
+        else:
+            plt.xticks([exp_data[c][b][0,0],(exp_data[c][b][-1,0]+exp_data[c][b][0,0])/2,exp_data[c][b][-1,0]],['$K$','$M$','$K$'],size=s_)
+        plt.axvline(exp_data[c][b][0,0],color='k',alpha = 0.2)
+        plt.axvline((exp_data[c][b][-1,0]+exp_data[c][b][0,0])/2,color='k',alpha = 0.2)
+        plt.axvline(exp_data[c][b][-1,0],color='k',alpha = 0.2)
+#        plt.xlabel("$A^{-1}$",size=s_)
+        plt.ylabel("E(eV)",size=s_)
+    plt.suptitle(title,size=s_)
     return plt.gcf()
 #    plt.show()
 
@@ -407,7 +416,7 @@ def get_fig_fn(TMD,cuts,range_par,machine):
         cuts_fn += cuts[i]
         if i != len(cuts)-1:
             cuts_fn += '_'
-    return get_home_dn(machine)+'results/fig_'+TMD+'_'+cuts_fn+'_'+"{:.2f}".format(range_par).replace('.',',')+'.png'
+    return get_home_dn(machine)+'results/Figures/'+TMD+'_'+cuts_fn+'_'+"{:.2f}".format(range_par).replace('.',',')+'.png'
 
 def get_fit_fn(range_par,TMD,res,cuts,machine):
     cuts_fn = ''

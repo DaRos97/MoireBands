@@ -17,7 +17,7 @@ for ind in range(20):
 
     list_names = ps.list_names_all
     for TMD in ['WSe2','WS2']:
-        tabname = fs.get_home_dn('loc') + 'results/Table_DFT_vs_TB_'+TMD+'_'+cuts_fn+'_'+"{:.2f}".format(range_par).replace('.',',')+'.txt'
+        tabname = fs.get_home_dn('loc') + 'results/Tables/DFT_vs_TB_'+TMD+'_'+cuts_fn+'_'+"{:.2f}".format(range_par).replace('.',',')+'.txt'
         with open(tabname, 'w') as f:
             with redirect_stdout(f):
                 for file in os.listdir(fs.get_home_dn('loc')+'results/'+final_fit_dn):

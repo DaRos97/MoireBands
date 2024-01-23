@@ -14,11 +14,11 @@ for ind in range(20):
         cuts_fn += considered_cuts[i]
         if i != len(considered_cuts)-1:
             cuts_fn += '_'
-    print("Computing TMD: ",TMD,", in cuts: ",cuts_fn," and range: ",range_par)
 
     cuts_all = ['KGK','KMKp']
 
     for TMD in ['WSe2','WS2']:
+        print("Computing TMD: ",TMD,", in cuts: ",cuts_fn," and range: ",range_par)
         exp_data = fs.get_exp_data(TMD,cuts_all,machine)
         pars = [0]
         for file in os.listdir(fs.get_home_dn(machine)+'results/'+final_fit_dn):
