@@ -22,5 +22,7 @@ Computes the relevant orbital content close to Gamma and K.
 
 #Computations
 ##Ygg:
-    Computing with range 0.1 to 1.0, WSe2 and WS2, on both cuts and also just on KGK
+    - Computing with range 0.1 to 1.0, WSe2 and WS2, on both cuts and also just on KGK --> DONE
+##Bao
+    - Computing same just for WS2 after adjusting offset
 

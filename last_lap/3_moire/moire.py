@@ -64,7 +64,7 @@ K_scalar = np.zeros(k_pts)
 for i in range(k_pts):
     K_scalar[i] = np.linalg.norm(K_list[i])
 
-#Compute energies and weights along KGK
+Compute energies and weights along KGK
 en_fn = fs.get_energies_fn(DFT,N,pars_V,pixel_factor,a_Moire,machine)
 wg_fn = fs.get_weights_fn(DFT,N,pars_V,pixel_factor,a_Moire,machine)
 ind_TVB = n_cells*28    #top valence band
