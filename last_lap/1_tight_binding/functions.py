@@ -191,6 +191,7 @@ def get_exp_data(TMD,cuts,machine):
 
     """
     data = []
+    offset_exp = {'WSe2':{'KGK':0,'KMKp':0}, 'WS2':{'KGK':0,'KMKp':-0.018}}
     for cut in cuts:
         data.append([])
         for band in range(1,3):
@@ -206,7 +207,7 @@ def get_exp_data(TMD,cuts,machine):
                 if ke[1] == 'NAN\n':
                     temp.append([float(ke[0]),np.nan,*find_vec_k(float(ke[0]),cut,TMD)])
                 else:
-                    temp.append([float(ke[0]),float(ke[1]),*find_vec_k(float(ke[0]),cut,TMD)])
+                    temp.append([float(ke[0]),float(ke[1])+offset_exp[TMD][cut],*find_vec_k(float(ke[0]),cut,TMD)])
             data[-1].append(np.array(temp))
             np.save(data_fn,np.array(temp))
     return data
@@ -400,7 +401,8 @@ def get_ext_data_fn(TMD,cut,band,machine):
     return get_home_dn(machine)+'inputs/extracted_data_'+cut+'_'+TMD+'_band'+str(band)+'.npy'
 
 def get_exp_fn(TMD,cut,band,machine):
-    return get_home_dn(machine)+'inputs/'+cut+'_'+TMD+'_band'+str(band)+'_v1.txt'
+    ind_v = '1' if cut=='KGK' else '2'
+    return get_home_dn(machine)+'inputs/'+cut+'_'+TMD+'_band'+str(band)+'_v'+ind_v+'.txt'
 
 def get_home_dn(machine):
     if machine == 'loc':
