@@ -434,7 +434,7 @@ def get_list_fn(l):
             fn += '_'
     return fn
 
-def get_fig_fn(e_cut,pars_grid,DFT,N,pars_V,a_M,machine):
+def get_fig_fn(e_cut,pars_grid,DFT,N,pars_V,a_M,pars_spread,machine):
     name_v = get_list_fn(pars_V)
     name_sp = get_list_fn(pars_spread[:2])
     return get_home_dn(machine)+'results/Figures/fig_'+"{:.4f}".format(e_cut)+'_'+pars_grid[0]+'_'+pars_spread[-1]+'_'+name_sp+'_'+"{:.2f}".format(pars_grid[1])+'_'+str(pars_grid[2])+'_'+str(DFT)+'_'+str(N)+'_'+name_v+'_'+"{:.1f}".format(a_M)+'.png'

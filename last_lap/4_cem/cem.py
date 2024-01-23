@@ -19,7 +19,7 @@ Here we compute CEMs around G and around K.
 center, DFT, pars_V, a_Moire = fs.get_pars(int(sys.argv[1]))
 title = "Center: "+center+", DFT: "+str(DFT)+", pars_V: "+fs.get_list_fn(pars_V)+", a_Moire: "+str(a_Moire)
 print(title)
-
+exit()
 #Moire parameters
 N = 1                               #####################
 n_cells = int(1+3*N*(N+1))
@@ -116,7 +116,7 @@ for en in e_cuts:
         if machine == 'loc':
             plt.show()
         else:
-            plt.savefig(fs.get_fig_fn(max_E-en,DFT,N,pars_V,a_Moire,pars_spread,machine))
+            plt.savefig(fs.get_fig_fn(max_E-en,pars_grid,DFT,N,pars_V,a_Moire,pars_spread,machine))
 
 
 
