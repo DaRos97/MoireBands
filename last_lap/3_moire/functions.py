@@ -66,7 +66,7 @@ def H_monolayer(K_p,pars_H,TMD,pars_interlayer):
     HSO = pars_H[2][TMD]
     offset = pars_H[3][TMD]
     k_x,k_y = K_p       #momentum
-    delta = a_mono* np.array([a_1, a_1+a_2, a_2, -(2*a_1+a_2)/3, (a_1+2*a_2)/3, (a_1-a_2)/3, -2*(a_1+2*a_2)/3, 2*(2*a_1+a_2)/3, 2*(a_2-a_1)/3])
+    delta = a_mono*np.array([a_1, a_1+a_2, a_2, -(2*a_1+a_2)/3, (a_1+2*a_2)/3, (a_1-a_2)/3, -2*(a_1+2*a_2)/3, 2*(2*a_1+a_2)/3, 2*(a_2-a_1)/3])
     H_0 = np.zeros((11,11),dtype=complex)       #fist part without SO
     #Diagonal
     for i in range(11):
@@ -473,6 +473,23 @@ def R_z(t):
     R[1,1] = np.cos(t)
     return R
 
+def get_pars(ind):
+    DFTs = [True,False]
+    pars_Vgs = [0.005,0.01,0.02,0.03]
+    lVg = len(pars_Vgs)
+    pars_Vks = [0.001,0.005,0.0077,0.01,0.015]
+    lVk = len(pars_Vks)
+    a_Moires = [79.8,70,60,50]
+    laM = len(a_Moires)
+    phi_g = np.pi
+    phi_k = -106*2*np.pi/360
+    #
+    ind_DFT = ind//(lVg*lVk*laM)
+    ind_Vg = ind%(lVg*lVk*laM) // (lVk*laM)
+    ind_Vk = (ind%(lVg*lVk*laM) % (lVk*laM)) // laM
+    ind_aM = (ind%(lVg*lVk*laM) % (lVk*laM)) % laM
+    return (DFTs[ind_DFT], [pars_Vgs[ind_Vg],phi_g,pars_Vks[ind_Vk],phi_k], a_Moires[ind_aM])
+
 def get_list_fn(l):
     fn = ''
     for i in range(len(l)):
@@ -481,27 +498,34 @@ def get_list_fn(l):
             fn += '_'
     return fn
 
-def get_spread_fn(N,pars_V,k_pts,pars_spread,machine):
+def get_spread_fn(DFT,N,pars_V,p_f,a_M,pars_spread,machine):
     name_v = get_list_fn(pars_V)
     name_sp = get_list_fn(pars_spread[:2])
-    return get_home_dn(machine)+'results/spread_'+pars_spread[-1]+'_'+name_sp+'_'+str(N)+'_'+name_v+'_'+str(k_pts)+'.npy'
+    return get_home_dn(machine)+'results/data/spread_'+str(DFT)+'_'+pars_spread[-1]+'_'+name_sp+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'.npy'
 
-def get_energies_fn(N,pars_V,k_pts,machine):
+def get_energies_fn(DFT,N,pars_V,p_f,a_M,machine):
     name_v = get_list_fn(pars_V)
-    return get_home_dn(machine)+'results/energies_'+str(N)+'_'+name_v+'_'+str(k_pts)+'.npy'
+    return get_home_dn(machine)+'results/data/energies_'+str(DFT)+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'.npy'
 
-def get_weights_fn(N,pars_V,k_pts,machine):
+def get_weights_fn(DFT,N,pars_V,p_f,a_M,machine):
     name_v = get_list_fn(pars_V)
-    return get_home_dn(machine)+'results/weights_'+str(N)+'_'+name_v+'_'+str(k_pts)+'.npy'
+    return get_home_dn(machine)+'results/data/weights_'+str(DFT)+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'.npy'
+
+def get_fig_fn(DFT,N,pars_V,p_f,a_M,pars_spread,machine):
+    name_v = get_list_fn(pars_V)
+    name_sp = get_list_fn(pars_spread[:2])
+    return get_home_dn(machine)+'results/Figures/'+str(DFT)+'_'+pars_spread[-1]+'_'+name_sp+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'.png'
 
 def get_S11_fn(machine):
     return get_home_dn(machine)+'inputs/S11_KGK_WSe2onWS2_v1.png'
 
-def get_pars_mono_fn(TMD,machine):
-    return get_home_dn(machine)+'inputs/pars_mono_'+TMD+'.npy'
+def get_pars_mono_fn(TMD,machine,dft=False):
+    get_dft = '_DFT' if dft else ''
+    return get_home_dn(machine)+'inputs/pars_'+TMD+get_dft+'.npy'
 
-def get_pars_interlayer_fn(machine):
-    return get_home_dn(machine)+'inputs/pars_interlayer.npy'
+def get_pars_interlayer_fn(machine,dft=False):
+    get_dft = '_dft' if dft else ''
+    return get_home_dn(machine)+'inputs/pars_interlayer'+get_dft+'.npy'
 
 def get_home_dn(machine):
     if machine == 'loc':
@@ -531,4 +555,6 @@ def get_machine(cwd):
     elif cwd[:13] == '/users/rossid':
         return 'maf'
 
+def tqdm(x):
+    return x
 
