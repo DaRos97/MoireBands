@@ -20,10 +20,11 @@ center, DFT, pars_V, a_Moire = fs.get_pars(int(sys.argv[1]))
 title = "Center: "+center+", DFT: "+str(DFT)+", pars_V: "+fs.get_list_fn(pars_V)+", a_Moire: "+str(a_Moire)
 print(title)
 #Moire parameters
-N = 0                               #####################
+N = 4                               #####################
 n_cells = int(1+3*N*(N+1))
 G_M = fs.get_Moire(a_Moire)
-pars_moire = (N,pars_V,G_M)
+H_moire = [fs.H_moire(0,pars_V),fs.H_moire(1,pars_V)]
+pars_moire = (N,pars_V,G_M,H_moire)
 #Monolayer parameters
 hopping = {}
 epsilon = {}
@@ -40,7 +41,7 @@ pars_monolayer = (hopping,epsilon,HSO,offset)
 pars_interlayer = np.load(fs.get_pars_interlayer_fn(machine,DFT))
 #BZ grid
 range_K = 0.3   #in A^-1, value of momentum around center
-k_pts = 51
+k_pts = 101
 pars_grid = (center, range_K, k_pts)
 
 #Compute energies and weights on grid

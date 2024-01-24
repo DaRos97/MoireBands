@@ -19,7 +19,7 @@ def big_H(K_,lu,pars_monolayer,pars_interlayer,pars_moire):
     """Computes the large Hamiltonian containing all the moire replicas.
 
     """
-    N,pars_V,G_M = pars_moire
+    N,pars_V,G_M,Ham_moire = pars_moire
     n_cells = int(1+3*N*(N+1))
     H_up = np.zeros((n_cells*22,n_cells*22),dtype=complex)
     H_down = np.zeros((n_cells*22,n_cells*22),dtype=complex)
@@ -42,8 +42,8 @@ def big_H(K_,lu,pars_monolayer,pars_interlayer,pars_moire):
                 except:
                     continue
                 g = m.index(i)
-                H_up[s*22:(s+1)*22,nn*22:(nn+1)*22] = H_moire(g,pars_moire[1])
-                H_down[s*22:(s+1)*22,nn*22:(nn+1)*22] = H_moire(g,pars_moire[1])
+                H_up[s*22:(s+1)*22,nn*22:(nn+1)*22] = Ham_moire[g%2]    #H_moire(g,pars_moire[1])
+                H_down[s*22:(s+1)*22,nn*22:(nn+1)*22] = Ham_moire[g%2]  #H_moire(g,pars_moire[1])
     #All together
     final_H = np.zeros((2*n_cells*22,2*n_cells*22),dtype=complex)
     final_H[:n_cells*22,:n_cells*22] = H_up
