@@ -15,47 +15,35 @@ def chi2(pars,*args):
     """Compute square difference of bands with exp data.
 
     """
-    exp_data, TMD, machine, range_par, cuts, plot = args
+    exp_data, TMD, machine, range_par, cuts = args
     tb_en = energy(pars,exp_data,cuts,TMD)
     res = 0
-    for c in range(len(cuts)):
+    for c in range(len(cuts)):        ###############
         for b in range(2):
             args = np.argwhere(np.isfinite(exp_data[c][b][:,1]))
             res += np.sum(np.absolute(tb_en[c][b,args]-exp_data[c][b][args,1])**2)
-    if plot:
-        plot_exp_tb(exp_data,tb_en,tb_en,TMD)
+#    plot_together(exp_data,tb_en,tb_en)
     if res < ps.min_chi2:
         os.system('rm '+get_temp_fit_fn(TMD,ps.min_chi2,range_par,cuts,machine))
         ps.min_chi2 = res
         np.save(get_temp_fit_fn(TMD,res,range_par,cuts,machine),pars)
     return res
 
-def plot_exp_tb(exp_data,dft_en,tb_en,title=''):
-    import matplotlib.pyplot as plt
-    plt.figure(figsize=(40,20))
-    for b in range(2):
-        for c in range(2):
-            dft = (dft_en[c][b,:]-tb_en[c][b,:]).any()
-            plt.subplot(2,2,2*b+c+1)
-            plt.scatter(exp_data[c][b][:,0],exp_data[c][b][:,1],color='b',marker='*',label='experiment')
-            plt.scatter(exp_data[c][b][:,0],tb_en[c][b,:],color='r',marker='.',label='minimization',s=5)
-            if dft:
-                plt.scatter(exp_data[c][b][:,0],dft_en[c][b,:],color='g',marker='^',label='DFT',s=5)
-            plt.title('Cut '+ps.paths[c]+', band '+str(b))
-            plt.legend()
-    plt.suptitle(title)
-    plt.show()
-
 def plot_together(exp_data,dft_en,tb_en,title=''):
     import matplotlib.pyplot as plt
     s_=15
     plt.figure(figsize=(40,20))
     for c in range(2):
-        plt.subplot(1,2,c+1)
+        if c == 0:
+            ax1 = plt.subplot(1,2,1)
+        else:
+            ax2 = plt.subplot(1,2,2,sharey=ax1)
         for b in range(2):
             dft = (dft_en[c][b,:]-tb_en[c][b,:]).any()
-            plt.scatter(exp_data[c][b][:,0],exp_data[c][b][:,1],color='b',marker='*',label='experiment' if b == 0 else '')
-            plt.scatter(exp_data[c][b][:,0],tb_en[c][b,:],color='r',marker='.',label='minimization' if b == 0 else '',s=5)
+            #plt.scatter(exp_data[c][b][:,0],exp_data[c][b][:,1],color='b',marker='*',label='experiment' if b == 0 else '')
+            #plt.scatter(exp_data[c][b][:,0],tb_en[c][b,:],color='r',marker='.',label='minimization' if b == 0 else '',s=5)
+            plt.scatter(exp_data[c][b][:,0],exp_data[c][b][:,1],marker='*',label='exp '+str(c)+' '+str(b))
+            plt.scatter(exp_data[c][b][:,0],tb_en[c][b,:],marker='.',label='min '+str(c)+' '+str(b),s=5)
             if dft:
                 plt.scatter(exp_data[c][b][:,0],dft_en[c][b,:],color='g',marker='^',label='DFT' if b == 0 else '',s=5)
         plt.legend(fontsize=s_,markerscale=2)
@@ -401,8 +389,7 @@ def get_ext_data_fn(TMD,cut,band,machine):
     return get_home_dn(machine)+'inputs/extracted_data_'+cut+'_'+TMD+'_band'+str(band)+'.npy'
 
 def get_exp_fn(TMD,cut,band,machine):
-    ind_v = '1' if cut=='KGK' else '2'
-    return get_home_dn(machine)+'inputs/'+cut+'_'+TMD+'_band'+str(band)+'_v'+ind_v+'.txt'
+    return get_home_dn(machine)+'inputs/'+cut+'_'+TMD+'_band'+str(band)+'.txt'
 
 def get_home_dn(machine):
     if machine == 'loc':

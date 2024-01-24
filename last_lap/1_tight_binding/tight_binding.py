@@ -13,7 +13,6 @@ for i in range(len(cuts)):
     if i != len(cuts)-1:
         cuts_fn += '_'
 print("Computing TMD: ",TMD,", in cuts: ",cuts_fn," and range: ",range_par)
-exit()
 
 #Experimental data of monolayer 
 #For each material, 2 TVB (because of SO) on the 2 cuts
@@ -25,7 +24,10 @@ initial_point = ps.initial_pt[TMD]  #DFT values
 len_pars = len(initial_point)
 
 from scipy.optimize import minimize
-args_chi2 = (exp_data,TMD,machine,range_par,cuts,False)
+args_chi2 = (exp_data,TMD,machine,range_par,cuts)
+initial_chi2 = fs.chi2(initial_point,*args_chi2)
+print("Initial chi2: ",initial_chi2)
+
 Bounds = []
 for i in range(len_pars):
     temp_1 = initial_point[i]*(1-range_par)
