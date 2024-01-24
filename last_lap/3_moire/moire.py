@@ -12,15 +12,11 @@ else:
     tqdm = fs.tqdm
     save = True
 """
-Here we compute the full image S11.
-We need:
-    - monolayer parameters
-    - interlayer parameters
-    - moire copies -> V and phi around G and K
+Here we compute the full KGK image with Moire replicas.
 """
 
 #Moire parameters
-N = 0                               #####################
+N = 1                               #####################
 n_cells = int(1+3*N*(N+1))
 """
 Moirè potential of bilayer
@@ -33,7 +29,8 @@ title = "DFT: "+str(DFT)+", pars_V: "+fs.get_list_fn(pars_V)+", a_Moire: "+str(a
 print(title)
 #
 G_M = fs.get_Moire(a_Moire)
-pars_moire = (N,pars_V,G_M)
+H_moire = [fs.H_moire(0,pars_V),fs.H_moire(1,pars_V)]
+pars_moire = (N,pars_V,G_M,H_moire)
 #Monolayer parameters
 hopping = {}
 epsilon = {}
@@ -55,16 +52,13 @@ EM = -0.5
 Em = -2.5
 bounds = (K,EM,Em)
 exp_pic = fs.extract_png(S11_fn,[-K,K,EM,Em])
-pixel_factor = 5            ###################################
+pixel_factor = 15            ###################################
 #BZ cut parameters
 cut = 'KGK'
 k_pts = exp_pic.shape[1]//pixel_factor
 K_list = fs.get_K(cut,k_pts)
-K_scalar = np.zeros(k_pts)
-for i in range(k_pts):
-    K_scalar[i] = np.linalg.norm(K_list[i])
 
-Compute energies and weights along KGK
+#Compute energies and weights along KGK
 en_fn = fs.get_energies_fn(DFT,N,pars_V,pixel_factor,a_Moire,machine)
 wg_fn = fs.get_weights_fn(DFT,N,pars_V,pixel_factor,a_Moire,machine)
 ind_TVB = n_cells*28    #top valence band
@@ -81,7 +75,7 @@ if not Path(en_fn).is_file() or not Path(wg_fn).is_file():
         for e in range(ind_TVB-ind_LVB):
             for l in range(2):
                 for d in range(22):
-                    weights[i,e] += np.abs(evecs[d+n_cells*l,e])**2
+                    weights[i,e] += np.abs(evecs[d+22*n_cells*l,e])**2
     if save:
         np.save(en_fn,energies)
         np.save(wg_fn,weights)
@@ -92,8 +86,9 @@ else:
 if 0: #plot some bands
     import matplotlib.pyplot as plt
     plt.figure()
-    for i in range(ind_TVB-ind_LVB):
-        plt.plot(K_list[:,0],energies[:,i])
+    for e in range(ind_TVB-ind_LVB):
+        plt.plot(K_list[:,0],energies[:,e],linewidth=0.1,color='k')
+        plt.scatter(K_list[:,0],energies[:,e],s=weights[:,e],color='b',marker='o')
     plt.ylim(Em,EM)
     plt.show()
     #exit()
@@ -117,7 +112,6 @@ if not Path(spread_fn).is_file():
             spread += fs.weight_spreading(weights[i,n],K_list[i,0],energies[i,n],kkk[:,None],E_list[None,:],pars_spread)
     #Normalize in color scale
     norm_spread = fs.normalize_spread(spread,k_pts,e_pts)
-    #en_cut = fs.normalize_cut(en_cut,pars_grid)
     if save:
         np.save(spread_fn,norm_spread)
 else:

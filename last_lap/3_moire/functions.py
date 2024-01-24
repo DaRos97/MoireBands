@@ -20,13 +20,13 @@ def big_H(K_,lu,pars_monolayer,pars_interlayer,pars_moire):
     """Computes the large Hamiltonian containing all the moire replicas.
 
     """
-    N,pars_V,G_M = pars_moire
-    n_cells = int(1+3*N*(N+1))
+    N,pars_V,G_M,Ham_moire = pars_moire
+    n_cells = int(1+3*N*(N+1))          #Number of mBZ copies
     H_up = np.zeros((n_cells*22,n_cells*22),dtype=complex)
     H_down = np.zeros((n_cells*22,n_cells*22),dtype=complex)
     H_int = np.zeros((n_cells*22,n_cells*22),dtype=complex)
     #
-    for n in range(n_cells):      #circles go from 0 (central BZ) to N included
+    for n in range(n_cells):
         Kn = K_ + G_M[0]*lu[n][0] + G_M[1]*lu[n][1]
         H_up[n*22:(n+1)*22,n*22:(n+1)*22] = H_monolayer(Kn,pars_monolayer,'WSe2',pars_interlayer)   #interlayer -> d
         H_down[n*22:(n+1)*22,n*22:(n+1)*22] = H_monolayer(Kn,pars_monolayer,'WS2',pars_interlayer)  #interlayer -> c
@@ -43,8 +43,8 @@ def big_H(K_,lu,pars_monolayer,pars_interlayer,pars_moire):
                 except:
                     continue
                 g = m.index(i)
-                H_up[s*22:(s+1)*22,nn*22:(nn+1)*22] = H_moire(g,pars_moire[1])
-                H_down[s*22:(s+1)*22,nn*22:(nn+1)*22] = H_moire(g,pars_moire[1])
+                H_up[s*22:(s+1)*22,nn*22:(nn+1)*22] = Ham_moire[g%2]    #H_moire(g,pars_moire[1])
+                H_down[s*22:(s+1)*22,nn*22:(nn+1)*22] = Ham_moire[g%2]  #H_moire(g,pars_moire[1])
     #All together
     final_H = np.zeros((2*n_cells*22,2*n_cells*22),dtype=complex)
     final_H[:n_cells*22,:n_cells*22] = H_up
@@ -173,9 +173,11 @@ def H_moire(g,pars_V):          #g is a integer from 0 to 5
     list_out = (0,1,2,5,8)
     list_in = (3,4,6,7,9,10)
     for i in list_out:
-        Id[i,i] = Id[i+11,i+11] = out_of_plane
+        Id[i,i] = out_of_plane
+        Id[i+11,i+11] = out_of_plane
     for i in list_in:
-        Id[i,i] = Id[i+11,i+11] = in_plane
+        Id[i,i] = in_plane
+        Id[i+11,i+11] = in_plane
     return Id
 
 def find_t(dic_params_H):
@@ -401,7 +403,7 @@ def lu_table(N):
     for n in range(0,N+1):      #circles go from 0 (central BZ) to N included
         i = 0
         j = 0
-        for s in range(np.sign(n)*(1+(n-1)*n*3),n*(n+1)*3+1):       
+        for s in range(np.sign(n)*(1+(n-1)*n*3),n*(n+1)*3+1):       #mini-BZ index
             if s == np.sign(n)*(1+(n-1)*n*3):
                 lu.append((n,0))           
             else:
