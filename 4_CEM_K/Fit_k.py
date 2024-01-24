@@ -44,6 +44,9 @@ else:
 if 0:
     plt.figure()
     plt.plot(res[:,0],res[:,1],'r.')
+    plt.title(mat,size=20)
+    plt.xlabel(r"$K'\rightarrow\Gamma\rightarrow K\rightarrow M\rightarrow K'$",size=15)
+    plt.ylabel("E (eV)",size=15)
     plt.show()
     exit()
 
@@ -89,6 +92,10 @@ if 1:
     plt.title(mat+' around K with fit range '+"{:.4f}".format(range_e)+' eV')
     plt.xlabel(r'$A^{-1}$')
     plt.ylabel(r'$E$')
+    import matplotlib.patches as mpatches
+    G_patch = mpatches.Patch(color='r', label="$m_\Gamma=$"+"{:.4f}".format(popt[0]))
+    M_patch = mpatches.Patch(color='g', label="$m_M=$"+"{:.4f}".format(popt[1]))
+    plt.legend(handles=[G_patch,M_patch])
     fig = plt.gcf()
     plt.show()
     if input("Save? (y/N)")=='y':

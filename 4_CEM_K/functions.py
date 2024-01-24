@@ -182,8 +182,8 @@ def compute_image_CEM(en_cut,en,max_E,pars_moire,pars_grid,pars_interlayer,pars_
     plt.xticks([0,pars_grid[1]//2,pars_grid[1]],["{:.2f}".format(-pars_grid[0]/2),'0.00',"{:.2f}".format(pars_grid[0]/2)])
     plt.yticks([0,pars_grid[1]//2,pars_grid[1]],["{:.2f}".format(-pars_grid[0]/2),'0.00',"{:.2f}".format(pars_grid[0]/2)])
     fig = plt.gcf()
-    fig_filename = final_fig_filename(en,pars_moire,pars_grid,pars_interlayer,pars_spread,cluster)
-    fig.savefig(fig_filename)
+    fig_fn = final_fig_filename(en,pars_moire,pars_grid,pars_interlayer,pars_spread,cluster)
+    fig.savefig(fig_fn)
     if not cluster:
         plt.show()
     plt.close()
@@ -275,7 +275,7 @@ def final_fig_filename(en,pars_moire,pars_grid,pars_interlayer,pars_spread,clust
     range_K, k_pts = pars_grid
     a,b,c = pars_interlayer
     spread_k,spread_E,type_spread = pars_spread
-    return home_dirname(cluster) + 'figures/figure_'+"{:.4f}".format(en)+'_'+str(N)+'_'+"{:.3f}".format(V)+'_'+"{:.3f}".format(phase)+'_'+"{:.3f}".format(A_M)+'_'+"{:.3f}".format(range_K)+'_'+str(k_pts)+'_'+"{:.3f}".format(a)+'_'+"{:.3f}".format(b)+'_'+"{:.3f}".format(c)+'_'+"{:.3f}".format(spread_k)+'_'+"{:.3f}".format(spread_E)+'_'+type_spread+'.png'
+    return home_dirname(cluster) + 'temp/figure_'+"{:.4f}".format(en)+'_'+str(N)+'_'+"{:.3f}".format(V)+'_'+"{:.3f}".format(phase)+'_'+"{:.3f}".format(A_M)+'_'+"{:.3f}".format(range_K)+'_'+str(k_pts)+'_'+"{:.3f}".format(a)+'_'+"{:.3f}".format(b)+'_'+"{:.3f}".format(c)+'_'+"{:.3f}".format(spread_k)+'_'+"{:.3f}".format(spread_E)+'_'+type_spread+'.png'
 
 def home_dirname(cluster=False):
     """Computes the home dirname.

@@ -14,7 +14,7 @@ else:
 #Hopt
 Hopt_WS2 = np.load(fs.Hopt_filename('WS2','up','2',cluster))
 Hopt_WSe2 = np.load(fs.Hopt_filename('WSe2','up','2',cluster))
-pars_H = (Hopt_WS2,Hopt_WSe2)
+pars_H = (Hopt_WSe2,Hopt_WS2)
 
 if cluster:
     arr_V = [0.001,0.0077,0.01,0.02,0.03]
@@ -30,17 +30,19 @@ if cluster:
     par_c = 0
 else:
     #Moire
-    N = 2   #Usual number of mini-BZ circles around central one
-    V = 0.01#077
+    N = 3   #Usual number of mini-BZ circles around central one
+    V = 0.0077
     phase = -106/180*np.pi
     A_M = 79.8      #Moire length -> Angstrom
     #Grid
     range_K = 0.2   #in A^-1, value of momentum around 0 (we take K the center of coordinates)
     k_pts = 101     #number of k-pts in each direction, in the range specified
     #Interlayer
-    par_a = 0
-    par_b = 0
+    par_a = 5
+    par_b = 5
     par_c = 0
+    pars_H[0][0] = pars_H[0][1] = (pars_H[0][0]+pars_H[0][1])/2
+    pars_H[1][0] = pars_H[1][1] = (pars_H[1][0]+pars_H[1][1])/2
 #
 pars_moire = (N,V,phase,A_M)
 pars_grid = (range_K, k_pts)
@@ -79,7 +81,7 @@ type_spread = 'Gauss'
 pars_spread = (spread_k,spread_E,type_spread)
 #Energy cuts
 max_E = np.max(energies)
-if cluster:
+if cluster or 1:
     e_cuts = [max_E-0.06,]
 else:
     e_cuts = [max_E-0.05 - 0.005*n for n in range(30)] #Start 50 meV below VBM

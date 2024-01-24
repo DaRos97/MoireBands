@@ -40,7 +40,7 @@ except:
     new_image = Image.fromarray(np.uint8(pic))
     new_image.save(cut_imagename)
     #os.system("xdg-open "+new_imagename)
-if 1: #plot cut image
+if 0: #plot cut image
     import matplotlib.pyplot as plt
     plt.figure(figsize=(12,12))
     plt.imshow(pic)
@@ -60,6 +60,8 @@ dirname_data = home_dirname + "data_fits/"
 if bands_type == 1:
     popt_filename = dirname_data + "G_popt_interlayer_v1.npy"
     pars_H = np.load(popt_filename)
+    print(pars_H)
+    exit()
 elif bands_type == 3:
     filename = dirname_data + "3B_DFT_pars.pkl"
     with open(filename, 'rb') as f:

@@ -11,6 +11,8 @@ Figures/
 2_final_model/temp*
 3_new_simple_model/temp*
 4_CEM_K/results/
+4_CEM_K/figures/
+4_CEM_K/temp/
 
 /*/eleven_band_model/Figs_p/
 /*/eleven_band_model/Figs_g/
