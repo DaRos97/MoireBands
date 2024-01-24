@@ -17,7 +17,7 @@ for ind in range(20):
 
     cuts_all = ['KGK','KMKp']
 
-    for TMD in ['WSe2','WS2']:
+    for TMD in ['WS2',]:#'WS2']:
         print("Computing TMD: ",TMD,", in cuts: ",cuts_fn," and range: ",range_par)
         exp_data = fs.get_exp_data(TMD,cuts_all,machine)
         if 0:   #Plot bands of exp next to each other to verify alignment
@@ -26,11 +26,13 @@ for ind in range(20):
                 plt.scatter(exp_data[0][b][:,0],exp_data[0][b][:,1],color='b',marker='*',label='experiment' if b == 0 else '')
                 plt.scatter(exp_data[1][b][:,0]+(exp_data[0][b][-1,0]-exp_data[1][b][0,0]),exp_data[1][b][:,1],color='m',marker='*',label='experiment' if b == 0 else '')
             plt.show()
-        pars = [0]
+        pars = [0,]
         for file in os.listdir(fs.get_home_dn(machine)+'results/'+final_fit_dn):
-            if file[5:5+len(TMD)] == TMD and file[6+len(TMD):10+len(TMD)]=="{:.2f}".format(range_par).replace('.',',') and file[11+len(TMD):11+len(TMD)+len(cuts_fn)]==cuts_fn:
+            terms = file.split('_')
+            if terms[1] == TMD and terms[2]=="{:.2f}".format(range_par).replace('.',',') and len(terms)-4==len(considered_cuts):
                 pars = np.load(fs.get_home_dn(machine)+'results/'+final_fit_dn+file)
-                chi2 = file[-10:-4]
+                chi2 = terms[-1][:-4]
+                break
         if len(pars)==1:
             print("Parameters not found for TMD: ",TMD,", range_par: ",range_par," and cuts: ",cuts_fn)
             continue

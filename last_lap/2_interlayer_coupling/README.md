@@ -4,7 +4,7 @@ The interlayer is parametrized by constants a,b and c as
 H_int = (E(p_z)_WSe2    -a+b*k^2    )
         (-a+b*k^2       E(p_z)_WS2+c)
 ***
-In order to make the lower band more decaying close to gamma we can add a factor of d=0.2 decreasing the p_x(odd) orbital -> better looking.
+In order to make the lower band more decaying close to gamma we can add a factor of d=-0.2 decreasing the p_x(odd) orbital -> better looking.
 ****
 Best parameters by eye are (global offset of 0.5 eV)
     DFT: a=1, b=0.7, c=0.75, d = -0.2

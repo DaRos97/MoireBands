@@ -3,9 +3,10 @@
 - functions.py
 - parameters.py
 
-#Copy from yggdrasil
+#Copy from hpc
 - ygg.sh
-Copies both temp/ and resutls/ from yggdrasil to local.
+- bao.sh
+Copies both temp/ and resutls/ from hpc to local and remove old results.
 
 #Plot
 - Plot_final.py
@@ -24,5 +25,5 @@ Computes the relevant orbital content close to Gamma and K.
 ##Ygg:
     - Computing with range 0.1 to 1.0, WSe2 and WS2, on both cuts and also just on KGK --> DONE
 ##Bao
-    - Computing same just for WS2 after adjusting offset
+    - Computing same just for WS2 and just KGK+KMKp after adjusting offset
 
