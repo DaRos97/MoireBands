@@ -21,9 +21,17 @@ Also here can decide which result to use for the table.
 - orbital_content.py
 Computes the relevant orbital content close to Gamma and K.
 
-#Computations
+# Computed
 ##Ygg:
     - Computing with range 0.1 to 1.0, WSe2 and WS2, on both cuts and also just on KGK --> DONE
 ##Bao
-    - Computing same just for WS2 and just KGK+KMKp after adjusting offset
+    0 - Computing same just for WS2 and just KGK+KMKp after adjusting offset
 
+# Computing
+## Bao
+    - Range 0.1 to 1, WSe2 and WS2, KGK+KMKp with adjusted offset.
+    - Range 0.1 to 1, WSe2 and WS2, KGK with adjusted offset.
+
+# Results now
+WSe2 -> old, 0.8, KGK
+WS2  -> old, 0.5, KGK-KMKp

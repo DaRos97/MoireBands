@@ -20,18 +20,19 @@ with open(orbital_fn, 'w') as f:
         print(" Orbital content of minimization solutions: \n\n##########################################\n")
         for ind in range(40):
             TMD,considered_cuts,range_par = fs.get_parameters(ind)
-            cuts_fn = ''
-            for i in range(len(considered_cuts)):
-                cuts_fn += considered_cuts[i]
-                if i != len(considered_cuts)-1:
-                    cuts_fn += '_'
+            cuts_fn = fs.get_cuts_fn(considered_cuts)
             print("TMD: ",TMD,", in cuts: ",cuts_fn," and range: ","{:.2f}".format(range_par))
 
-
+            pars = [0,]
             for file in os.listdir(fs.get_home_dn(machine)+'results/'+final_fit_dn):
-                if file[5:5+len(TMD)] == TMD and file[6+len(TMD):10+len(TMD)]=="{:.2f}".format(range_par).replace('.',',') and file[11+len(TMD):11+len(TMD)+len(cuts_fn)]==cuts_fn:
+                terms = file.split('_')
+                if terms[1] == TMD and terms[2]=="{:.2f}".format(range_par).replace('.',',') and len(terms)-4==len(considered_cuts):
                     pars = np.load(fs.get_home_dn(machine)+'results/'+final_fit_dn+file)
-                    chi2 = file[-10:-4]
+                    chi2 = terms[-1][:-4]
+                    break
+            if len(pars)==1:
+                print("Parameters not found for TMD: ",TMD,", range_par: ",range_par," and cuts: ",cuts_fn,'\n')
+                continue
             
             a_mono = ps.dic_params_a_mono[TMD]
             k_pts = [np.array([0,0]),np.array([4/3*np.pi/a_mono,0])]
