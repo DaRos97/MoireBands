@@ -3,6 +3,7 @@ import parameters as ps
 import numpy.linalg as la
 from pathlib import Path
 import os
+import matplotlib.pyplot as plt
 
 a_1 = np.array([1,0])
 a_2 = np.array([-1/2,np.sqrt(3)/2])
@@ -10,6 +11,10 @@ J_plus = ((3,5), (6,8), (9,11))
 J_minus = ((1,2), (3,4), (4,5), (6,7), (7,8), (9,10), (10,11))
 J_MX_plus = ((3,1), (5,1), (4,2), (10,6), (9,7), (11,7), (10,8))
 J_MX_minus = ((4,1), (3,2), (5,2), (9,6), (11,6), (10,7), (9,8), (11,8))
+
+TMDs = ['WSe2','WS2']
+cutss = [['KGK','KMKp'],['KGK',]]
+range_pars = np.linspace(0.1,1,10,endpoint=True)
 
 def chi2(pars,*args):
     """Compute square difference of bands with exp data.
@@ -20,17 +25,16 @@ def chi2(pars,*args):
     res = 0
     for c in range(len(cuts)):        ###############
         for b in range(2):
-            args = np.argwhere(np.isfinite(exp_data[c][b][:,1]))
+            args = np.argwhere(np.isfinite(exp_data[c][b][:,1]))    #select only non-nan values
             res += np.sum(np.absolute(tb_en[c][b,args]-exp_data[c][b][args,1])**2)
 #    plot_together(exp_data,tb_en,tb_en)
-    if res < ps.min_chi2:
+    if res < ps.min_chi2:   #remove old temp and add new one
         os.system('rm '+get_temp_fit_fn(TMD,ps.min_chi2,range_par,cuts,machine))
         ps.min_chi2 = res
         np.save(get_temp_fit_fn(TMD,res,range_par,cuts,machine),pars)
     return res
 
 def plot_together(exp_data,dft_en,tb_en,title=''):
-    import matplotlib.pyplot as plt
     s_=15
     plt.figure(figsize=(40,20))
     for c in range(2):
@@ -40,10 +44,8 @@ def plot_together(exp_data,dft_en,tb_en,title=''):
             ax2 = plt.subplot(1,2,2,sharey=ax1)
         for b in range(2):
             dft = (dft_en[c][b,:]-tb_en[c][b,:]).any()
-            #plt.scatter(exp_data[c][b][:,0],exp_data[c][b][:,1],color='b',marker='*',label='experiment' if b == 0 else '')
-            #plt.scatter(exp_data[c][b][:,0],tb_en[c][b,:],color='r',marker='.',label='minimization' if b == 0 else '',s=5)
-            plt.scatter(exp_data[c][b][:,0],exp_data[c][b][:,1],marker='*',label='exp '+str(c)+' '+str(b))
-            plt.scatter(exp_data[c][b][:,0],tb_en[c][b,:],marker='.',label='min '+str(c)+' '+str(b),s=5)
+            plt.scatter(exp_data[c][b][:,0],exp_data[c][b][:,1],color='b',marker='*',label='experiment' if b == 0 else '')
+            plt.scatter(exp_data[c][b][:,0],tb_en[c][b,:],color='r',marker='.',label='minimization' if b == 0 else '',s=5)
             if dft:
                 plt.scatter(exp_data[c][b][:,0],dft_en[c][b,:],color='g',marker='^',label='DFT' if b == 0 else '',s=5)
         plt.legend(fontsize=s_,markerscale=2)
@@ -179,7 +181,7 @@ def get_exp_data(TMD,cuts,machine):
 
     """
     data = []
-    offset_exp = {'WSe2':{'KGK':0,'KMKp':0}, 'WS2':{'KGK':0,'KMKp':-0.018}}
+    offset_exp = {'WSe2':{'KGK':0,'KMKp':-0.04}, 'WS2':{'KGK':0,'KMKp':-0.003}} #To align the two cuts
     for cut in cuts:
         data.append([])
         for band in range(1,3):
@@ -386,10 +388,31 @@ def find_HSO(dic_params_H):
     return HSO
 
 def get_ext_data_fn(TMD,cut,band,machine):
-    return get_home_dn(machine)+'inputs/extracted_data_'+cut+'_'+TMD+'_band'+str(band)+'.npy'
+    return get_exp_dn(machine)+'extracted_data_'+cut+'_'+TMD+'_band'+str(band)+'.npy'
 
 def get_exp_fn(TMD,cut,band,machine):
-    return get_home_dn(machine)+'inputs/'+cut+'_'+TMD+'_band'+str(band)+'.txt'
+    return get_exp_dn(machine)+cut+'_'+TMD+'_band'+str(band)+'.txt'
+
+def get_fig_fn(TMD,cuts,range_par,machine):
+    cuts_fn = get_cuts_fn(cuts)
+    return get_fig_dn(machine)+TMD+'_'+cuts_fn+'_'+"{:.2f}".format(range_par).replace('.',',')+'.png'
+
+def get_fit_fn(range_par,TMD,res,cuts,machine):
+    cuts_fn = get_cuts_fn(cuts)
+    return get_res_dn(machine)+'pars_'+TMD+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+cuts_fn+'_'+"{:.4f}".format(res)+'.npy'
+
+def get_temp_fit_fn(TMD,res,range_par,cuts,machine):
+    cuts_fn = get_cuts_fn(cuts)
+    return get_res_dn(machine)+'temp/pars_'+TMD+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+cuts_fn+'_'+"{:.4f}".format(res)+'.npy'
+
+def get_fig_dn(machine):
+    return get_res_dn(machine)+'figures/'
+
+def get_exp_dn(machine):
+    return get_home_dn(machine)+'inputs/'
+
+def get_res_dn(machine):
+    return get_home_dn(machine)+'results/'
 
 def get_home_dn(machine):
     if machine == 'loc':
@@ -398,30 +421,6 @@ def get_home_dn(machine):
         return '/home/users/r/rossid/1_tight_binding/'
     elif machine == 'maf':
         pass
-
-def get_fig_fn(TMD,cuts,range_par,machine):
-    cuts_fn = ''
-    for i in range(len(cuts)):
-        cuts_fn += cuts[i]
-        if i != len(cuts)-1:
-            cuts_fn += '_'
-    return get_home_dn(machine)+'results/Figures/'+TMD+'_'+cuts_fn+'_'+"{:.2f}".format(range_par).replace('.',',')+'.png'
-
-def get_fit_fn(range_par,TMD,res,cuts,machine):
-    cuts_fn = ''
-    for i in range(len(cuts)):
-        cuts_fn += cuts[i]
-        if i != len(cuts)-1:
-            cuts_fn += '_'
-    return get_home_dn(machine)+'results/pars_'+TMD+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+cuts_fn+'_'+"{:.4f}".format(res)+'.npy'
-
-def get_temp_fit_fn(TMD,res,range_par,cuts,machine):
-    cuts_fn = ''
-    for i in range(len(cuts)):
-        cuts_fn += cuts[i]
-        if i != len(cuts)-1:
-            cuts_fn += '_'
-    return get_home_dn(machine)+'results/temp'+'/pars_'+TMD+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+cuts_fn+'_'+"{:.4f}".format(res)+'.npy'
 
 def get_machine(cwd):
     """Selects the machine the code is running on by looking at the working directory. Supports local, hpc (baobab or yggdrasil) and mafalda.
@@ -444,21 +443,23 @@ def get_machine(cwd):
         return 'maf'
 
 def get_parameters(ind):
-    TMDs = ['WSe2','WS2']
-    cutss = [['KGK','KMKp'],['KGK',]]
-    range_pars = np.linspace(0.1,1,10,endpoint=True)
     ind_tmd = ind//(len(cutss)*len(range_pars))
     ind_cut = ind%(len(cutss)*len(range_pars)) // len(range_pars)
     ind_rng = ind%(len(cutss)*len(range_pars)) % len(range_pars)
     return (TMDs[ind_tmd], cutss[ind_cut], range_pars[ind_rng])
 
 def get_parameters_plot(ind):
-    cutss = [['KGK','KMKp'],['KGK',]]
-    range_pars = np.linspace(0.1,1,10,endpoint=True)
     ind_cut = ind // len(range_pars)
     ind_rng = ind % len(range_pars)
     return (cutss[ind_cut], range_pars[ind_rng])
 
+def get_cuts_fn(cuts):
+    cuts_fn = ''
+    for i in range(len(cuts)):
+        cuts_fn += cuts[i]
+        if i != len(cuts)-1:
+            cuts_fn += '_'
+    return cuts_fn
 
 
 
