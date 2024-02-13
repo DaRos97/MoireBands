@@ -18,24 +18,13 @@ J_minus = ((1,2), (3,4), (4,5), (6,7), (7,8), (9,10), (10,11))
 J_MX_plus = ((3,1), (5,1), (4,2), (10,6), (9,7), (11,7), (10,8))
 J_MX_minus = ((4,1), (3,2), (5,2), (9,6), (11,6), (10,7), (9,8), (11,8))
 
-def energy(list_K,hopping,epsilon,HSO,offset,pars_interlayer,global_offset):
+def energy(list_K,hopping,epsilon,HSO,offset,pars_interlayer,interlayer_type):
     en_list = np.zeros((list_K.shape[0],44))
     for k in range(list_K.shape[0]):
         big_H = np.zeros((44,44),dtype=complex)
         big_H[:22,:22] = H_monolayer(list_K[k],hopping['WSe2'],epsilon['WSe2'],HSO['WSe2'],offset['WSe2'],dic_params_a_mono['WSe2'])
         big_H[22:,22:] = H_monolayer(list_K[k],hopping['WS2'],epsilon['WS2'],HSO['WS2'],offset['WS2'],dic_params_a_mono['WS2']) 
-        #Interlayer -> a and b
-        interlayer_H = get_interlayer_H(list_K[k],pars_interlayer)
-        big_H[:22,22:] = interlayer_H
-        big_H[22:,:22] = interlayer_H
-        #Interlayer -> c
-        big_H[30,30] += pars_interlayer[2]
-        big_H[41,41] += pars_interlayer[2]
-        #Interlayer -> lower level WSe2 -> p_x(odd) -> index 3
-        big_H[3,3] += pars_interlayer[3]
-        big_H[14,14] += pars_interlayer[3]
-        #
-        big_H += np.identity(44)*global_offset
+        big_H += get_interlayer_H(list_K[k],pars_interlayer,interlayer_type)
         en_list[k] = np.linalg.eigvalsh(big_H)
     return en_list
 
@@ -56,10 +45,30 @@ def get_K(cut,n_pts):
             res[i] = M + (Kp-M)*i/(n_pts//2)
     return res
 
-def get_interlayer_H(k,pars):
-    H = np.zeros((22,22))
-    H[8,8] = -pars[0] + pars[1]*np.linalg.norm(k)**2
-    H[8+11,8+11] = -pars[0] + pars[1]*np.linalg.norm(k)**2
+def get_interlayer_H(k,pars,interlayer_type):
+    H = np.zeros((44,44),dtype=complex)
+    if interlayer_type=='U1':
+        #a and b
+        t_k = -pars[0] + pars[1]*np.linalg.norm(k)**2
+    elif interlayer_type=='C6':
+        aa = dic_params_a_mono['WSe2']
+        t_k = -pars[0] + pars[1]*2*(np.cos(k[0]*aa)+np.cos(k[0]/2*aa)*np.cos(np.sqrt(3)/2*k[1]*aa))
+    elif interlayer_type=='C3':
+        aa = dic_params_a_mono['WSe2']
+        delta = aa*np.array([np.array([1,0]),np.array([1/2,np.sqrt(3)/2]),np.array([-1/2,np.sqrt(3)/2])])
+        t_k = 0
+        for i in range(3):
+            t_k += pars[1]*np.exp(1j*np.dot(k,delta[i]))
+    #a and b
+    H[8,22+8] = t_k 
+    H[8+11,22+8+11] = t_k
+    H[22+8,8] = t_k
+    H[22+8+11,8+11] = t_k
+    #c
+    H[30,30] = pars[2]
+    H[30+11,30+11] = pars[2]
+    #Offset
+    H += np.identity(44)*pars[-1]       
     return H
 
 def H_monolayer(K_p,hopping,epsilon,HSO,offset,a_mono):
@@ -347,7 +356,7 @@ def extract_png(fig_fn,cut_bounds):
     else:
         return pic_0[p_ei:p_ef,p_ki:p_kf]
 
-def plot_bands_on_exp(energies,pic,K_list,bounds,save,title=''):
+def plot_bands_on_exp(energies,pic,K_list,bounds,title=''):
     import matplotlib.pyplot as plt
     K,EM,Em = bounds
     plt.figure(figsize=(20,15))

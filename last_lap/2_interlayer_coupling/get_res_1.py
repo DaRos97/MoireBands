@@ -16,7 +16,7 @@ for TMD in ['WSe2','WS2']:
     np.save(fs.get_home_dn(machine)+'inputs/pars_'+TMD+'_DFT.npy',pars)
 
 #Minimization values
-vals = [('WSe2',0.2,['KGK','KMKp']),('WS2',0.2,['KGK','KMKp'])]
+vals = [('WSe2',0.8,['KGK']),('WS2',0.5,['KGK','KMKp'])]
 for val in vals:
     TMD, range_par, cuts = val
     cuts_fn = ''
