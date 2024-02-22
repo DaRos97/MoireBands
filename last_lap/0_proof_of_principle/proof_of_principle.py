@@ -15,18 +15,26 @@ else:
 Extract KGK plot with different interlayers
 """
 #Moire parameters
-N = 4                               #####################
+N = 6                               #####################
 n_cells = int(1+3*N*(N+1))
 #Model parameters
-type_of_stacking = 'P' if int(sys.argv[1])<len(fs.list_f['P']) else 'AP'
+#type_of_stacking = 'P' if int(sys.argv[1])<len(fs.list_f['P']) else 'AP'
+type_of_stacking = 'AP'
 m1,m2,mu = (0.13533,0.53226,-1.16385)
 a,b,c = (-0.04,-0.03,-0.3) if type_of_stacking=='P' else (0,-0.08,-0.3)
-V,phi = (0.02,1)
+V,phi = (0.02,np.pi)
 
-f1 = fs.list_f['P'][int(sys.argv[1])] if type_of_stacking=='P' else fs.list_f['P'][(int(sys.argv[1])-len(fs.list_f['P']))%len(fs.list_f['AP'])]
-f2 = f1 if type_of_stacking == 'P' else f1*((int(sys.argv[1])-len(fs.list_f['P']))//len(fs.list_f['AP']))
+#f1 = fs.list_f['P'][int(sys.argv[1])] if type_of_stacking=='P' else fs.list_f['P'][(int(sys.argv[1])-len(fs.list_f['P']))%len(fs.list_f['AP'])]
+#f2 = f1 if type_of_stacking == 'P' else f1*((int(sys.argv[1])-len(fs.list_f['P']))//len(fs.list_f['AP']))
+NN = 7
+f_space = np.linspace(-0.4,0.4,NN)
+ind = int(sys.argv[1])
+f1 = f_space[(ind//NN)//NN]
+f2 = f_space[(ind//NN)%NN]
+f3 = f_space[(ind%NN)]
 
-all_pars = (type_of_stacking,m1,m2,mu,a,b,c,f1,f2,N,V,phi)
+
+all_pars = (type_of_stacking,m1,m2,mu,a,b,c,f1,f2,f3,N,V,phi)
 a_Moire = 79.8
 G_M = fs.get_Moire(a_Moire)
 
@@ -34,9 +42,8 @@ title = "Type of stacking: "+type_of_stacking+'\n'
 title += 'm1: '+"{:.3f}".format(m1)+', m2: '+"{:.3f}".format(m2)+r', $\mu$: '+"{:.3f}".format(mu)+'\n'
 title += 'a: '+"{:.3f}".format(a)+', b: '+"{:.3f}".format(b)+', c: '+"{:.3f}".format(c)+'\n'
 title += 'V: '+"{:.3f}".format(V)+r', $\phi$: '+"{:.3f}".format(phi)+'\n'
-title += 'f1: '+"{:.3f}".format(f1)+', f2: '+"{:.3f}".format(f2)
+title += 'f1: '+"{:.3f}".format(f1)+', f2: '+"{:.3f}".format(f2)+', f3: '+"{:.3f}".format(f3)
 print(title)
-#exit()
 #
 if 0:
     #Extract S11 image

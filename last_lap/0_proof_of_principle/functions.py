@@ -13,15 +13,15 @@ a_1 = np.array([1,0])
 a_2 = np.array([-1/2,np.sqrt(3)/2])
 list_ind = {'P': [0,1,2,3,4,5], 'AP':[0,2,4]}
 
-list_f = {  'P':    np.linspace(0,0.1,20),
-            'AP':   np.linspace(0,0.1,10)
+list_f = {  'P':    np.linspace(0,0.05,20),
+            'AP':   np.linspace(0,0.05,10)
             }
 
 def big_H(K_,lu,all_pars,G_M):
     """Computes the large Hamiltonian containing all the moire replicas.
 
     """
-    type_of_stacking,m1,m2,mu,a,b,c,f1,f2,N,V,phi = all_pars
+    type_of_stacking,m1,m2,mu,a,b,c,f1,f2,f3,N,V,phi = all_pars
     n_cells = int(1+3*N*(N+1))          #Number of mBZ copies
     H_up = np.zeros((n_cells,n_cells),dtype=complex)
     H_down = np.zeros((n_cells,n_cells),dtype=complex)
@@ -35,8 +35,10 @@ def big_H(K_,lu,all_pars,G_M):
     #Moirè part
     m = [[-1,1],[-1,0],[0,-1],[1,-1],[1,0],[0,1]]
     for n in range(0,N+1):      #Circles
+#        print('n:',n)
         for s in range(np.sign(n)*(1+(n-1)*n*3),n*(n+1)*3+1):       #Indices inside the circle
             ind_s = lu[s]
+#            print('s:',s,', ind_s:',ind_s)
             for i in m:
                 ind_nn = (ind_s[0]+i[0],ind_s[1]+i[1])  #nn-> nearest neighbour
                 try:
@@ -46,7 +48,10 @@ def big_H(K_,lu,all_pars,G_M):
                 g = m.index(i)
                 H_up[s,nn] = get_V(V,phi,g)
                 H_down[s,nn] = get_V(V,phi,g)
-                H_int[s,nn] = get_t1(f1,f2,g)
+                H_int[s,nn] = get_t1(f1,f2,f3,g)
+#                print('nn:',nn,', ind_nn:',ind_nn)
+#                print(get_t1('f1','f2',g))
+#                input()
     #All together
     final_H = np.zeros((2*n_cells,2*n_cells),dtype=complex)
     final_H[:n_cells,:n_cells] = H_up
@@ -63,8 +68,9 @@ def get_t0(Kn,a,b,type_of_stacking):
         res += b*np.exp(1j*np.dot(Kn,np.dot(R_z(np.pi/3*i),a_1))*dic_params_a_mono['WSe2'])
     return res
 
-def get_t1(f1,f2,ind):
-    return f1 if ind%2 == 0 else f2
+def get_t1(f1,f2,f3,ind):
+    fff = [f1,f2,f3]
+    return fff[ind//2]
 
 def get_V(V,phi,ind):
     return V*np.exp(1j*(-1)**(ind%2)*phi)
