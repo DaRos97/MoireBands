@@ -13,6 +13,10 @@ a_1 = np.array([1,0])
 a_2 = np.array([-1/2,np.sqrt(3)/2])
 list_ind = {'P': [0,1,2,3,4,5], 'AP':[0,2,4]}
 
+list_f = {  'P':    np.linspace(0,0.1,20),
+            'AP':   np.linspace(0,0.1,10)
+            }
+
 def big_H(K_,lu,all_pars,G_M):
     """Computes the large Hamiltonian containing all the moire replicas.
 
@@ -207,6 +211,12 @@ def get_energies_fn(all_pars,machine):
 
 def get_weights_fn(all_pars,machine):
     return get_res_dn(machine) + 'raw/weights_' + fn_list(all_pars) + '.npy'
+
+def get_spread_fn(all_pars,pars_spread,machine):
+    return get_res_dn(machine) + 'raw/spread_'+ fn_list(all_pars) + fn_list(pars_spread) + '.npy'
+
+def get_fig_fn(all_pars,pars_spread,machine):
+    return get_res_dn(machine) + 'figures/fig_'+ fn_list(all_pars) + fn_list(pars_spread) + '.png'
 
 def get_S11_fn(machine):
     return get_home_dn(machine)+'inputs/S11_KGK_WSe2onWS2_v1.png'
