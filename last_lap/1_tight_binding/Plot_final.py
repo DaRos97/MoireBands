@@ -7,7 +7,7 @@ import os,sys
 machine = 'loc'
 final_fit_dn = 'temp/' #or ''
 
-for ind in range(10):
+for ind in range(0,20):
     considered_cuts,range_par = fs.get_parameters_plot(ind)
     cuts_fn = fs.get_cuts_fn(considered_cuts)
 
@@ -40,7 +40,8 @@ for ind in range(10):
         title = "TMD: "+TMD+", range_par: "+"{:.2f}".format(range_par)+" on cuts: "+cuts_fn+'. Chi2='+chi2
         #
         fig = fs.plot_together(exp_data,DFT_en,tb_en,title)
-#        fig.show()
+#        plt.show()
+#        exit()
         if 1:#input("Save fig? (y/N)")=='y':
             fig.savefig(fs.get_fig_fn(TMD,considered_cuts,range_par,machine))
         plt.close(fig)
