@@ -48,7 +48,6 @@ def get_K(cut,n_pts):
 def get_interlayer_H(k,pars,interlayer_type):
     H = np.zeros((44,44),dtype=complex)
     if interlayer_type=='U1':
-        #a and b
         t_k = -pars[0] + pars[1]*np.linalg.norm(k)**2
     elif interlayer_type=='C6':
         aa = dic_params_a_mono['WSe2']
@@ -59,14 +58,16 @@ def get_interlayer_H(k,pars,interlayer_type):
         t_k = 0
         for i in range(3):
             t_k += pars[1]*np.exp(1j*np.dot(k,delta[i]))
+    elif interlayer_type=='no':
+        t_k = 0
     #a and b
-    H[8,22+8] = t_k 
-    H[8+11,22+8+11] = t_k
-    H[22+8,8] = t_k
-    H[22+8+11,8+11] = t_k
+    ind_pze = 8
+    for i in range(2):
+        H[ind_pze+11*i,ind_pze+11*i+22] = t_k 
+    H += np.conjugate(H.T)
     #c
-    H[30,30] = pars[2]
-    H[30+11,30+11] = pars[2]
+    for i in range(2):
+        H[ind_pze+11*i+22,ind_pze+11*i+22] = pars[2]
     #Offset
     H += np.identity(44)*pars[-1]       
     return H
