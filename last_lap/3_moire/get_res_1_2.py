@@ -16,7 +16,7 @@ for TMD in ['WSe2','WS2']:
     np.save(fs.get_home_dn(machine)+'inputs/pars_'+TMD+'_DFT.npy',pars)
 
 #Minimization values
-vals = [('WSe2',0.2,['KGK','KMKp']),('WS2',0.2,['KGK','KMKp'])]
+vals = [('WSe2',0.5,['KGK','KMKp']),('WS2',0.3,['KGK','KMKp'])]
 for val in vals:
     TMD, range_par, cuts = val
     cuts_fn = ''
@@ -31,15 +31,22 @@ for val in vals:
     if len(pars)==1:
         print("Parameters not found for TMD: ",TMD,", range_par: ",range_par," and cuts: ",cuts_fn)
         continue
-    np.save(fs.get_home_dn(machine)+'inputs/pars_'+TMD+'.npy',pars)
+    np.save(fs.get_home_dn(machine)+'inputs/pars_'+TMD+'_fit.npy',pars)
 
 
 """
 Get interlayer pars from step 2
 """
-#DFT values
-pars_dft = np.load('/home/dario/Desktop/git/MoireBands/last_lap/2_interlayer_coupling/results/pars_interlayer_dft.npy')
-np.save(fs.get_home_dn(machine)+'inputs/pars_interlayer_dft.npy',pars_dft)
-#Minimization values
-pars = np.load('/home/dario/Desktop/git/MoireBands/last_lap/2_interlayer_coupling/results/pars_interlayer.npy')
-np.save(fs.get_home_dn(machine)+'inputs/pars_interlayer.npy',pars)
+for txt in ['DFT','fit']:
+    for interlayer_type in ['U1','C6','C3']:
+        int_dn = '/home/dario/Desktop/git/MoireBands/last_lap/2_interlayer_coupling/results/'
+        int_fn = txt+'_'+interlayer_type+'_pars_interlayer.npy'
+        #DFT values
+        np.save(fs.get_home_dn(machine)+'inputs/'+int_fn,np.load(int_dn+int_fn))
+
+
+
+
+
+
+

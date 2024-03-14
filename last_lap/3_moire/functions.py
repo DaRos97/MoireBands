@@ -28,8 +28,8 @@ def big_H(K_,lu,pars_monolayer,pars_interlayer,pars_moire):
     #
     for n in range(n_cells):
         Kn = K_ + G_M[0]*lu[n][0] + G_M[1]*lu[n][1]
-        H_up[n*22:(n+1)*22,n*22:(n+1)*22] = H_monolayer(Kn,pars_monolayer,'WSe2',pars_interlayer)   #interlayer -> d
-        H_down[n*22:(n+1)*22,n*22:(n+1)*22] = H_monolayer(Kn,pars_monolayer,'WS2',pars_interlayer)  #interlayer -> c
+        H_up[n*22:(n+1)*22,n*22:(n+1)*22] = H_monolayer(Kn,pars_monolayer,'WSe2',pars_interlayer)
+        H_down[n*22:(n+1)*22,n*22:(n+1)*22] = H_monolayer(Kn,pars_monolayer,'WS2',pars_interlayer)
         H_int[n*22:(n+1)*22,n*22:(n+1)*22] = H_interlayer(Kn,pars_interlayer)   #interlayer -> a and b
     #Moirè
     m = [[-1,1],[-1,0],[0,-1],[1,-1],[1,0],[0,1]]
@@ -52,7 +52,7 @@ def big_H(K_,lu,pars_monolayer,pars_interlayer,pars_moire):
     final_H[n_cells*22:,:n_cells*22] = H_int
     final_H[:n_cells*22,n_cells*22:] = np.conjugate(H_int.T)
     #Global offset due to interlayer
-    final_H += np.identity(2*n_cells*22)*pars_interlayer[-1]
+    final_H += np.identity(2*n_cells*22)*pars_interlayer[1][-1]
     return final_H
 
 def H_monolayer(K_p,pars_H,TMD,pars_interlayer):
@@ -149,17 +149,28 @@ def H_monolayer(K_p,pars_H,TMD,pars_interlayer):
     H += np.identity(22)*offset
     #Interlayer -> c
     if TMD == 'WS2':
-        H[8,8] += pars_interlayer[2]
-        H[8+11,8+11] += pars_interlayer[2]
-    elif TMD == 'WSe2':     #-> d-factor on p_x(odd) orbitals
-        H[3,3] += pars_interlayer[3]
-        H[3+11,3+11] += pars_interlayer[3]
+        H[8,8] += pars_interlayer[1][2]
+        H[8+11,8+11] += pars_interlayer[1][2]
     return H
 
-def H_interlayer(K_p,pars):
+def H_interlayer(k_,pars_interlayer):
     H = np.zeros((22,22))
-    H[8,8] = -pars[0] + pars[1]*np.linalg.norm(K_p)**2
-    H[8+11,8+11] = -pars[0] + pars[1]*np.linalg.norm(K_p)**2
+    if pars_interlayer[0]=='U1':
+        t_k = -pars_interlayer[1][0] + pars_interlayer[1][1]*np.linalg.norm(k_)**2
+    elif pars_interlayer[0]=='C6':
+        aa = dic_params_a_mono['WSe2']
+        t_k = -pars_interlayer[1][0] + pars_interlayer[1][1]*2*(np.cos(k_[0]*aa)+np.cos(k_[0]/2*aa)*np.cos(np.sqrt(3)/2*k_[1]*aa))
+    elif pars_interlayer[0]=='C3':
+        aa = dic_params_a_mono['WSe2']
+        delta = aa*np.array([np.array([1,0]),np.array([1/2,np.sqrt(3)/2]),np.array([-1/2,np.sqrt(3)/2])])
+        t_k = 0
+        for i in range(3):
+            t_k += pars_interlayer[1][1]*np.exp(1j*np.dot(k_,delta[i]))
+    elif pars_interlayer[0]=='no':
+        t_k = 0
+    ind_pze = 8
+    for i in range(2):
+        H[ind_pze+11*i,ind_pze+11*i] = t_k 
     return H
 
 def H_moire(g,pars_V):          #g is a integer from 0 to 5
@@ -476,7 +487,9 @@ def R_z(t):
     return R
 
 def get_pars(ind):
-    DFTs = [True,False]
+    DFTs = [False,True]
+    int_types = ['U1','C6','C3']
+    lin = len(int_types)
     pars_Vgs = [0.005,0.01,0.02,0.03]
     lVg = len(pars_Vgs)
     pars_Vks = [0.001,0.005,0.0077,0.01,0.015]
@@ -486,11 +499,12 @@ def get_pars(ind):
     phi_g = np.pi
     phi_k = -106*2*np.pi/360
     #
-    ind_DFT = ind//(lVg*lVk*laM)
-    ind_Vg = ind%(lVg*lVk*laM) // (lVk*laM)
-    ind_Vk = (ind%(lVg*lVk*laM) % (lVk*laM)) // laM
-    ind_aM = (ind%(lVg*lVk*laM) % (lVk*laM)) % laM
-    return (DFTs[ind_DFT], [pars_Vgs[ind_Vg],phi_g,pars_Vks[ind_Vk],phi_k], a_Moires[ind_aM])
+    ind_DFT = ind//(lin*lVg*lVk*laM)
+    ind_in = ind%(lin*lVg*lVk*laM) // (lVg*lVk*laM)
+    ind_Vg = ind%(lin*lVg*lVk*laM) % (lVg*lVk*laM) // (lVk*laM)
+    ind_Vk = (ind%(lin*lVg*lVk*laM) % (lVg*lVk*laM) % (lVk*laM)) // laM
+    ind_aM = (ind%(lin*lVg*lVk*laM) % (lVg*lVk*laM) % (lVk*laM)) % laM
+    return (DFTs[ind_DFT], int_types[ind_in], [pars_Vgs[ind_Vg],phi_g,pars_Vks[ind_Vk],phi_k], a_Moires[ind_aM])
 
 def get_list_fn(l):
     fn = ''
@@ -500,23 +514,27 @@ def get_list_fn(l):
             fn += '_'
     return fn
 
-def get_spread_fn(DFT,N,pars_V,p_f,a_M,pars_spread,machine):
+def get_spread_fn(DFT,N,pars_V,p_f,a_M,interlayer_type,pars_spread,machine):
     name_v = get_list_fn(pars_V)
     name_sp = get_list_fn(pars_spread[:2])
-    return get_home_dn(machine)+'results/data/spread_'+str(DFT)+'_'+pars_spread[-1]+'_'+name_sp+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'.npy'
+    txt_dft = 'DFT' if DFT else 'fit'
+    return get_home_dn(machine)+'results/data/spread_'+txt_dft+'_'+pars_spread[-1]+'_'+name_sp+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'_'+interlayer_type+'.npy'
 
-def get_energies_fn(DFT,N,pars_V,p_f,a_M,machine):
+def get_energies_fn(DFT,N,pars_V,p_f,a_M,interlayer_type,machine):
     name_v = get_list_fn(pars_V)
-    return get_home_dn(machine)+'results/data/energies_'+str(DFT)+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'.npy'
+    txt_dft = 'DFT' if DFT else 'fit'
+    return get_home_dn(machine)+'results/data/energies_'+txt_dft+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'_'+interlayer_type+'.npy'
 
-def get_weights_fn(DFT,N,pars_V,p_f,a_M,machine):
+def get_weights_fn(DFT,N,pars_V,p_f,a_M,interlayer_type,machine):
     name_v = get_list_fn(pars_V)
-    return get_home_dn(machine)+'results/data/weights_'+str(DFT)+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'.npy'
+    txt_dft = 'DFT' if DFT else 'fit'
+    return get_home_dn(machine)+'results/data/weights_'+txt_dft+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'_'+interlayer_type+'.npy'
 
-def get_fig_fn(DFT,N,pars_V,p_f,a_M,pars_spread,machine):
+def get_fig_fn(DFT,N,pars_V,p_f,a_M,interlayer_type,pars_spread,machine):
     name_v = get_list_fn(pars_V)
     name_sp = get_list_fn(pars_spread[:2])
-    return get_home_dn(machine)+'results/Figures/'+str(DFT)+'_'+pars_spread[-1]+'_'+name_sp+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'.png'
+    txt_dft = 'DFT' if DFT else 'fit'
+    return get_home_dn(machine)+'results/figures/'+txt_dft+'_'+pars_spread[-1]+'_'+name_sp+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'_'+interlayer_type+'.png'
 
 def get_S11_fn(machine):
     return get_home_dn(machine)+'inputs/S11_KGK_WSe2onWS2_v1.png'
@@ -525,9 +543,10 @@ def get_pars_mono_fn(TMD,machine,dft=False):
     get_dft = '_DFT' if dft else ''
     return get_home_dn(machine)+'inputs/pars_'+TMD+get_dft+'.npy'
 
-def get_pars_interlayer_fn(machine,dft=False):
-    get_dft = '_dft' if dft else ''
-    return get_home_dn(machine)+'inputs/pars_interlayer'+get_dft+'.npy'
+def get_pars_interlayer_fn(interlayer_type,DFT,machine):
+    txt = 'DFT' if DFT else 'fit'
+    int_fn = txt+'_'+interlayer_type+'_pars_interlayer.npy'
+    return get_home_dn(machine)+'inputs/'+int_fn
 
 def get_home_dn(machine):
     if machine == 'loc':
