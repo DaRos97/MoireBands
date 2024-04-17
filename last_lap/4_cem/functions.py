@@ -279,8 +279,8 @@ def find_HSO(dic_params_H):
     """Compute the SO Hamiltonian. TO CHECK.
 
     """
-    l_M = dic_params_H[40]
-    l_X = dic_params_H[41]
+    l_M = dic_params_H[-2]
+    l_X = dic_params_H[-1]
     ####
     Mee_uu = np.zeros((6,6),dtype=complex)
     Mee_uu[1,2] = 1j*l_M

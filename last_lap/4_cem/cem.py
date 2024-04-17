@@ -18,7 +18,9 @@ Here we compute CEMs around G and around K.
 #Variable parameters
 center, DFT, pars_V, a_Moire = fs.get_pars(int(sys.argv[1]))
 title = "Center: "+center+", DFT: "+str(DFT)+", pars_V: "+fs.get_list_fn(pars_V)+", a_Moire: "+str(a_Moire)
-print(title)
+if 1 and machine=='loc':
+    print(title)
+    exit()
 #Moire parameters
 N = 4                               #####################
 n_cells = int(1+3*N*(N+1))
@@ -35,7 +37,7 @@ for TMD in fs.materials:
     hopping[TMD] = fs.find_t(temp)
     epsilon[TMD] = fs.find_e(temp)
     HSO[TMD] = fs.find_HSO(temp)
-    offset[TMD] = temp[-1]
+    offset[TMD] = temp[-3]
 pars_monolayer = (hopping,epsilon,HSO,offset)
 #Interlayer parameters
 pars_interlayer = np.load(fs.get_pars_interlayer_fn(machine,DFT))
@@ -114,8 +116,8 @@ for en in e_cuts:
         plt.figure(figsize=(18,10))
         plt.imshow(en_cut,cmap='gray')
         plt.title("En: "+"{:.4f}".format(max_E-en)+", "+title)
-        Kxm = -range_K if center == 'G' else 4/3*np.pi/fs.dic_params_a_mono['WSe2']-range_k
-        KxM = range_K if center == 'G' else 4/3*np.pi/fs.dic_params_a_mono['WSe2']+range_k
+        Kxm = -range_K if center == 'G' else 4/3*np.pi/fs.dic_params_a_mono['WSe2']-range_K
+        KxM = range_K if center == 'G' else 4/3*np.pi/fs.dic_params_a_mono['WSe2']+range_K
         Kxc = 0 if center == 'G' else 4/3*np.pi/fs.dic_params_a_mono['WSe2']
         plt.xticks([0,k_pts//2,k_pts],["{:.2f}".format(Kxm),"{:.2f}".format(Kxc),"{:.2f}".format(KxM)])
         plt.yticks([0,k_pts//2,k_pts],["{:.2f}".format(range_K),"{:.2f}".format(0),"{:.2f}".format(-range_K)])
