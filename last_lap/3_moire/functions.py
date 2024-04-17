@@ -154,7 +154,7 @@ def H_monolayer(K_p,pars_H,TMD,pars_interlayer):
     return H
 
 def H_interlayer(k_,pars_interlayer):
-    H = np.zeros((22,22))
+    H = np.zeros((22,22),dtype=complex)
     if pars_interlayer[0]=='U1':
         t_k = -pars_interlayer[1][0] + pars_interlayer[1][1]*np.linalg.norm(k_)**2
     elif pars_interlayer[0]=='C6':
@@ -293,8 +293,8 @@ def find_HSO(dic_params_H):
     """Compute the SO Hamiltonian. TO CHECK.
 
     """
-    l_M = dic_params_H[40]
-    l_X = dic_params_H[41]
+    l_M = dic_params_H[-2]
+    l_X = dic_params_H[-1]
     ####
     Mee_uu = np.zeros((6,6),dtype=complex)
     Mee_uu[1,2] = 1j*l_M
@@ -403,6 +403,39 @@ def extract_png(fig_fn,cut_bounds):
     else:
         return pic_0[p_ei:p_ef,p_ki:p_kf]
 
+def extract_zoom_png(fig_fn,cut_bounds):
+    pic_0 = np.array(np.asarray(Image.open(fig_fn)))
+    #We go from -1 to 1 in image K because the picture is stupid
+    Ki = -1.4
+    Kf = 1.4
+    Ei = -0.6
+    Ef = -1.8
+    #Empirically extracted for S11 zoom to eliminate the axes
+    p_ki = 416
+    p_kf = pic_0.shape[1]-172
+    #
+    p_ei = 86
+    p_ef = pic_0.shape[0]-276
+    if len(cut_bounds) == 4:#Image cut
+        ki,kf,ei,ef = cut_bounds
+        pc_lenk = int((p_kf-p_ki)/(Kf-Ki)*(kf-ki)) #number of pixels in cut image
+        pc_ki = int((p_ki+p_kf)//2-pc_lenk//2)
+        pc_kf = int((p_ki+p_kf)//2+pc_lenk//2)
+        #
+        pc_lene = int((p_ef-p_ei)/(Ei-Ef)*(ei-ef))
+        pc_ei = p_ei + int((p_ef-p_ei)/(Ei-Ef)*(Ei-ei))
+        pc_ef = p_ei + int((p_ef-p_ei)/(Ei-Ef)*(Ei-ef))
+        if 0:
+            import matplotlib.pyplot as plt
+            fig,ax = plt.subplots(figsize=(15,8))
+            ax.set_axis_off()
+            ax.imshow(pic_0[pc_ei:pc_ef,pc_ki:pc_kf])
+            plt.show()
+            exit()
+        return pic_0[pc_ei:pc_ef,pc_ki:pc_kf]
+    else:
+        return pic_0[p_ei:p_ef,p_ki:p_kf]
+
 def lu_table(N):
     """Computes the look-up table for the index of the mini-BZ in terms of the 
     reciprocal lattice vector indexes
@@ -487,24 +520,22 @@ def R_z(t):
     return R
 
 def get_pars(ind):
-    DFTs = [False,True]
+    DFT = False
     int_types = ['U1','C6','C3']
-    lin = len(int_types)
-    pars_Vgs = [0.005,0.01,0.02,0.03]
+    pars_Vgs = [0.02,0.03,0.04]#0.005,0.01,0.02,0.03]
     lVg = len(pars_Vgs)
-    pars_Vks = [0.001,0.005,0.0077,0.01,0.015]
+    pars_Vks = [0.005,0.0077,0.01,0.015,0.02]
     lVk = len(pars_Vks)
-    a_Moires = [79.8,70,60,50]
-    laM = len(a_Moires)
+    a_Moire = 79.8
     phi_g = np.pi
-    phi_k = -106*2*np.pi/360
+    phi_ks = [0,-106*np.pi/180,np.pi]  #about -1.85 rad
+    lpk = len(phi_ks)
     #
-    ind_DFT = ind//(lin*lVg*lVk*laM)
-    ind_in = ind%(lin*lVg*lVk*laM) // (lVg*lVk*laM)
-    ind_Vg = ind%(lin*lVg*lVk*laM) % (lVg*lVk*laM) // (lVk*laM)
-    ind_Vk = (ind%(lin*lVg*lVk*laM) % (lVg*lVk*laM) % (lVk*laM)) // laM
-    ind_aM = (ind%(lin*lVg*lVk*laM) % (lVg*lVk*laM) % (lVk*laM)) % laM
-    return (DFTs[ind_DFT], int_types[ind_in], [pars_Vgs[ind_Vg],phi_g,pars_Vks[ind_Vk],phi_k], a_Moires[ind_aM])
+    ind_in = ind//(lVg*lVk*lpk)
+    ind_Vg = ind%(lVg*lVk*lpk) // (lVk*lpk)
+    ind_Vk = ind%(lVg*lVk*lpk) % (lVk*lpk) // lpk
+    ind_pk = ind%(lVg*lVk*lpk) % (lVk*lpk) % lpk
+    return (DFT, int_types[ind_in], [pars_Vgs[ind_Vg],phi_g,pars_Vks[ind_Vk],phi_ks[ind_pk]], a_Moire)
 
 def get_list_fn(l):
     fn = ''
@@ -539,8 +570,11 @@ def get_fig_fn(DFT,N,pars_V,p_f,a_M,interlayer_type,pars_spread,machine):
 def get_S11_fn(machine):
     return get_home_dn(machine)+'inputs/S11_KGK_WSe2onWS2_v1.png'
 
+def get_S11zoom_fn(machine):
+    return get_home_dn(machine)+'inputs/S11_KGK_WSe2onWS2_zoom1.png'
+
 def get_pars_mono_fn(TMD,machine,dft=False):
-    get_dft = '_DFT' if dft else ''
+    get_dft = '_DFT' if dft else '_fit'
     return get_home_dn(machine)+'inputs/pars_'+TMD+get_dft+'.npy'
 
 def get_pars_interlayer_fn(interlayer_type,DFT,machine):

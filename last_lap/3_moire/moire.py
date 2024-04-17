@@ -17,7 +17,8 @@ Here we compute the full KGK image with Moire replicas.
 """
 
 #Moire parameters
-N = 0 if len(sys.argv)<3 else int(sys.argv[2])                               #####################
+N = 4 if len(sys.argv)<3 else int(sys.argv[2])                               #####################
+pixel_factor = 5                                        ###################################
 n_cells = int(1+3*N*(N+1))
 """
 Moirè potential of bilayer
@@ -25,11 +26,11 @@ Different at Gamma (d_z^2 orbital) -> first two parameters, and K (d_xy orbitals
 Gamma point values from paper "G valley TMD moirè bands" (first in eV, second in radiants)
 K point values from Louk's paper (first in eV, second in radiants)
 """
-DFT, interlayer_type, pars_V, a_Moire = fs.get_pars(int(sys.argv[1]))
+DFT, interlayer_type, pars_V, a_Moire = fs.get_pars(int(sys.argv[1]))  #228 for physiscal pars
 txt_dft = 'DFT' if DFT else 'fit'
 title = "tb pars: "+txt_dft+', interlayer: '+interlayer_type+", pars_V: "+fs.get_list_fn(pars_V)+", a_Moire: "+str(a_Moire)
 print(title)
-if 1 and machine=='loc':
+if 0 and machine=='loc':
     exit()
 #
 G_M = fs.get_Moire(a_Moire)
@@ -49,21 +50,30 @@ for TMD in fs.materials:
     hopping[TMD] = fs.find_t(temp)
     epsilon[TMD] = fs.find_e(temp)
     HSO[TMD] = fs.find_HSO(temp)
-    offset[TMD] = temp[-1]
+    offset[TMD] = temp[-3]
 pars_monolayer = (hopping,epsilon,HSO,offset)
 #Interlayer parameters
 pars_interlayer = [interlayer_type,np.load(fs.get_pars_interlayer_fn(interlayer_type,DFT,machine))]
-#Extract S11 image
+#if 0:   #Extract S11 image
 S11_fn = fs.get_S11_fn(machine)
 K = 4/3*np.pi/fs.dic_params_a_mono['WSe2']
 EM = -0.5
 Em = -2.5
-bounds = (K,EM,Em)
-exp_pic = fs.extract_png(S11_fn,[-K,K,EM,Em])
-pixel_factor = 5            ###################################
+bounds_original = (K,EM,Em)
+exp_pic_original = fs.extract_png(S11_fn,[-K,K,EM,Em])
+if 0:  #use zoomed S11
+    S11_fn = fs.get_S11zoom_fn(machine)
+    K = 4/3*np.pi/fs.dic_params_a_mono['WSe2']
+    EM = -0.7
+    Em = -1.8
+    bounds = (K,EM,Em)
+    exp_pic = fs.extract_zoom_png(S11_fn,[-K,K,EM,Em])
+else:
+    bounds = bounds_original
+    exp_pic = exp_pic_original
 #BZ cut parameters
 cut = 'KGK'
-k_pts = exp_pic.shape[1]//pixel_factor
+k_pts = exp_pic_original.shape[1]//pixel_factor
 K_list = fs.get_K(cut,k_pts)
 
 if 0 and machine=='loc':    #Compute no-moire image superimposed to experiment
@@ -78,7 +88,6 @@ if 0 and machine=='loc':    #Compute no-moire image superimposed to experiment
     #
     plt.figure(figsize=(20,15))
     px,py,z = exp_pic.shape
-    print(px,py)
     for e in range(44):
         plt.plot((K_list[:,0]-K_list[0,0])/(K_list[-1,0]-K_list[0,0])*py,(energies[:,e]-Em)/(EM-Em)*px,color='r')
     plt.ylim(0,px)
@@ -92,7 +101,6 @@ wg_fn = fs.get_weights_fn(DFT,N,pars_V,pixel_factor,a_Moire,interlayer_type,mach
 ind_TVB = n_cells*28    #top valence band
 ind_LVB = n_cells*22    #lowest considered VB
 if not Path(en_fn).is_file() or not Path(wg_fn).is_file():
-    from time import time as t
     print("Computing en,wg...")
     energies = np.zeros((k_pts,ind_TVB-ind_LVB))
     weights = np.zeros((k_pts,ind_TVB-ind_LVB))
@@ -103,11 +111,6 @@ if not Path(en_fn).is_file() or not Path(wg_fn).is_file():
         energies[i,:],evecs = eigh(H_tot,subset_by_index=[ind_LVB,ind_TVB-1])           #Diagonalize to get eigenvalues and eigenvectors
         ab = np.absolute(evecs)**2
         weights[i,:] = np.sum(ab[:22,:ind_TVB-ind_LVB],axis=0) + np.sum(ab[22*n_cells:22*n_cells+22,:ind_TVB-ind_LVB],axis=0)
-        #for e in range(ind_TVB-ind_LVB):
-        #    weights2[i,e] = ab[:22,e].sum() + ab[22*n_cells:22*n_cells+22,e].sum()
-        #    for l in range(2):
-        #        for d in range(22):
-        #            weights[i,e] += np.abs(evecs[d+22*n_cells*l,e])**2
     if save:
         np.save(en_fn,energies)
         np.save(wg_fn,weights)
@@ -115,20 +118,19 @@ else:
     energies = np.load(en_fn)
     weights = np.load(wg_fn)
 
-if 1: #plot some bands
-    print(np.absolute(weights3-weights2).sum())
-    exit()
+if 0 and machine=='loc': #plot some bands
     plt.figure(figsize=(20,15))
     px,py,z = exp_pic.shape
-    print(px,py)
     x_line = (K_list[:,0]-K_list[0,0])/(K_list[-1,0]-K_list[0,0])*py
     for e in range(ind_TVB-ind_LVB):
         e_line = (energies[:,e]-Em)/(EM-Em)*px
         plt.plot(x_line,e_line,color='r',zorder=1,linewidth=0.5)
-        plt.scatter(x_line,e_line,s=weights[:,e]*10,color='g',marker='o',zorder=3)
-        plt.scatter(x_line,e_line,s=weights2[:,e]*10,color='y',marker='o',zorder=4)
+        plt.scatter(x_line,e_line,s=weights[:,e]*1000,lw=0,color='g',marker='o',zorder=3)
     plt.ylim(0,px)
     plt.imshow(exp_pic[::-1,:,:],zorder=-1)
+    plt.xticks([0,exp_pic.shape[1]//2,exp_pic.shape[1]],[r"$K'$",r'$\Gamma$',r'$K$'],size=20)
+    plt.yticks([0,exp_pic.shape[0]//2,exp_pic.shape[0]],["{:.2f}".format(Em),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(EM)])
+    plt.ylabel("$E\;(eV)$",size=15)
     plt.show()
     exit()
 
@@ -156,19 +158,21 @@ if not Path(spread_fn).is_file():
 else:
     norm_spread = np.load(spread_fn)
 
-if 1:
-    import matplotlib.pyplot as plt
-    plt.figure(figsize=(18,10))
-    plt.imshow(norm_spread,cmap='gray')
-    plt.title(title)
-    plt.xticks([0,norm_spread.shape[1]//2,norm_spread.shape[1]],["{:.2f}".format(-K),'0',"{:.2f}".format(K)])
-    plt.yticks([0,norm_spread.shape[0]//2,norm_spread.shape[0]],["{:.2f}".format(EM),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(Em)])
-    plt.xlabel("$A^{-1}$",size=15)
-    plt.ylabel("$E\;(eV)$",size=15)
-    if machine == 'loc':
-        plt.show()
-    else:
-        plt.savefig(fs.get_fig_fn(DFT,N,pars_V,pixel_factor,a_Moire,interlayer_type,pars_spread,machine))
+#Figure
+import matplotlib.pyplot as plt
+fig,ax = plt.subplots(figsize=(14,9))
+#cmaps: gray, viridis,
+norm_spread /= np.max(norm_spread)
+
+map_ = 'gray' if len(sys.argv)<4 else sys.argv[3]
+ax.imshow(norm_spread,cmap=map_)
+ax.set_xticks([0,norm_spread.shape[1]//2,norm_spread.shape[1]],[r"$K'$",r'$\Gamma$',r'$K$'],size=20)
+ax.set_yticks([0,norm_spread.shape[0]//2,norm_spread.shape[0]],["{:.2f}".format(Em),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(EM)])
+ax.set_ylabel("$E\;(eV)$",size=15)
+if machine == 'loc':
+    plt.show()
+else:
+    plt.savefig(fs.get_fig_fn(DFT,N,pars_V,pixel_factor,a_Moire,interlayer_type,pars_spread,machine))
 
 
 
