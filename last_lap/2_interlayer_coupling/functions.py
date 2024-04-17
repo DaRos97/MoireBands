@@ -264,8 +264,8 @@ def find_HSO(dic_params_H):
     """Compute the SO Hamiltonian. TO CHECK.
 
     """
-    l_M = dic_params_H[40]
-    l_X = dic_params_H[41]
+    l_M = dic_params_H[-2]
+    l_X = dic_params_H[-1]
     ####
     Mee_uu = np.zeros((6,6),dtype=complex)
     Mee_uu[1,2] = 1j*l_M
@@ -364,17 +364,19 @@ def plot_bands_on_exp(energies,pic,K_list,bounds,title=''):
     plt.imshow(pic)
     for i in range(22,28):
         plt.plot((K_list[:,0]+K)/2/K*pic.shape[1],(EM-energies[:,i])/(EM-Em)*pic.shape[0],'r-')
-    plt.xticks([0,pic.shape[1]//2,pic.shape[1]],["{:.2f}".format(-K),'0',"{:.2f}".format(K)])
+#    plt.xticks([0,pic.shape[1]//2,pic.shape[1]],["{:.2f}".format(-K),'0',"{:.2f}".format(K)])
+    plt.xticks([0,pic.shape[1]//2,pic.shape[1]],[r"$K'$",r'$\Gamma$',r'$K$'],size=20)
     plt.yticks([0,pic.shape[0]//2,pic.shape[0]],["{:.2f}".format(EM),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(Em)])
-    plt.xlabel("$A^{-1}$",size=15)
-    plt.ylabel("$E\;(eV)$",size=15)
+#    plt.xlabel("$A^{-1}$",size=15)
+    plt.ylabel("$E\;(eV)$",size=20)
     plt.title(title,size=20)
     plt.ylim(pic.shape[0],0)
+#    plt.show()
     return plt.gcf()
 #    plt.show()
 
 def get_pars_fn(TMD,machine,dft=False):
-    get_dft = '_DFT' if dft else ''
+    get_dft = '_DFT' if dft else '_fit'
     return get_home_dn(machine)+'inputs/pars_'+TMD+get_dft+'.npy'
 
 def get_S11_fn(machine):

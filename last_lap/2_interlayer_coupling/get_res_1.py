@@ -17,19 +17,26 @@ for TMD in ['WSe2','WS2']:
     np.save(fs.get_home_dn(machine)+'inputs/pars_'+TMD+'_DFT.npy',pars)
 
 #Minimization values
-vals = [('WSe2',0.5,['KGK','KMKp']),('WS2',0.3,['KGK','KMKp'])]
+vals = [('WSe2',0.9,True),
+        ('WS2',0.9,True)
+        ]
 for val in vals:
-    TMD, range_par, cuts = val
-    cuts_fn = ''
-    for i in range(len(cuts)):
-        cuts_fn += cuts[i]
-        if i != len(cuts)-1:
-            cuts_fn += '_'
+    TMD, range_par, fixed_SO = val
     pars = [0]
     for file in os.listdir('/home/dario/Desktop/git/MoireBands/last_lap/1_tight_binding/results/temp/'):
-        if file[5:5+len(TMD)] == TMD and file[6+len(TMD):10+len(TMD)]=="{:.2f}".format(range_par).replace('.',',') and file[11+len(TMD):11+len(TMD)+len(cuts_fn)]==cuts_fn:
+        terms = file.split('_')
+        if terms[1] == TMD and terms[2]=="{:.2f}".format(range_par).replace('.',',') and str(fixed_SO)==terms[3]:
             pars = np.load('/home/dario/Desktop/git/MoireBands/last_lap/1_tight_binding/results/temp/'+file)
     if len(pars)==1:
-        print("Parameters not found for TMD: ",TMD,", range_par: ",range_par," and cuts: ",cuts_fn)
+        print("Parameters not found for TMD: ",TMD,", range_par: ",range_par," and fixed SO: ",str(fixed_SO))
         continue
-    np.save(fs.get_home_dn(machine)+'inputs/pars_'+TMD+'.npy',pars)
+
+    if fixed_SO:
+        SO_values = ps.initial_pt[TMD][-2:]
+        full_pars = list(pars)
+        for i in range(2):
+            full_pars.append(SO_values[i])
+    else:
+        full_pars = pars
+
+    np.save(fs.get_home_dn(machine)+'inputs/pars_'+TMD+'_fit.npy',full_pars)
