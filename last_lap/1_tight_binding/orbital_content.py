@@ -19,26 +19,32 @@ with open(orbital_fn, 'w') as f:
     with redirect_stdout(f):
         print(" Orbital content of minimization solutions: \n\n##########################################\n")
         for ind in range(40):
-            TMD,considered_cuts,range_par = fs.get_parameters(ind)
-            cuts_fn = fs.get_cuts_fn(considered_cuts)
-            print("TMD: ",TMD,", in cuts: ",cuts_fn," and range: ","{:.2f}".format(range_par))
+            TMD,fixed_SO,range_par = fs.get_parameters(ind)
+            print("Computing TMD: ",TMD,", fixed SO: ",fixed_SO," and range: ",range_par)
 
             pars = [0,]
             for file in os.listdir(fs.get_home_dn(machine)+'results/'+final_fit_dn):
                 terms = file.split('_')
-                if terms[1] == TMD and terms[2]=="{:.2f}".format(range_par).replace('.',',') and len(terms)-4==len(considered_cuts):
+                if terms[1] == TMD and terms[2]=="{:.2f}".format(range_par).replace('.',',') and str(fixed_SO)==terms[3]:
                     pars = np.load(fs.get_home_dn(machine)+'results/'+final_fit_dn+file)
                     chi2 = terms[-1][:-4]
                     break
             if len(pars)==1:
-                print("Parameters not found for TMD: ",TMD,", range_par: ",range_par," and cuts: ",cuts_fn,'\n')
+                print("Parameters not found for TMD: ",TMD,", range_par: ",range_par," and SO fixed: ",fixed_SO,'\n')
                 continue
             
             a_mono = ps.dic_params_a_mono[TMD]
             k_pts = [np.array([0,0]),np.array([4/3*np.pi/a_mono,0])]
+            if fixed_SO:
+                SO_values = ps.initial_pt[TMD][-2:]
+                full_pars = list(pars)
+                for i in range(2):
+                    full_pars.append(SO_values[i])
+            else:
+                full_pars = pars
             
             for k in k_pts:
-                H = fs.H_monolayer(k,fs.find_t(pars),fs.find_e(pars),fs.find_HSO(pars),a_mono,pars[-1])
+                H = fs.H_monolayer(k,fs.find_t(full_pars),fs.find_e(full_pars),fs.find_HSO(full_pars),a_mono,pars[-3])
                 E,evec = np.linalg.eigh(H)
                 if (k == np.array([0,0])).all():
                     dz2 = np.sqrt(np.linalg.norm(evec[5,13])**2+np.linalg.norm(evec[16,13])**2)

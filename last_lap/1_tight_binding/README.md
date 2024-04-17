@@ -28,13 +28,20 @@ Also here can decide which result to use for the table.
 Computes the relevant orbital content close to Gamma and K.
 
 # Computed
+##Maf
+
+# Computing
+##Maf
+    - Range 0.1 to 1, WSe2 and WS2, SO fixed and not.
+
+
+
+
+# Computed
 ##Ygg:
 ##Bao
     0 - Computing same just for WS2 and just KGK+KMKp after adjusting offset
     - Range 0.1 to 1, WSe2 and WS2, KGK+KMKp and KGK with adjusted offset.
-
-# Computing
-##Maf
 
 # Local
     0 - old results

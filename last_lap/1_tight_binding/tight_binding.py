@@ -10,7 +10,7 @@ machine = fs.get_machine(os.getcwd())
 TMD,fixed_SO,range_par = fs.get_parameters(int(sys.argv[1]))
 
 print("Computing TMD: ",TMD,", fixed SO: ",fixed_SO," and range: ",range_par)
-
+exit()
 #Experimental data of monolayer 
 #For each material, 2 TVB (because of SO) on the 2 cuts
 exp_data = fs.get_exp_data(TMD,machine)

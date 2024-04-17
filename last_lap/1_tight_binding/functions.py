@@ -427,7 +427,7 @@ def get_home_dn(machine):
     elif machine == 'hpc':
         return '/home/users/r/rossid/1_tight_binding/'
     elif machine == 'maf':
-        pass
+        return '/users/rossid/1_tight_binding/'
 
 def get_machine(cwd):
     """Selects the machine the code is running on by looking at the working directory. Supports local, hpc (baobab or yggdrasil) and mafalda.
@@ -456,17 +456,10 @@ def get_parameters(ind):
     return (TMDs[ind_tmd], fixed_SOs[ind_SO], range_pars[ind_rng])
 
 def get_parameters_plot(ind):
-    ind_cut = ind // len(range_pars)
+    ind_SO = ind // len(range_pars)
     ind_rng = ind % len(range_pars)
-    return (cutss[ind_cut], range_pars[ind_rng])
+    return (fixed_SOs[ind_SO], range_pars[ind_rng])
 
-def get_cuts_fn(cuts):
-    cuts_fn = ''
-    for i in range(len(cuts)):
-        cuts_fn += cuts[i]
-        if i != len(cuts)-1:
-            cuts_fn += '_'
-    return cuts_fn
 
 
 
