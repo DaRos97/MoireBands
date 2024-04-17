@@ -7,7 +7,7 @@ import os,sys
 machine = 'loc'
 final_fit_dn = 'temp/' #or ''
 
-for ind in range(0,40):
+for ind in range(0,20):
     fixed_SO,range_par = fs.get_parameters_plot(ind)
 
     for TMD in fs.TMDs:
@@ -33,7 +33,7 @@ for ind in range(0,40):
         tb_en = fs.energy(full_pars,exp_data,TMD)
         #
         pars_DFT = ps.initial_pt[TMD]
-        DFT_en = fs.energy(pars_DFT,exp_data,cuts_all,TMD)
+        DFT_en = fs.energy(pars_DFT,exp_data,TMD)
         title = "TMD: "+TMD+", range_par: "+"{:.2f}".format(range_par)+" on fixed SO: "+str(fixed_SO)+'. Chi2='+chi2
         #
         fig = fs.plot_together(exp_data,DFT_en,tb_en,title)

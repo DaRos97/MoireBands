@@ -404,7 +404,7 @@ def get_exp_fn(TMD,cut,band,machine):
     return get_exp_dn(machine)+cut+'_'+TMD+'_band'+str(band)+'.txt'
 
 def get_fig_fn(TMD,range_par,fixed_SO,machine):
-    return get_fig_dn(machine)+TMD+'_'+'_'+"{:.2f}".format(range_par).replace('.',',')+str(fixed_SO)+'.png'
+    return get_fig_dn(machine)+TMD+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+str(fixed_SO)+'.png'
 
 def get_fit_fn(range_par,TMD,res,fixed_SO,machine):
     return get_res_dn(machine)+'pars_'+TMD+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+str(fixed_SO)+'_'+"{:.4f}".format(res)+'.npy'
