@@ -92,14 +92,14 @@ initial_pt = {
             #'t6_118':          39 
             -0.2736,
 
+            #'offset
+            -1.34,
+
             #SO
             #'W':
             0.2874,
             #'S'
             0.0556,
-
-            #'offset
-            -1.34,
 
                 ],
         'WSe2': [
@@ -187,14 +187,14 @@ initial_pt = {
             #'t6_118':   
             -0.2424,
 
+            #'offset
+            -0.73,
+
             #SO
             #'W':
             0.2874,
             #'Se'
             0.2470,
-
-            #'offset
-            -0.73,
                 ],
         }
 
@@ -240,9 +240,9 @@ list_names_all = [
             't6_116',   
             't6_98',   
             't6_118',          
+            'offset'
             'L_W',
             'L_S',
-            'offset'
             ]
 
 #Spin-Orbit Hamiltonian

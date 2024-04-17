@@ -1,3 +1,9 @@
+# Content
+We fit the monolayer bands with the 11 band model, starting from the DFT values. 
+The data at KGK and KMK is adjusted (offset in one of the 2) to make the bands coincide at K.
+We change: material, with/without SO in minimization and the range of the parameters.
+The offset is chosen initially by eye comparison and then has a larger window of change.
+
 #Compute files
 - tight_binding.py
 - functions.py
@@ -28,6 +34,7 @@ Computes the relevant orbital content close to Gamma and K.
     - Range 0.1 to 1, WSe2 and WS2, KGK+KMKp and KGK with adjusted offset.
 
 # Computing
+##Maf
 
 # Local
     0 - old results

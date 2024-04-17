@@ -13,25 +13,36 @@ J_MX_plus = ((3,1), (5,1), (4,2), (10,6), (9,7), (11,7), (10,8))
 J_MX_minus = ((4,1), (3,2), (5,2), (9,6), (11,6), (10,7), (9,8), (11,8))
 
 TMDs = ['WSe2','WS2']
-cutss = [['KGK','KMKp'],['KGK',]]
+fixed_SOs = [True,False]
+cuts = ['KGK','KMKp']
 range_pars = np.linspace(0.1,1,10,endpoint=True)
 
 def chi2(pars,*args):
     """Compute square difference of bands with exp data.
 
     """
-    exp_data, TMD, machine, range_par, cuts = args
-    tb_en = energy(pars,exp_data,cuts,TMD)
+    exp_data, TMD, machine, range_par, fixed_SO, SO_pars = args
+    if fixed_SO:
+        full_pars = list(pars)
+        for i in range(2):
+            full_pars.append(SO_pars[i])
+    else:
+        full_pars = list(pars)
+    tb_en = energy(full_pars,exp_data,TMD)
     res = 0
-    for c in range(len(cuts)):        ###############
+    for c in range(2):        ###############
         for b in range(2):
             args = np.argwhere(np.isfinite(exp_data[c][b][:,1]))    #select only non-nan values
             res += np.sum(np.absolute(tb_en[c][b,args]-exp_data[c][b][args,1])**2)
-#    plot_together(exp_data,tb_en,tb_en)
+    if 1 and machine == 'loc':
+        f = plot_together(exp_data,tb_en,tb_en)
+        plt.show()
     if res < ps.min_chi2:   #remove old temp and add new one
-        os.system('rm '+get_temp_fit_fn(TMD,ps.min_chi2,range_par,cuts,machine))
+        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,range_par,fixed_SO,machine)
+        os.system('rm '+temp_fn)
         ps.min_chi2 = res
-        np.save(get_temp_fit_fn(TMD,res,range_par,cuts,machine),pars)
+        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,range_par,fixed_SO,machine)
+        np.save(temp_fn,pars)
     return res
 
 def plot_together(exp_data,dft_en,tb_en,title=''):
@@ -60,10 +71,9 @@ def plot_together(exp_data,dft_en,tb_en,title=''):
         plt.ylabel("E(eV)",size=s_)
     plt.suptitle(title,size=s_)
     return plt.gcf()
-#    plt.show()
 
-def energy(parameters,data,cuts,TMD):
-    """Compute energy along the two cuts of 2 TVB for all considered k.
+def energy(parameters,data,TMD):
+    """Compute energy along the two cuts of 2 TopValenceBand for all considered k.
 
     """
     hopping = find_t(parameters)
@@ -71,8 +81,8 @@ def energy(parameters,data,cuts,TMD):
     HSO = find_HSO(parameters)
     
     cut_energies = []
-    offset = parameters[-1]
-    for c in range(len(cuts)):
+    offset = parameters[-3]
+    for c in range(2):
         kpts = data[c][0].shape[0]
         ens = np.zeros((2,kpts))
         for i in range(kpts):
@@ -175,14 +185,14 @@ def H_monolayer(K_p,hopping,epsilon,HSO,a_mono,offset):
     H += np.identity(22)*offset
     return H
 
-def get_exp_data(TMD,cuts,machine):
+def get_exp_data(TMD,machine):
     """For given material, takes the two cuts and the two bands and returns the lists of energy and momentum for the 2 top valence bands. 
     There are some NANs.
 
     """
     data = []
     offset_exp = {'WSe2':{'KGK':0,'KMKp':-0.04}, 'WS2':{'KGK':0,'KMKp':-0.003}} #To align the two cuts
-    for cut in cuts:
+    for cut in ['KGK','KMKp']:
         data.append([])
         for band in range(1,3):
             data_fn = get_ext_data_fn(TMD,cut,band,machine)
@@ -323,8 +333,8 @@ def find_HSO(dic_params_H):
     """Compute the SO Hamiltonian. TO CHECK.
 
     """
-    l_M = dic_params_H[40]
-    l_X = dic_params_H[41]
+    l_M = dic_params_H[-2]
+    l_X = dic_params_H[-1]
     ####
     Mee_uu = np.zeros((6,6),dtype=complex)
     Mee_uu[1,2] = 1j*l_M
@@ -393,17 +403,14 @@ def get_ext_data_fn(TMD,cut,band,machine):
 def get_exp_fn(TMD,cut,band,machine):
     return get_exp_dn(machine)+cut+'_'+TMD+'_band'+str(band)+'.txt'
 
-def get_fig_fn(TMD,cuts,range_par,machine):
-    cuts_fn = get_cuts_fn(cuts)
-    return get_fig_dn(machine)+TMD+'_'+cuts_fn+'_'+"{:.2f}".format(range_par).replace('.',',')+'.png'
+def get_fig_fn(TMD,range_par,fixed_SO,machine):
+    return get_fig_dn(machine)+TMD+'_'+'_'+"{:.2f}".format(range_par).replace('.',',')+str(fixed_SO)+'.png'
 
-def get_fit_fn(range_par,TMD,res,cuts,machine):
-    cuts_fn = get_cuts_fn(cuts)
-    return get_res_dn(machine)+'pars_'+TMD+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+cuts_fn+'_'+"{:.4f}".format(res)+'.npy'
+def get_fit_fn(range_par,TMD,res,fixed_SO,machine):
+    return get_res_dn(machine)+'pars_'+TMD+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+str(fixed_SO)+'_'+"{:.4f}".format(res)+'.npy'
 
-def get_temp_fit_fn(TMD,res,range_par,cuts,machine):
-    cuts_fn = get_cuts_fn(cuts)
-    return get_res_dn(machine)+'temp/pars_'+TMD+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+cuts_fn+'_'+"{:.4f}".format(res)+'.npy'
+def get_temp_fit_fn(TMD,res,range_par,fixed_SO,machine):
+    return get_res_dn(machine)+'temp/pars_'+TMD+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+str(fixed_SO)+'_'+"{:.4f}".format(res)+'.npy'
 
 def get_fig_dn(machine):
     return get_res_dn(machine)+'figures/'
@@ -443,10 +450,10 @@ def get_machine(cwd):
         return 'maf'
 
 def get_parameters(ind):
-    ind_tmd = ind//(len(cutss)*len(range_pars))
-    ind_cut = ind%(len(cutss)*len(range_pars)) // len(range_pars)
-    ind_rng = ind%(len(cutss)*len(range_pars)) % len(range_pars)
-    return (TMDs[ind_tmd], cutss[ind_cut], range_pars[ind_rng])
+    ind_tmd = ind//(len(fixed_SOs)*len(range_pars))
+    ind_SO = ind%(len(fixed_SOs)*len(range_pars)) // len(range_pars)
+    ind_rng = ind%(len(fixed_SOs)*len(range_pars)) % len(range_pars)
+    return (TMDs[ind_tmd], fixed_SOs[ind_SO], range_pars[ind_rng])
 
 def get_parameters_plot(ind):
     ind_cut = ind // len(range_pars)
