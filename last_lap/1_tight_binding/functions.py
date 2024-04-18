@@ -46,7 +46,7 @@ def chi2(pars,*args):
     return res
 
 def plot_together(exp_data,dft_en,tb_en,title=''):
-    s_=15
+    s_=20
     plt.figure(figsize=(40,20))
     for c in range(2):
         if c == 0:
@@ -69,7 +69,7 @@ def plot_together(exp_data,dft_en,tb_en,title=''):
         plt.axvline(exp_data[c][b][-1,0],color='k',alpha = 0.2)
 #        plt.xlabel("$A^{-1}$",size=s_)
         plt.ylabel("E(eV)",size=s_)
-    plt.suptitle(title,size=s_)
+    plt.suptitle(title,size=s_+10)
     return plt.gcf()
 
 def energy(parameters,data,TMD):

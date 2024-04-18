@@ -10,7 +10,7 @@ machine = fs.get_machine(os.getcwd())
 TMD,fixed_SO,range_par = fs.get_parameters(int(sys.argv[1]))
 
 print("Computing TMD: ",TMD,", fixed SO: ",fixed_SO," and range: ",range_par)
-exit()
+
 #Experimental data of monolayer 
 #For each material, 2 TVB (because of SO) on the 2 cuts
 exp_data = fs.get_exp_data(TMD,machine)
@@ -37,6 +37,7 @@ args_chi2 = (exp_data,TMD,machine,range_par,fixed_SO,DFT_values[-2:])
 initial_chi2 = fs.chi2(initial_point,*args_chi2)
 print("Initial chi2: ",initial_chi2)
 
+nn = len_pars-1 if fixed_SO else len_pars-3
 Bounds = []
 for i in range(len_pars):     #tb parameters
     temp_1 = initial_point[i]*(1-range_par)
@@ -45,7 +46,11 @@ for i in range(len_pars):     #tb parameters
         temp = (temp_2,temp_1)
     else:
         temp = (temp_1,temp_2)
-    Bounds.append(temp)
+    if i == nn:
+        Bounds.append((-3,0))
+    else:
+        Bounds.append(temp)
+
 #
 result = minimize(fs.chi2,
         args = args_chi2,

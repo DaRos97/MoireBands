@@ -37,7 +37,6 @@ for ind in range(0,20):
         title = "TMD: "+TMD+", range_par: "+"{:.2f}".format(range_par)+" on fixed SO: "+str(fixed_SO)+'. Chi2='+chi2
         #
         fig = fs.plot_together(exp_data,DFT_en,tb_en,title)
-            
         fig.savefig(fs.get_fig_fn(TMD,range_par,fixed_SO,machine))
         plt.close(fig)
 

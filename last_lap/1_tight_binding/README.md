@@ -29,10 +29,11 @@ Computes the relevant orbital content close to Gamma and K.
 
 # Computed
 ##Maf
+    - Range 0.1 to 1, WSe2 and WS2, SO fixed and not.
 
 # Computing
 ##Maf
-    - Range 0.1 to 1, WSe2 and WS2, SO fixed and not.
+    - Range 0.1 to 1, WSe2 and WS2, SO fixed and not with offset not constrained
 
 
 
