@@ -521,8 +521,8 @@ def R_z(t):
 
 def get_pars(ind):
     DFT = False
-    int_types = ['U1','C6','C3']
-    pars_Vgs = [0.02,0.03,0.04]#0.005,0.01,0.02,0.03]
+    int_types = ['C6','C3']
+    pars_Vgs = [0.025,0.03,0.035]#0.005,0.01,0.02,0.03]
     lVg = len(pars_Vgs)
     pars_Vks = [0.005,0.0077,0.01,0.015,0.02]
     lVk = len(pars_Vks)

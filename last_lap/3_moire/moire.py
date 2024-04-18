@@ -30,7 +30,7 @@ DFT, interlayer_type, pars_V, a_Moire = fs.get_pars(int(sys.argv[1]))  #228 for 
 txt_dft = 'DFT' if DFT else 'fit'
 title = "tb pars: "+txt_dft+', interlayer: '+interlayer_type+", pars_V: "+fs.get_list_fn(pars_V)+", a_Moire: "+str(a_Moire)
 print(title)
-if 0 and machine=='loc':
+if 1 and machine=='loc':
     exit()
 #
 G_M = fs.get_Moire(a_Moire)
@@ -99,7 +99,7 @@ if 0 and machine=='loc':    #Compute no-moire image superimposed to experiment
 en_fn = fs.get_energies_fn(DFT,N,pars_V,pixel_factor,a_Moire,interlayer_type,machine)
 wg_fn = fs.get_weights_fn(DFT,N,pars_V,pixel_factor,a_Moire,interlayer_type,machine)
 ind_TVB = n_cells*28    #top valence band
-ind_LVB = n_cells*22    #lowest considered VB
+ind_LVB = n_cells*24    #lowest considered VB
 if not Path(en_fn).is_file() or not Path(wg_fn).is_file():
     print("Computing en,wg...")
     energies = np.zeros((k_pts,ind_TVB-ind_LVB))
@@ -169,6 +169,7 @@ ax.imshow(norm_spread,cmap=map_)
 ax.set_xticks([0,norm_spread.shape[1]//2,norm_spread.shape[1]],[r"$K'$",r'$\Gamma$',r'$K$'],size=20)
 ax.set_yticks([0,norm_spread.shape[0]//2,norm_spread.shape[0]],["{:.2f}".format(Em),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(EM)])
 ax.set_ylabel("$E\;(eV)$",size=15)
+ax.set_title(title)
 if machine == 'loc':
     plt.show()
 else:
