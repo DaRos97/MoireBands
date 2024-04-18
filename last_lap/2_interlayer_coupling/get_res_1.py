@@ -17,8 +17,8 @@ for TMD in ['WSe2','WS2']:
     np.save(fs.get_home_dn(machine)+'inputs/pars_'+TMD+'_DFT.npy',pars)
 
 #Minimization values
-vals = [('WSe2',0.9,True),
-        ('WS2',0.9,True)
+vals = [('WSe2',0.4,True),
+        ('WS2',0.2,True)
         ]
 for val in vals:
     TMD, range_par, fixed_SO = val

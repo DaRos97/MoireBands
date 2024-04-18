@@ -30,11 +30,12 @@ pic = fs.extract_png(S11_fn,[-K,K,EM,Em])
 
 if 0:   #minimization of interlayer based on first 3 bands
     #Interlayer type -> 'U1','C6','C3'
-    interlayer_type = 'U1'
+    interlayer_type = 'C3'
     DFT = False
 
     #No sistematic proedure, for each set of parameters and interlayer type need to find the best by eye
     txt = 'DFT' if DFT else 'fit'
+    print(txt)
     #TB paramaters
     pars_mono = {}
     hopping = {}
@@ -46,12 +47,13 @@ if 0:   #minimization of interlayer based on first 3 bands
         hopping[TMD] = fs.find_t(pars_mono[TMD])
         epsilon[TMD] = fs.find_e(pars_mono[TMD])
         HSO[TMD] = fs.find_HSO(pars_mono[TMD])
-        par_offset[TMD] = pars_mono[TMD][-1]
-    for a in np.linspace(0,1,1):
-        for b in np.linspace(0.28,0.45,5):
-            for c in np.linspace(0.2,0.9,5):
+        par_offset[TMD] = pars_mono[TMD][-3]
+    for a in np.linspace(0,0.2,1):
+        for b in np.linspace(0.3,0.5,5):
+            for c in np.linspace(0.6,0.8,5):
                 for offset in [-0.48]:
-                    pars_interlayer = (a,b,c,offset)
+                    pars_interlayer = (a,b,c,offset) if not interlayer_type=='no' else (0,0,0,offset)
+#                    pars_interlayer = (1.1,0.9,1.02,offset)
                     print(pars_interlayer)
                     figname = 'results/temp/'+txt+'_'+interlayer_type+'_'+"{:.2f}".format(a)+'_'+"{:.2f}".format(b)+'_'+"{:.2f}".format(c)+'_'+"{:.2f}".format(offset)+'.png'
                     if Path(figname).is_file():
@@ -73,9 +75,10 @@ if 0:   #minimization of interlayer based on first 3 bands
 #                        fig.savefig('temp/fig_'+"{:.2f}".format(a)+'_'+"{:.2f}".format(b)+'_'+"{:.2f}".format(c)+'_'+"{:.2f}".format(offset)+'.png')
                     plt.close(fig)
         continue
+    exit()
 
 if 1:   #Final plot
-    DFT = True
+    DFT = False
     txt = 'DFT' if DFT else 'fit'
     #TB paramaters
     pars_mono = {}
@@ -97,24 +100,28 @@ if 1:   #Final plot
                 'C3': (0,0.33,0.75,-0.5),
                 },
             'fit':{
-                'no': (0,0,0,-0.5),
-                'U1': (1.1,0.9,1.02,-0.48),
-                'C6': (0.1,0.33,0.9,-0.48),
-                'C3': (0,0.41,0.9,-0.48),
+                'no': (0,0,0,-0.48),
+                'U1': (1,0.9,0.88,-0.48),
+                'C6': (0.15,0.32,0.75,-0.48),
+                'C3': (0,0.35,0.8,-0.48),
                 }
             }
     #plot
+    from matplotlib.lines import Line2D
     fig,ax = plt.subplots()
     fig.set_size_inches(14,7)
     #Background
     ax.imshow(pic)
     #Different interlayers
     colors = {'no':'r','U1':'b','C6':'g','C3':'m'}
+    legend_elements = []
     for int_type in best_pars[txt].keys():
         energies = fs.energy(K_list,hopping,epsilon,HSO,par_offset,best_pars[txt][int_type],int_type)
-        for i in range(22,28):
+        for i in range(24,28):
             ax.plot((K_list[:,0]+K)/2/K*pic.shape[1],(EM-energies[:,i])/(EM-Em)*pic.shape[0],color=colors[int_type])
-#    ax.legend()
+        legend_elements.append(Line2D([0],[0],ls='-',color=colors[int_type],label=int_type,linewidth=1))
+    ax.legend(handles=legend_elements,loc='upper right',fontsize=20)
+    
     ax.set_xticks([0,pic.shape[1]//2,pic.shape[1]],[r"$K'$",r'$\Gamma$',r'$K$'],size=20)
     ax.set_yticks([0,pic.shape[0]//2,pic.shape[0]],["{:.2f}".format(EM),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(Em)])
     ax.set_ylabel("$E\;(eV)$",size=20)
