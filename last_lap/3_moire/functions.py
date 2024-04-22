@@ -520,22 +520,25 @@ def R_z(t):
     return R
 
 def get_pars(ind):
-    DFT = False
-    int_types = ['C6','C3']
-    pars_Vgs = [0.025,0.03,0.035]#0.005,0.01,0.02,0.03]
+    DFT = [True,False]
+    int_types = ['U1','C6','C3',] #1
+    pars_Vgs = [0.015,0.025,0.03,0.035,0.04]   #5
     lVg = len(pars_Vgs)
-    pars_Vks = [0.005,0.0077,0.01,0.015,0.02]
+    pars_Vks = [0.003,0.0077,0.01,0.015,0.02]  #5
     lVk = len(pars_Vks)
     a_Moire = 79.8
-    phi_g = np.pi
-    phi_ks = [0,-106*np.pi/180,np.pi]  #about -1.85 rad
-    lpk = len(phi_ks)
+    lpg = 10
+    phi_gs = [np.pi/(lpg-1)*i for i in range(lpg)]
+    lpk = 10
+    phi_ks = [np.pi/(lpk-1)*i for i in range(lpk)]
     #
-    ind_in = ind//(lVg*lVk*lpk)
-    ind_Vg = ind%(lVg*lVk*lpk) // (lVk*lpk)
-    ind_Vk = ind%(lVg*lVk*lpk) % (lVk*lpk) // lpk
-    ind_pk = ind%(lVg*lVk*lpk) % (lVk*lpk) % lpk
-    return (DFT, int_types[ind_in], [pars_Vgs[ind_Vg],phi_g,pars_Vks[ind_Vk],phi_ks[ind_pk]], a_Moire)
+    ind_DFT = 1
+    ind_in = 2
+    ind_Vg = ind//(lpg*lVk*lpk)
+    ind_pg = ind%(lpg*lVk*lpk) // (lVk*lpk)
+    ind_Vk = ind%(lpg*lVk*lpk) % (lVk*lpk) // lpk
+    ind_pk = ind%(lpg*lVk*lpk) % (lVk*lpk) % lpk
+    return (DFT[ind_DFT], int_types[ind_in], [pars_Vgs[ind_Vg],phi_gs[ind_pg],pars_Vks[ind_Vk],phi_ks[ind_pk]], a_Moire)
 
 def get_list_fn(l):
     fn = ''
@@ -561,11 +564,16 @@ def get_weights_fn(DFT,N,pars_V,p_f,a_M,interlayer_type,machine):
     txt_dft = 'DFT' if DFT else 'fit'
     return get_home_dn(machine)+'results/data/weights_'+txt_dft+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'_'+interlayer_type+'.npy'
 
+def get_fig1_fn(DFT,N,pars_V,p_f,a_M,interlayer_type,machine):
+    name_v = get_list_fn(pars_V)
+    txt_dft = 'DFT' if DFT else 'fit'
+    return get_home_dn(machine)+'results/figures/bands/bands_'+txt_dft+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'_'+interlayer_type+'.png'
+
 def get_fig_fn(DFT,N,pars_V,p_f,a_M,interlayer_type,pars_spread,machine):
     name_v = get_list_fn(pars_V)
     name_sp = get_list_fn(pars_spread[:2])
     txt_dft = 'DFT' if DFT else 'fit'
-    return get_home_dn(machine)+'results/figures/'+txt_dft+'_'+pars_spread[-1]+'_'+name_sp+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'_'+interlayer_type+'.png'
+    return get_home_dn(machine)+'results/figures/spread/'+txt_dft+'_'+pars_spread[-1]+'_'+name_sp+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'_'+interlayer_type+'.png'
 
 def get_S11_fn(machine):
     return get_home_dn(machine)+'inputs/S11_KGK_WSe2onWS2_v1.png'

@@ -30,7 +30,7 @@ DFT, interlayer_type, pars_V, a_Moire = fs.get_pars(int(sys.argv[1]))  #228 for 
 txt_dft = 'DFT' if DFT else 'fit'
 title = "tb pars: "+txt_dft+', interlayer: '+interlayer_type+", pars_V: "+fs.get_list_fn(pars_V)+", a_Moire: "+str(a_Moire)
 print(title)
-if 1 and machine=='loc':
+if 0 and machine=='loc':
     exit()
 #
 G_M = fs.get_Moire(a_Moire)
@@ -61,7 +61,7 @@ EM = -0.5
 Em = -2.5
 bounds_original = (K,EM,Em)
 exp_pic_original = fs.extract_png(S11_fn,[-K,K,EM,Em])
-if 0:  #use zoomed S11
+if 1:  #use zoomed S11
     S11_fn = fs.get_S11zoom_fn(machine)
     K = 4/3*np.pi/fs.dic_params_a_mono['WSe2']
     EM = -0.7
@@ -118,21 +118,25 @@ else:
     energies = np.load(en_fn)
     weights = np.load(wg_fn)
 
-if 0 and machine=='loc': #plot some bands
-    plt.figure(figsize=(20,15))
-    px,py,z = exp_pic.shape
-    x_line = (K_list[:,0]-K_list[0,0])/(K_list[-1,0]-K_list[0,0])*py
-    for e in range(ind_TVB-ind_LVB):
-        e_line = (energies[:,e]-Em)/(EM-Em)*px
-        plt.plot(x_line,e_line,color='r',zorder=1,linewidth=0.5)
-        plt.scatter(x_line,e_line,s=weights[:,e]*1000,lw=0,color='g',marker='o',zorder=3)
-    plt.ylim(0,px)
-    plt.imshow(exp_pic[::-1,:,:],zorder=-1)
-    plt.xticks([0,exp_pic.shape[1]//2,exp_pic.shape[1]],[r"$K'$",r'$\Gamma$',r'$K$'],size=20)
-    plt.yticks([0,exp_pic.shape[0]//2,exp_pic.shape[0]],["{:.2f}".format(Em),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(EM)])
-    plt.ylabel("$E\;(eV)$",size=15)
+#Compute image of band weigths superimposed to experiment
+plt.figure(figsize=(20,15))
+px,py,z = exp_pic.shape
+x_line = (K_list[:,0]-K_list[0,0])/(K_list[-1,0]-K_list[0,0])*py
+for e in range(ind_TVB-ind_LVB):
+    e_line = (energies[:,e]-Em)/(EM-Em)*px
+#        plt.plot(x_line,e_line,color='r',zorder=1,linewidth=0.1)
+    plt.scatter(x_line,e_line,s=weights[:,e]*200,lw=0,color='r',marker='o',zorder=3)
+plt.ylim(0,px)
+plt.imshow(exp_pic[::-1,:,:],zorder=-1)
+plt.xticks([0,exp_pic.shape[1]//2,exp_pic.shape[1]],[r"$K'$",r'$\Gamma$',r'$K$'],size=20)
+plt.yticks([0,exp_pic.shape[0]//2,exp_pic.shape[0]],["{:.2f}".format(Em),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(EM)])
+plt.ylabel("$E\;(eV)$",size=15)
+if machine == 'loc':
     plt.show()
-    exit()
+else:
+    fig1_fn = fs.get_fig1_fn(DFT,N,pars_V,pixel_factor,a_Moire,interlayer_type,machine)
+    plt.savefig(fig1_fn)
+    plt.close()
 
 #Compute spread and final picture
 spread_k = 0.01

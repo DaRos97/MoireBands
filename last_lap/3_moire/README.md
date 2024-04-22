@@ -10,42 +10,29 @@ moire.py & functions.py     compute the final image
 
 # Computed
 ## Bao
+    - N=4,px=5, sk=se=0.01, Gauss, DFT:False, phiG:pi, aM:79.8
+    - Interlayer: C6-C3, Vg: 0.025-0.03-0.035, Vk: 0.005-0.0077-0.01-0.015-0.02, phiK: 0-(-1.85)-3.14       -> 90 images
 
 # Computing
 ## Bao
-    - 
+    - N=4, px=5, aM=79.8, interlayer C3. 
+    - Vg: 0.015-0.025-0.03-0.035-0.04, phiG: 0:pi:10, Vk: 0.003-0.0077-0.01-0.015-0.02, phiK: 0:pi:10       -> 2500 images
 
+# Plan
+Parameters are:
+    - TB and interlayer parameters are fixed
+    - Type of interlayer: U1-C6-C3
+    - Moire parameters: N, Vg, phig, Vk, phik, moire lattice constant
+    - pixel factor 
+Essentially what I can vary now is just the (V,phi) at gamma and K. 
+Compute large number of figures for broad range of moire potentials. 
+Keep N=4, px=5, aM=79.8, interlayer C3.
 
+Since it is a large number of figures, maybe good to define a measure of closeness to
+the experimental figure. How?
 
-
-
-# Computed
-# Bao
-    Old -> 0_:
-    - N=5, px=5, sk=se=0.01, Gauss
-    - DFT: True, False
-    - Vg: 5, 10, 20, 30 meV
-    - Vk: 1, 5, 7.7, 10, 15 meV
-    - aM: 79.8, 70, 60, 50 A
-    Saved images for DFT true and false, Vg 10,20,30, Vk 7.7, aM 79.8.
-
-    New run
-    - Interlayer: U1, C6, C3
-    - N=5, px=5, sk=se=0.01, Gauss
-    - DFT: True, False
-    - Vg: 5, 10, 20, 30 meV
-    - Vk: 1, 5, 7.7, 10, 15 meV
-    - aM: 79.8, 70, 60, 50 A
-    For DPG conference
-    - C3, N=4, px=1, sk=se=0.01, Gauss
-    - fit, (Vg,Vk,aM) = (0.03,0.0077,79.8)  -> index 228
-
-# Computing
-# Bao
-    For DPG conference
-    - C3, N=5, px=1, sk=se=0.01, Gauss
-    - fit, (Vg,Vk,aM) = (0.03,0.0077,79.8)
-
+If it does not give good positions of side bands (no not care too much about intensity),
+let's consider changing also the interlayer parameters.
 
 
 # To check
