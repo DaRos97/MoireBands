@@ -30,28 +30,12 @@ Computes the relevant orbital content close to Gamma and K.
 # Computed
 ##Maf
     - Range 0.1 to 1, WSe2 and WS2, SO fixed and not.
+    - Range 0.1 to 1, WSe2 and WS2, SO fixed and not with offset not constrained
 
 # Computing
 ##Maf
-    - Range 0.1 to 1, WSe2 and WS2, SO fixed and not with offset not constrained
 
 
-
-
-# Computed
-##Ygg:
-##Bao
-    0 - Computing same just for WS2 and just KGK+KMKp after adjusting offset
-    - Range 0.1 to 1, WSe2 and WS2, KGK+KMKp and KGK with adjusted offset.
-
-# Local
-    0 - old results
-    1 - newish results
-    _ - latest results
 # Best fitting
-## Old:
-    WSe2 -> 0.8, KGK
-    WS2  -> 0.5, KGK-KMKp
-## Final:
-    WSe2 -> 0.5, KGK+KMKp 
-    WS2  -> 0.3, KGK+KMKp (or 1 KGK+KMKp for result fitting better)
+    WSe2 -> 0.4, fixed_SO, constrained offset
+    WS2 -> 0.2, fixed_SO , constrained offset
