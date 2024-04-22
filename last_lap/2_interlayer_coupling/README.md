@@ -27,6 +27,14 @@ The best parameters for fit and interlayer types are stored in the coupling.py s
 temp/ is used for storing the temporary images of when loking for best parameters.
 figures/ has the final images.
 
-# To think about
-    1 - We can use the same to couple pz^o with pz^o. 
-    2 - We can couple pz^e with pz^o and vice-versa BUT changing a sign. WHICH?
+# Best values (a,b,c,offset)
+## DFT
+    no: (0,0,0,-0.5)
+    U1: (1,0.7,0.7,-0.5)
+    C6: (0.1,0.29,0.65,-0.5)
+    C3: (0,0.33,0.75,-0.5)
+## fit
+    no: (0,0,0,-0.48)
+    U1: (1,0.9,0.88,-0.48)
+    C6: (0.15,0.32,0.75,-0.48)
+    C3: (0,0.35,0.8,-0.48)
