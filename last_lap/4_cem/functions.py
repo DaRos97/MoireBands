@@ -473,7 +473,7 @@ def get_home_dn(machine):
     elif machine == 'hpc':
         return '/home/users/r/rossid/4_cem/'
     elif machine == 'maf':
-        pass
+        return '/users/rossid/4_cem/'
 
 def get_machine(cwd):
     """Selects the machine the code is running on by looking at the working directory. Supports local, hpc (baobab or yggdrasil) and mafalda.
