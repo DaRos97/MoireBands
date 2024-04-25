@@ -1,4 +1,5 @@
 import numpy as np
+import itertools
 
 materials = ['WSe2','WS2']
 
@@ -20,15 +21,15 @@ def big_H(K_,lu,pars_monolayer,pars_interlayer,pars_moire):
 
     """
     N,pars_V,G_M,Ham_moire = pars_moire
-    n_cells = int(1+3*N*(N+1))
+    n_cells = int(1+3*N*(N+1))          #Number of mBZ copies
     H_up = np.zeros((n_cells*22,n_cells*22),dtype=complex)
     H_down = np.zeros((n_cells*22,n_cells*22),dtype=complex)
     H_int = np.zeros((n_cells*22,n_cells*22),dtype=complex)
     #
-    for n in range(n_cells):      #circles go from 0 (central BZ) to N included
+    for n in range(n_cells):
         Kn = K_ + G_M[0]*lu[n][0] + G_M[1]*lu[n][1]
-        H_up[n*22:(n+1)*22,n*22:(n+1)*22] = H_monolayer(Kn,pars_monolayer,'WSe2',pars_interlayer)   #interlayer -> d
-        H_down[n*22:(n+1)*22,n*22:(n+1)*22] = H_monolayer(Kn,pars_monolayer,'WS2',pars_interlayer)  #interlayer -> c
+        H_up[n*22:(n+1)*22,n*22:(n+1)*22] = H_monolayer(Kn,pars_monolayer,'WSe2',pars_interlayer)
+        H_down[n*22:(n+1)*22,n*22:(n+1)*22] = H_monolayer(Kn,pars_monolayer,'WS2',pars_interlayer)
         H_int[n*22:(n+1)*22,n*22:(n+1)*22] = H_interlayer(Kn,pars_interlayer)   #interlayer -> a and b
     #Moirè
     m = [[-1,1],[-1,0],[0,-1],[1,-1],[1,0],[0,1]]
@@ -51,7 +52,7 @@ def big_H(K_,lu,pars_monolayer,pars_interlayer,pars_moire):
     final_H[n_cells*22:,:n_cells*22] = H_int
     final_H[:n_cells*22,n_cells*22:] = np.conjugate(H_int.T)
     #Global offset due to interlayer
-    final_H += np.identity(2*n_cells*22)*pars_interlayer[-1]
+    final_H += np.identity(2*n_cells*22)*pars_interlayer[1][-1]
     return final_H
 
 def H_monolayer(K_p,pars_H,TMD,pars_interlayer):
@@ -148,17 +149,28 @@ def H_monolayer(K_p,pars_H,TMD,pars_interlayer):
     H += np.identity(22)*offset
     #Interlayer -> c
     if TMD == 'WS2':
-        H[8,8] += pars_interlayer[2]
-        H[8+11,8+11] += pars_interlayer[2]
-    elif TMD == 'WSe2':     #-> d-factor on p_x(odd) orbitals
-        H[3,3] += pars_interlayer[3]
-        H[3+11,3+11] += pars_interlayer[3]
+        H[8,8] += pars_interlayer[1][2]
+        H[8+11,8+11] += pars_interlayer[1][2]
     return H
 
-def H_interlayer(K_p,pars):
-    H = np.zeros((22,22))
-    H[8,8] = -pars[0] + pars[1]*np.linalg.norm(K_p)**2
-    H[8+11,8+11] = -pars[0] + pars[1]*np.linalg.norm(K_p)**2
+def H_interlayer(k_,pars_interlayer):
+    H = np.zeros((22,22),dtype=complex)
+    if pars_interlayer[0]=='U1':
+        t_k = -pars_interlayer[1][0] + pars_interlayer[1][1]*np.linalg.norm(k_)**2
+    elif pars_interlayer[0]=='C6':
+        aa = dic_params_a_mono['WSe2']
+        t_k = -pars_interlayer[1][0] + pars_interlayer[1][1]*2*(np.cos(k_[0]*aa)+np.cos(k_[0]/2*aa)*np.cos(np.sqrt(3)/2*k_[1]*aa))
+    elif pars_interlayer[0]=='C3':
+        aa = dic_params_a_mono['WSe2']
+        delta = aa*np.array([np.array([1,0]),np.array([1/2,np.sqrt(3)/2]),np.array([-1/2,np.sqrt(3)/2])])
+        t_k = 0
+        for i in range(3):
+            t_k += pars_interlayer[1][1]*np.exp(1j*np.dot(k_,delta[i]))
+    elif pars_interlayer[0]=='no':
+        t_k = 0
+    ind_pze = 8
+    for i in range(2):
+        H[ind_pze+11*i,ind_pze+11*i] = t_k 
     return H
 
 def H_moire(g,pars_V):          #g is a integer from 0 to 5
@@ -370,12 +382,13 @@ def get_grid(pars_grid):
     """Compute the grid in momentum.
 
     """
-    center, range_K, k_pts = pars_grid
-    line = np.linspace(-range_K,range_K,k_pts)
-    KX,KY = np.meshgrid(line,line)
-    if center == 'K':
-        KX += 4/3*np.pi/dic_params_a_mono['WSe2']
-    return (KX,KY)
+    center, range_Kx, range_Ky, step = pars_grid
+    linex = np.arange(-range_Kx,range_Kx,step)
+    liney = np.arange(-range_Ky,range_Ky,step)
+    if center == 'M':
+        liney += 2*np.pi/np.sqrt(3)/dic_params_a_mono['WSe2']
+    KX,KY = np.meshgrid(linex,liney)
+    return (KX.T,KY.T)
 
 def spread_lor(K,sp_k,kx_list,ky_list):
     """Computes the Lorentzian spread.
@@ -395,36 +408,26 @@ def normalize_cut(en_cut,pars_grid):
     """Normalize the energy cut in grayscale and put it in imshow format.
 
     """
-    center, range_K,k_pts = pars_grid
+    kx_pts, ky_pts = pars_grid
     max_lor = np.max(np.ravel(en_cut))
     min_lor = np.min(np.ravel(np.nonzero(en_cut)))
     whitest = 255
     blackest = 0     
     norm_lor = np.zeros(en_cut.shape)
-    for i in range(k_pts):
-        for j in range(k_pts):
+    for i in range(kx_pts):
+        for j in range(ky_pts):
             norm_lor[i,j] = int((whitest-blackest)*(1-en_cut[i,j]/(max_lor-min_lor))+blackest)
     return np.flip(norm_lor.T,axis=0)   #invert e-axis
 
 def get_pars(ind):
-    centers = ['G','K']
-    DFTs = [True,False]
-    lD = len(DFTs)
-    pars_Vgs = [0.005,0.01,0.02,0.03]
-    lVg = len(pars_Vgs)
-    pars_Vks = [0.001,0.005,0.0077,0.01,0.015]
-    lVk = len(pars_Vks)
-    a_Moires = [79.8,70,60,50]
-    laM = len(a_Moires)
-    phi_g = np.pi
-    phi_k = -106*2*np.pi/360
+    centers = ['G','M']
+    int_types = ['C6','C3']
+    stepss = [0.05,0.04,0.03,0.02,0.01]
+    Ns = [2,3,4]
     #
-    ind_c = ind//(lD*lVg*lVk*laM)
-    ind_DFT = ind%(lD*lVg*lVk*laM) // (lVg*lVk*laM)
-    ind_Vg = (ind%(lD*lVg*lVk*laM) % (lVg*lVk*laM)) // (lVk*laM)
-    ind_Vk = ((ind%(lD*lVg*lVk*laM) % (lVg*lVk*laM)) % (lVk*laM)) // laM
-    ind_aM = ((ind%(lD*lVg*lVk*laM) % (lVg*lVk*laM)) % (lVk*laM)) % laM
-    return (centers[ind_c], DFTs[ind_DFT], [pars_Vgs[ind_Vg],phi_g,pars_Vks[ind_Vk],phi_k], a_Moires[ind_aM])
+    combinations = list(itertools.product(centers,int_types,stepss,Ns))
+    print("Index ",ind,'/',len(combinations))
+    return combinations[ind]
 
 def get_list_fn(l):
     fn = ''
@@ -434,34 +437,35 @@ def get_list_fn(l):
             fn += '_'
     return fn
 
-def get_cut_dn(pars_grid,DFT,N,pars_V,a_M,machine):
-    name_v = get_list_fn(pars_V)
-    return get_home_dn(machine)+'results/Figures/'+pars_grid[0]+'_'+"{:.2f}".format(pars_grid[1])+'_'+str(pars_grid[2])+'_'+str(DFT)+'_'+str(N)+'_'+name_v+'_'+"{:.1f}".format(a_M)+'/'
+def pars_fn(pars_grid):
+    return pars_grid[0]+'_'+"{:.2f}".format(pars_grid[1])+'x'+str(pars_grid[2])+'_'+str(pars_grid[3])
 
-def get_fig_fn(e_cut,pars_grid,DFT,N,pars_V,a_M,pars_spread,machine):
+def get_fig_dn(pars_grid,DFT,N,pars_V,a_M,int_type,pars_spread,machine):
     name_sp = get_list_fn(pars_spread[:2])
-    return get_cut_dn(pars_grid,DFT,N,pars_V,a_M,machine)+"{:.4f}".format(e_cut)+'_'+pars_spread[-1]+'_'+name_sp+'.png'
-
-def get_cut_fn(e_cut,pars_grid,DFT,N,pars_V,a_M,pars_spread,machine):
     name_v = get_list_fn(pars_V)
+    return get_home_dn(machine)+'results/figures/cuts_'+pars_spread[-1]+'_'+name_sp+'_'+int_type+'_'+pars_fn(pars_grid)+'_'+str(DFT)+'_'+str(N)+'_'+name_v+'_'+"{:.1f}".format(a_M)+'/'
+
+def get_cut_fn(e_cut,pars_grid,DFT,N,pars_V,a_M,int_type,pars_spread,machine):
     name_sp = get_list_fn(pars_spread[:2])
-    return get_home_dn(machine)+'results/data/E_cut_'+"{:.4f}".format(e_cut)+'_'+pars_grid[0]+'_'+pars_spread[-1]+'_'+name_sp+'_'+"{:.2f}".format(pars_grid[1])+'_'+str(pars_grid[2])+'_'+str(DFT)+'_'+str(N)+'_'+name_v+'_'+"{:.1f}".format(a_M)+'.npy'
-
-def get_energies_fn(pars_grid,DFT,N,pars_V,a_M,machine):
     name_v = get_list_fn(pars_V)
-    return get_home_dn(machine)+'results/data/energies_'+pars_grid[0]+'_'+"{:.2f}".format(pars_grid[1])+'_'+str(pars_grid[2])+'_'+str(DFT)+'_'+str(N)+'_'+name_v+'_'+"{:.1f}".format(a_M)+'.npy'
+    return get_home_dn(machine)+'results/data/E_cut_'+pars_spread[-1]+'_'+name_sp+'_'+int_type+'_'+pars_fn(pars_grid)+'_'+str(DFT)+'_'+str(N)+'_'+name_v+'_'+"{:.1f}".format(a_M)+'.npy'
 
-def get_weights_fn(pars_grid,DFT,N,pars_V,a_M,machine):
+def get_energies_fn(pars_grid,DFT,N,pars_V,a_M,int_type,machine):
     name_v = get_list_fn(pars_V)
-    return get_home_dn(machine)+'results/data/weights_'+pars_grid[0]+'_'+"{:.2f}".format(pars_grid[1])+'_'+str(pars_grid[2])+'_'+str(DFT)+'_'+str(N)+'_'+name_v+'_'+"{:.1f}".format(a_M)+'.npy'
+    return get_home_dn(machine)+'results/data/energies_'+int_type+'_'+pars_fn(pars_grid)+'_'+str(DFT)+'_'+str(N)+'_'+name_v+'_'+"{:.1f}".format(a_M)+'.npy'
+
+def get_weights_fn(pars_grid,DFT,N,pars_V,a_M,int_type,machine):
+    name_v = get_list_fn(pars_V)
+    return get_home_dn(machine)+'results/data/weights_'+int_type+'_'+pars_fn(pars_grid)+'_'+str(DFT)+'_'+str(N)+'_'+name_v+'_'+"{:.1f}".format(a_M)+'.npy'
 
 def get_pars_mono_fn(TMD,machine,dft=False):
-    get_dft = '_DFT' if dft else ''
+    get_dft = '_DFT' if dft else '_fit'
     return get_home_dn(machine)+'inputs/pars_'+TMD+get_dft+'.npy'
 
-def get_pars_interlayer_fn(machine,dft=False):
-    get_dft = '_dft' if dft else ''
-    return get_home_dn(machine)+'inputs/pars_interlayer'+get_dft+'.npy'
+def get_pars_interlayer_fn(interlayer_type,DFT,machine):
+    txt = 'DFT' if DFT else 'fit'
+    int_fn = txt+'_'+interlayer_type+'_pars_interlayer.npy'
+    return get_home_dn(machine)+'inputs/'+int_fn
 
 def get_home_dn(machine):
     if machine == 'loc':
