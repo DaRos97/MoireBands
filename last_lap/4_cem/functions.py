@@ -438,7 +438,7 @@ def get_list_fn(l):
     return fn
 
 def pars_fn(pars_grid):
-    return pars_grid[0]+'_'+"{:.2f}".format(pars_grid[1])+'x'+str(pars_grid[2])+'_'+str(pars_grid[3])
+    return pars_grid[0]+'_'+"{:.4f}".format(pars_grid[1])+'x'+str(pars_grid[2])+'_'+str(pars_grid[3])
 
 def get_fig_dn(pars_grid,DFT,N,pars_V,a_M,int_type,pars_spread,machine):
     name_sp = get_list_fn(pars_spread[:2])
