@@ -383,8 +383,8 @@ def get_grid(pars_grid):
 
     """
     center, range_Kx, range_Ky, step = pars_grid
-    linex = np.arange(-range_Kx,range_Kx,step)
-    liney = np.arange(-range_Ky,range_Ky,step)
+    linex = np.arange(-range_Kx,range_Kx+step,step)
+    liney = np.arange(-range_Ky,range_Ky+step,step)
     if center == 'M':
         liney += 2*np.pi/np.sqrt(3)/dic_params_a_mono['WSe2']
     KX,KY = np.meshgrid(linex,liney)
@@ -448,7 +448,7 @@ def get_fig_dn(pars_grid,DFT,N,pars_V,a_M,int_type,pars_spread,machine):
 def get_cut_fn(e_cut,pars_grid,DFT,N,pars_V,a_M,int_type,pars_spread,machine):
     name_sp = get_list_fn(pars_spread[:2])
     name_v = get_list_fn(pars_V)
-    return get_home_dn(machine)+'results/data/E_cut_'+pars_spread[-1]+'_'+name_sp+'_'+int_type+'_'+pars_fn(pars_grid)+'_'+str(DFT)+'_'+str(N)+'_'+name_v+'_'+"{:.1f}".format(a_M)+'.npy'
+    return get_home_dn(machine)+'results/data/E_cut_'+"{:.4f}".format(e_cut)+'_'+pars_spread[-1]+'_'+name_sp+'_'+int_type+'_'+pars_fn(pars_grid)+'_'+str(DFT)+'_'+str(N)+'_'+name_v+'_'+"{:.1f}".format(a_M)+'.npy'
 
 def get_energies_fn(pars_grid,DFT,N,pars_V,a_M,int_type,machine):
     name_v = get_list_fn(pars_V)

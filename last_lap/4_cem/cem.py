@@ -58,8 +58,6 @@ kx_pts,ky_pts = grid[0].shape
 #Compute energies and weights on grid
 en_fn = fs.get_energies_fn(pars_grid,DFT,N,pars_V,a_Moire,interlayer_type,machine)
 wg_fn = fs.get_weights_fn(pars_grid,DFT,N,pars_V,a_Moire,interlayer_type,machine)
-print(en_fn)
-print(wg_fn)
 ind_TVB = n_cells*28    #top valence band
 ind_LVB = n_cells*24    #lowest considered VB
 if not Path(en_fn).is_file() or not Path(wg_fn).is_file():
@@ -95,16 +93,14 @@ if not Path(fig_dn).is_dir() and not machine=='loc':
 #
 e_cuts = np.linspace(-1.5,-1,11)
 
-print(fig_dn)
 for en in e_cuts:
     cut_fn = fs.get_cut_fn(en,pars_grid,DFT,N,pars_V,a_Moire,interlayer_type,pars_spread,machine)
-    print(cut_fn)
     if not Path(cut_fn).is_file():
         print("Computing energy cut ",en," ...")
         en_cut = np.zeros((kx_pts,ky_pts))
         G_E_tot = 1/((energies-en)**2+spread_E**2) if type_spread == 'Lorentz' else np.exp(-((energies-en)/spread_E)**2)
-        Kx_list = np.arange(-range_Kx,range_Kx,step)
-        Ky_list = np.arange(-range_Ky,range_Ky,step)
+        Kx_list = np.arange(-range_Kx,range_Kx+step,step)
+        Ky_list = np.arange(-range_Ky,range_Ky+step,step)
         if center == 'M':
             Ky_list += 2*np.pi/np.sqrt(3)/fs.dic_params_a_mono['WSe2']
         for i in tqdm(range(kx_pts*ky_pts)):
@@ -126,8 +122,10 @@ for en in e_cuts:
     plt.title("En: "+"{:.4f}".format(en)+", "+title)
     plt.xlabel("$K_x(A^{-1})$",size=15)
     plt.ylabel("$K_y(A^{-1})$",size=15)
+    plt.xticks([int(en_cut.shape[1]/10*i) for i in range(11)],["{:.2f}".format(-range_Kx+2*range_Kx/10*i) for i in range(11)],size=10)
+    plt.yticks([int(en_cut.shape[0]/10*i) for i in range(11)],["{:.2f}".format(range_Ky-2*range_Ky/10*i) for i in range(11)],size=10)
     figname = fig_dn + "{:.4f}".format(en)+'.png'
-    if machine == 'loc':
+    if 1 and machine == 'loc':
         plt.show()
     else:
         plt.savefig(figname)
