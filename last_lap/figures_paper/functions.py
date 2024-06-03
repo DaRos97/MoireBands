@@ -1,36 +1,26 @@
 import numpy as np
-from PIL import Image
-
-a_WSe2 = 3.325
-a_WS2 = 3.18
-dic_params_a_mono = {'WSe2':a_WSe2, 'WS2':a_WS2}
+import matplotlib.pyplot as plt
+from numpy.linalg import norm
 
 a_1 = np.array([1,0])
 a_2 = np.array([-1/2,np.sqrt(3)/2])
-list_ind = {'P': [0,1,2,3,4,5], 'AP':[0,2,4]}
 
-def big_H(K_,lu,all_pars,G_M):
+def big_H(K_,lu,pars,G_M):
     """Computes the large Hamiltonian containing all the moire replicas.
 
     """
-    type_of_stacking,m1,m2,mu,a,b,c,N,V,phi = all_pars
+    N,V,phi,mass = pars
     n_cells = int(1+3*N*(N+1))          #Number of mBZ copies
     H_up = np.zeros((n_cells,n_cells),dtype=complex)
-    H_down = np.zeros((n_cells,n_cells),dtype=complex)
-    H_int = np.zeros((n_cells,n_cells),dtype=complex)
     #Diagonal parts
     for n in range(n_cells):
         Kn = K_ + G_M[0]*lu[n][0] + G_M[1]*lu[n][1]
-        H_up[n,n] = -np.linalg.norm(Kn)**2/2/m1
-        H_down[n,n] = -np.linalg.norm(Kn)**2/2/m2 + c
-        H_int[n,n] = get_t0(Kn,a,b,type_of_stacking)
+        H_up[n,n] = -np.linalg.norm(Kn)**2/2/mass
     #Moirè part
     m = [[-1,1],[-1,0],[0,-1],[1,-1],[1,0],[0,1]]
     for n in range(0,N+1):      #Circles
-#        print('n:',n)
         for s in range(np.sign(n)*(1+(n-1)*n*3),n*(n+1)*3+1):       #Indices inside the circle
             ind_s = lu[s]
-#            print('s:',s,', ind_s:',ind_s)
             for i in m:
                 ind_nn = (ind_s[0]+i[0],ind_s[1]+i[1])  #nn-> nearest neighbour
                 try:
@@ -38,82 +28,24 @@ def big_H(K_,lu,all_pars,G_M):
                 except:
                     continue
                 g = m.index(i)
-#                print(nn,ind_nn)
-#                print(g%2)
-#                input()
                 H_up[s,nn] = get_V(V,phi,g)
-                H_down[s,nn] = get_V(V,phi,g)
-#                print('nn:',nn,', ind_nn:',ind_nn)
-#                print(get_t1('f1','f2',g))
-#                input()
-    #All together
-    final_H = np.zeros((2*n_cells,2*n_cells),dtype=complex)
-    final_H[:n_cells,:n_cells] = H_up
-    final_H[n_cells:,n_cells:] = H_down
-    final_H[n_cells:,:n_cells] = H_int
-    final_H[:n_cells,n_cells:] = np.conjugate(H_int.T)
-    #Chemical potential
-    final_H += np.identity(2*n_cells)*mu
-    return final_H
-
-def get_t0(Kn,a,b,type_of_stacking):
-    res = a
-    for i in list_ind[type_of_stacking]:
-        res += b*np.exp(1j*np.dot(Kn,np.dot(R_z(np.pi/3*i),a_1))*dic_params_a_mono['WSe2'])
-    return res
-
-def get_t1(f1,f2,ind):
-    fff = [f1,f2]
-    return fff[ind%2]
+    return H_up
 
 def get_V(V,phi,ind):
     return V*np.exp(1j*(-1)**(ind%2)*phi)
 
 def get_K(cut,n_pts):
     res = np.zeros((n_pts,2))
-    a_mono = dic_params_a_mono['WSe2']
+    a_mono = 1
     if cut == 'KGK':
-        K = np.array([4*np.pi/3,0])/a_mono
-        for i in range(n_pts):
-            res[i,0] = K[0]/(n_pts//2)*(i-n_pts//2)
-    if cut == 'KMKp':
-        M = np.array([np.pi,np.pi/np.sqrt(3)])/a_mono
-        K = np.array([4*np.pi/3,0])/a_mono
-        Kp = np.array([2*np.pi/3,2*np.pi/np.sqrt(3)])/a_mono
-        for i in range(n_pts//2):
-            res[i] = K + (M-K)*i/(n_pts//2)
-        for i in range(n_pts//2,n_pts):
-            res[i] = M + (Kp-M)*i/(n_pts//2)
+        Ki = -np.array([4*np.pi/3,0])
+        Kf = np.array([4*np.pi/3,0])
+    elif cut == 'MGM':
+        Ki = -np.array([2*np.pi,2*np.pi/np.sqrt(3)])/2
+        Kf = np.array([2*np.pi,2*np.pi/np.sqrt(3)])/2
+    for i in range(n_pts):
+        res[i] = Ki+(Kf-Ki)*i/n_pts
     return res
-
-def extract_png(fig_fn,cut_bounds):
-    pic_0 = np.array(np.asarray(Image.open(fig_fn)))
-    #We go from -1 to 1 in image K 'cause the picture is stupid
-    Ki = -1.4
-    Kf = 1.4
-    Ei = 0
-    Ef = -3.5
-    #Empirically extracted for S11 from -1 to +1
-    P_ki = 810
-    P_kf = 2370
-    p_len = int((P_kf-P_ki)/2*(Kf-Ki))   #number of pixels from Ki to Kf
-    p_ki = int((P_ki+P_kf)//2 - p_len//2)
-    p_kf = int((P_ki+P_kf)//2 + p_len//2)
-    #
-    p_ei = 85       #correct
-    p_ef = 1908     #correct
-    if len(cut_bounds) == 4:#Image cut
-        ki,kf,ei,ef = cut_bounds
-        pc_lenk = int(p_len/(Kf-Ki)*(kf-ki)) #number of pixels in cut image
-        pc_ki = int((p_ki+p_kf)//2-pc_lenk//2)
-        pc_kf = int((p_ki+p_kf)//2+pc_lenk//2)
-        #
-        pc_lene = int((p_ef-p_ei)/(Ei-Ef)*(ei-ef))
-        pc_ei = p_ei + int((p_ef-p_ei)/(Ei-Ef)*(Ei-ei))
-        pc_ef = p_ei + int((p_ef-p_ei)/(Ei-Ef)*(Ei-ef))
-        return pic_0[pc_ei:pc_ef,pc_ki:pc_kf]
-    else:
-        return pic_0[p_ei:p_ef,p_ki:p_kf]
 
 def lu_table(N):
     """Computes the look-up table for the index of the mini-BZ in terms of the 
@@ -138,123 +70,118 @@ def lu_table(N):
                     j += 1
     return lu
 
-def weight_spreading(weight,K,E,k_grid,e_grid,pars_spread):
-    """Compute the weight spreading in k and e.
-
-    Parameters
-    ----------
-    weight : float
-        Weight to spread.
-    K : float
-        Momentum position of weight.
-    E : float
-        Energy position of weight.
-    k_grid : np.ndarray
-        Grid of values over which evaluate the spreading in momentum.
-    e_grid : np.ndarray
-        Grid of values over which evaluate the spreading in energy.
-    pars_spread : tuple
-        Parameters of spreading: gamma_k, gamma_e, type_of_spread (Gauss or Lorentz).
-
-    Returns
-    -------
-    np.ndarray
-        Grid of energy and momentum values over which the weight located at K,E has been spread using the type_of_spread function by values spread_K and spread_E.
-    """
-    spread_K,spread_E,type_of_spread = pars_spread
-    if type_of_spread == 'Lorentz':
-        E2 = spread_E**2
-        K2 = spread_K**2
-        return weight/((k_grid-K)**2+K2)/((e_grid-E)**2+E2)
-    elif type_of_spread == 'Gauss':
-        return weight*np.exp(-((k_grid-K)/spread_K)**2)*np.exp(-((e_grid-E)/spread_E)**2)
-
-def normalize_spread(spread,k_pts,e_pts):
-    #Transform lor to a png formati. in the range of white/black of the original picture
-    max_lor = np.max(np.ravel(spread))
-    min_lor = np.min(np.ravel(np.nonzero(spread)))
-    whitest = 255
-    blackest = 0     
-    normalized_lor = np.zeros((k_pts,e_pts))
-    for i in range(k_pts):
-        for j in range(e_pts):
-            normalized_lor[i,j] = int((whitest-blackest)*(1-spread[i,j]/(max_lor-min_lor))+blackest)
-    picture = np.flip(normalized_lor.T,axis=0)   #invert e-axis to have the same structure
-    return picture
-
-def get_Moire(a_M):     
-    """Compute Moire reciprocal lattice vectors.
-
-    """
-    G_M = [0,4*np.pi/np.sqrt(3)/a_M*np.array([0,1])]    
-    G_M[0] = np.tensordot(R_z(-np.pi/3),G_M[1],1)
-    return G_M
-
 def R_z(t):
     return np.array([[np.cos(t),-np.sin(t)],[np.sin(t),np.cos(t)]])
 
-def fn_list(list_):
-    fn = ''
-    for i in list_:
-        if type(i)==str:
-            fn += i
-        elif type(i) in [int,np.int64]:
-            fn += str(i)
-        elif type(i) in [float,np.float64]:
-            fn += "{:.4f}".format(i)
-        if list_.index(i) != len(list_)-1:
-            fn += '_'
-    return fn
-
-def get_energies_fn(all_pars,machine):
-    return get_res_dn(machine) + 'raw/energies_'+ fn_list(all_pars) + '.npy'
-
-def get_weights_fn(all_pars,machine):
-    return get_res_dn(machine) + 'raw/weights_' + fn_list(all_pars) + '.npy'
-
-def get_spread_fn(all_pars,pars_spread,machine):
-    return get_res_dn(machine) + 'raw/spread_'+ fn_list(all_pars) + fn_list(pars_spread) + '.npy'
-
-def get_fig_fn(all_pars,pars_spread,machine):
-    return get_res_dn(machine) + 'figures/fig_'+ fn_list(all_pars) + fn_list(pars_spread) + '.png'
-
-def get_S11_fn(machine):
-    return get_home_dn(machine)+'inputs/S11_KGK_WSe2onWS2_v1.png'
-
-def get_S3_fn(machine):
-    return get_home_dn(machine)+'inputs/S3_KGK_WSe2onWS2_v1.png'
-
-def get_res_dn(machine):
-    return get_home_dn(machine)+'results/'
-
-def get_home_dn(machine):
-    if machine == 'loc':
-        return '/home/dario/Desktop/git/MoireBands/last_lap/0_proof_of_principle/'
-    elif machine == 'hpc':
-        return '/home/users/r/rossid/0_proof_of_principle/'
-    elif machine == 'maf':
-        pass
-
-def get_machine(cwd):
-    """Selects the machine the code is running on by looking at the working directory. Supports local, hpc (baobab or yggdrasil) and mafalda.
-
-    Parameters
-    ----------
-    pwd : string
-        Result of os.pwd(), the working directory.
-
-    Returns
-    -------
-    string
-        An acronim for the computing machine.
+#Gap
+def ind_k(k_pt,list_momenta):
     """
-    if cwd[6:11] == 'dario':
-        return 'loc'
-    elif cwd[:20] == '/home/users/r/rossid':
-        return 'hpc'
-    elif cwd[:13] == '/users/rossid':
-        return 'maf'
+    Index of k_pt in momentum list.
+    """
+    initial_momentum = list_momenta[0]
+    final_momentum = list_momenta[-1]
+    momentum_points = len(list_momenta)
+    return int(momentum_points*np.linalg.norm(k_pt-initial_momentum)/np.linalg.norm(final_momentum-initial_momentum))
+def gap(energies,weights,i_k,list_momenta):
+    """
+    Energy gap between two neighboring bands. 
+    level specifies which bands from the top are considered.
+    G_pt specifies in which momentum the gap is considered.
+    """
+    levs = np.argsort(weights[i_k,:])
+    upper_level = levs[-1]
+    lower_level = levs[::-1][np.argmax(levs[::-1]<levs[-1])]
+    return (energies[:,upper_level]-energies[:,lower_level])[i_k], upper_level, lower_level
+#band distance
+def horizontal_displacement(e_,energies,weights,list_momenta,mass):
+    """
+    Compute indeces of main and first two side bands, using the weights to discriminate.
+    """
+    #distance in energy between 2 k ppoints on same band
+    delta_e = 1/2/mass*np.sqrt(2*mass*abs(e_))*np.linalg.norm(list_momenta[1]-list_momenta[0])
+    momentum_points = list_momenta.shape[0]
+    l = np.argwhere(abs(e_-energies[:momentum_points//2,:])<delta_e)
+    indices = np.argsort([weights[l[i,0],l[i,1]] for i in range(l.shape[0])])
+    #
+    filtered_indices = [indices[-1],]
+    for i in range(indices.shape[0]):
+        temp = indices[-1-i]
+        if abs(l[temp,0]-l[filtered_indices[-1],0])>2:
+                filtered_indices.append(temp)
+    i_mb = filtered_indices[0]
+    i_sb1 = filtered_indices[2]             #BECAUSE THERE IS A SIDE BAND VERY CLOSE TO THE MAIN ONE!!!!
+    i_sb2 = filtered_indices[3]
+    return l,(i_mb,i_sb1,i_sb2)
 
-def tqdm(x):
-    return x
+def vertical_displacement(i_k,weights):
+    indices = np.argsort(weights[i_k,:])
+    i_mb = indices[-1]
+    i_sb2 = indices[-3]
+    i_sb1 = indices[-4] #if indices[-3] < indices[-2] else indices[-4]
+    return (i_mb,i_sb1,i_sb2)
+
+def plot_single_parameter_set(e_,energies,weights,pars,list_momenta,title):
+    """
+    Given energy e_ and a set of eigenvalues and weights computes the image.
+    """
+    N,V,phi,mass,mrl,cut = pars
+    #Figure
+    fig,ax = plt.subplots()
+    fig.set_size_inches(18,12)
+    LW = 0.1
+    abs_k = np.array([np.linalg.norm(list_momenta[i])*np.sign(list_momenta[i,0]) for i in range(list_momenta.shape[0])])
+    for t in range(energies.shape[1]):
+        ax.plot(abs_k,energies[:,t],'k-',lw=LW)
+        ax.scatter(abs_k,energies[:,t],s=weights[:,t]*20,c='b',lw=0)
+    #Gap arrows
+    gap_k = -mrl/np.sqrt(3) if cut == 'KGK' else -mrl/2
+    ind_gapk = ind_k(gap_k,list_momenta)
+    E_gap, up_l, low_l = gap(energies,weights,ind_gapk,list_momenta)
+    ax.plot([abs_k[ind_gapk],abs_k[ind_gapk]],
+            [energies[ind_gapk,low_l],energies[ind_gapk,up_l]],
+            color='r',label='gap 1')
+    if 0:
+        gap_k *= 3/2
+        ind_gapk = ind_k(gap_k,list_momenta)
+        E_gap, up_l, low_l = gap(energies,weights,ind_gapk,list_momenta)
+        ax.plot([abs_k[ind_gapk],abs_k[ind_gapk]],
+                [energies[ind_gapk,low_l],energies[ind_gapk,up_l]],
+                color='maroon',label='gap 2')
+    #Horizontal distance arrow
+    l, inds = horizontal_displacement(e_,energies,weights,list_momenta,mass)
+    i_mb,i_sb1,i_sb2 = inds
+#    ax.scatter(abs_k[l[i_mb,0]],energies[l[i_mb,0],l[i_mb,1]],c='k',s=150)
+    ax.scatter(abs_k[l[i_sb1,0]],energies[l[i_sb1,0],l[i_sb1,1]],c='lime',s=30)
+    ax.scatter(abs_k[l[i_sb2,0]],energies[l[i_sb2,0],l[i_sb2,1]],c='g',s=30)
+
+    ax.arrow(abs_k[l[i_mb,0]],energies[l[i_mb,0],l[i_mb,1]],
+            abs_k[l[i_sb1,0]]-abs_k[l[i_mb,0]],0,
+            color='lime',label='h displacement 1',head_length=0,width=0)
+    ax.arrow(abs_k[l[i_mb,0]],energies[l[i_mb,0],l[i_mb,1]],
+            abs_k[l[i_sb2,0]]-abs_k[l[i_mb,0]],0,
+            color='g',label='h displacement 2',head_length=0,width=0)
+    #Vertical distance arrow
+    i_k = l[i_mb,0]
+    i_mb,i_sb1,i_sb2 = vertical_displacement(i_k,weights)
+    ax.scatter(abs_k[i_k],energies[i_k,i_mb],c='m',s=50,zorder=10)
+    ax.scatter(abs_k[i_k],energies[i_k,i_sb1],c='aqua',s=30)
+    ax.scatter(abs_k[i_k],energies[i_k,i_sb2],c='dodgerblue',s=30)
+
+    ax.arrow(abs_k[i_k],energies[i_k,i_mb],     #x,y,dx,dy
+            0,energies[i_k,i_sb1]-energies[i_k,i_mb],
+            color='aqua',label='v displacement 1',head_length=0,width=0)
+    ax.arrow(abs_k[i_k],energies[i_k,i_mb],
+            0,energies[i_k,i_sb2]-energies[i_k,i_mb],
+            color='dodgerblue',label='v displacement 2',head_length=0,width=0)
+
+    #Plot features
+    ax.legend()
+    ax.set_title(title)
+    #Limits
+    rg = np.max(energies[:,-1])-np.min(energies[:,N])
+    ax.set_ylim(e_*3,np.max(energies[:,-1])*2)
+    plt.show()
+
+
+
 
