@@ -34,15 +34,13 @@ def big_H(K_,lu,pars,G_M):
 def get_V(V,phi,ind):
     return V*np.exp(1j*(-1)**(ind%2)*phi)
 
-def get_K(cut,n_pts):
+def get_K(cut,n_pts,aM):
     res = np.zeros((n_pts,2))
-    a_mono = 1
     if cut == 'KGK':
-        Ki = -np.array([4*np.pi/3,0])
-        Kf = np.array([4*np.pi/3,0])
+        Ki = -np.array([4*np.pi/3,0])/aM*5
     elif cut == 'MGM':
-        Ki = -np.array([2*np.pi,2*np.pi/np.sqrt(3)])/2
-        Kf = np.array([2*np.pi,2*np.pi/np.sqrt(3)])/2
+        Ki = -np.array([2*np.pi,2*np.pi/np.sqrt(3)])/2/aM*5
+    Kf = -Ki
     for i in range(n_pts):
         res[i] = Ki+(Kf-Ki)*i/n_pts
     return res
@@ -82,7 +80,7 @@ def ind_k(k_pt,list_momenta):
     final_momentum = list_momenta[-1]
     momentum_points = len(list_momenta)
     return int(momentum_points*np.linalg.norm(k_pt-initial_momentum)/np.linalg.norm(final_momentum-initial_momentum))
-def gap(energies,weights,i_k,list_momenta):
+def gap(energies,weights,i_k,cut):
     """
     Energy gap between two neighboring bands. 
     level specifies which bands from the top are considered.
@@ -90,14 +88,22 @@ def gap(energies,weights,i_k,list_momenta):
     """
     levs = np.argsort(weights[i_k,:])
     upper_level = levs[-1]
-    lower_level = levs[::-1][np.argmax(levs[::-1]<levs[-1])]
-    return (energies[:,upper_level]-energies[:,lower_level])[i_k], upper_level, lower_level
+    lower_level = levs[-2]
+    g1 = abs((energies[:,-1]-energies[:,-2])[i_k])
+    g2 = abs((energies[:,-2]-energies[:,-3])[i_k])
+    gg = max(g1,g2)
+    n_b = weights.shape[1]-1
+    upper_level,lower_level = (n_b,n_b-1) if g1>g2 else (n_b-1,n_b-2)
+    if cut == 'KGK':
+        return gg, upper_level, lower_level
+    else:
+        return g1, n_b, n_b-1
 #band distance
 def horizontal_displacement(e_,energies,weights,list_momenta,mass):
     """
     Compute indeces of main and first two side bands, using the weights to discriminate.
     """
-    #distance in energy between 2 k ppoints on same band
+    #distance in energy between 2 k points on same band
     delta_e = 1/2/mass*np.sqrt(2*mass*abs(e_))*np.linalg.norm(list_momenta[1]-list_momenta[0])
     momentum_points = list_momenta.shape[0]
     l = np.argwhere(abs(e_-energies[:momentum_points//2,:])<delta_e)
@@ -108,23 +114,46 @@ def horizontal_displacement(e_,energies,weights,list_momenta,mass):
         temp = indices[-1-i]
         if abs(l[temp,0]-l[filtered_indices[-1],0])>2:
                 filtered_indices.append(temp)
+    #Selection of indices
     i_mb = filtered_indices[0]
-    i_sb1 = filtered_indices[2]             #BECAUSE THERE IS A SIDE BAND VERY CLOSE TO THE MAIN ONE!!!!
-    i_sb2 = filtered_indices[3]
-    return l,(i_mb,i_sb1,i_sb2)
+    if filtered_indices[1] > i_mb:
+        i_sb2 = filtered_indices[1]
+        a = 1
+    else:
+        i_sb1 = filtered_indices[1]
+        a = 0
+    for i in range(2,len(filtered_indices)):
+        if filtered_indices[i] < i_mb and a:
+            i_sb1 = filtered_indices[i]
+            break
+        elif filtered_indices[i] > i_mb and not a:
+            i_sb2 = filtered_indices[i]
+            break
+    return l,(i_mb,i_sb1,i_sb2) #sb1->external
 
 def vertical_displacement(i_k,weights):
     indices = np.argsort(weights[i_k,:])
+    #Selection of indices
     i_mb = indices[-1]
-    i_sb2 = indices[-3]
-    i_sb1 = indices[-4] #if indices[-3] < indices[-2] else indices[-4]
-    return (i_mb,i_sb1,i_sb2)
+    if indices[-2] < i_mb:
+        i_sb1 = indices[-2]
+        a = 1
+    else:
+        i_sb2 = indices[-2]
+        a = 0
+    for i in range(-3,-len(indices),-1):
+        if indices[i] > i_mb and a:
+            i_sb2 = indices[i]
+        elif indices[i] < i_mb and not a:
+            i_sb1 = indices[i]
+            break
+    return (i_mb,i_sb1,i_sb2) #sb1->lower
 
 def plot_single_parameter_set(e_,energies,weights,pars,list_momenta,title):
     """
     Given energy e_ and a set of eigenvalues and weights computes the image.
     """
-    N,V,phi,mass,mrl,cut = pars
+    N,V,phi,mass,mrl,cut,G_M = pars
     #Figure
     fig,ax = plt.subplots()
     fig.set_size_inches(18,12)
@@ -132,54 +161,57 @@ def plot_single_parameter_set(e_,energies,weights,pars,list_momenta,title):
     abs_k = np.array([np.linalg.norm(list_momenta[i])*np.sign(list_momenta[i,0]) for i in range(list_momenta.shape[0])])
     for t in range(energies.shape[1]):
         ax.plot(abs_k,energies[:,t],'k-',lw=LW)
-        ax.scatter(abs_k,energies[:,t],s=weights[:,t]*20,c='b',lw=0)
-    #Gap arrows
-    gap_k = -mrl/np.sqrt(3) if cut == 'KGK' else -mrl/2
-    ind_gapk = ind_k(gap_k,list_momenta)
-    E_gap, up_l, low_l = gap(energies,weights,ind_gapk,list_momenta)
-    ax.plot([abs_k[ind_gapk],abs_k[ind_gapk]],
-            [energies[ind_gapk,low_l],energies[ind_gapk,up_l]],
-            color='r',label='gap 1')
-    if 0:
-        gap_k *= 3/2
-        ind_gapk = ind_k(gap_k,list_momenta)
-        E_gap, up_l, low_l = gap(energies,weights,ind_gapk,list_momenta)
+        ax.scatter(abs_k,energies[:,t],s=weights[:,t]*50,c='b',lw=0)
+    if not V==0:
+        #Gap
+        k_pt = np.array([-mrl/np.sqrt(3),0]) if cut == 'KGK' else -G_M[0]/2
+        ind_gapk = ind_k(k_pt,list_momenta)
+        gap_k = np.linalg.norm(k_pt)
+        E_gap, up_l, low_l = gap(energies,weights,ind_gapk,cut)
         ax.plot([abs_k[ind_gapk],abs_k[ind_gapk]],
                 [energies[ind_gapk,low_l],energies[ind_gapk,up_l]],
-                color='maroon',label='gap 2')
-    #Horizontal distance arrow
-    l, inds = horizontal_displacement(e_,energies,weights,list_momenta,mass)
-    i_mb,i_sb1,i_sb2 = inds
-#    ax.scatter(abs_k[l[i_mb,0]],energies[l[i_mb,0],l[i_mb,1]],c='k',s=150)
-    ax.scatter(abs_k[l[i_sb1,0]],energies[l[i_sb1,0],l[i_sb1,1]],c='lime',s=30)
-    ax.scatter(abs_k[l[i_sb2,0]],energies[l[i_sb2,0],l[i_sb2,1]],c='g',s=30)
+                color='r',label='gap 1')
+        if 0:   #Second gap
+            gap_k *= 3/2
+            ind_gapk = ind_k(gap_k,list_momenta)
+            E_gap, up_l, low_l = gap(energies,weights,ind_gapk,cut)
+            ax.plot([abs_k[ind_gapk],abs_k[ind_gapk]],
+                    [energies[ind_gapk,low_l],energies[ind_gapk,up_l]],
+                    color='maroon',label='gap 2')
+        #Horizontal bands
+        l, inds = horizontal_displacement(e_,energies,weights,list_momenta,mass)
+        i_mb,i_sb1,i_sb2 = inds
+        ax.scatter(abs_k[l[i_sb1,0]],energies[l[i_sb1,0],l[i_sb1,1]],c='lime',s=30)
+        ax.scatter(abs_k[l[i_sb2,0]],energies[l[i_sb2,0],l[i_sb2,1]],c='g',s=30)
+        
+        ax.hlines(energies[l[i_mb,0],l[i_mb,1]],    #y
+                abs_k[l[i_mb,0]],abs_k[l[i_sb1,0]], #xmin,xmax
+                color='lime',label='external band')
+        ax.hlines(energies[l[i_mb,0],l[i_mb,1]],    #y
+                abs_k[l[i_mb,0]],abs_k[l[i_sb2,0]], #xmin,xmax
+                color='g',label='internal band')
+        #Vertical bands
+        i_k = l[i_mb,0]
+        i_mb,i_sb1,i_sb2 = vertical_displacement(i_k,weights)
+        ax.scatter(abs_k[i_k],energies[i_k,i_mb],c='m',s=50,zorder=10)
+        ax.scatter(abs_k[i_k],energies[i_k,i_sb1],c='aqua',s=30)
+        ax.scatter(abs_k[i_k],energies[i_k,i_sb2],c='dodgerblue',s=30)
 
-    ax.arrow(abs_k[l[i_mb,0]],energies[l[i_mb,0],l[i_mb,1]],
-            abs_k[l[i_sb1,0]]-abs_k[l[i_mb,0]],0,
-            color='lime',label='h displacement 1',head_length=0,width=0)
-    ax.arrow(abs_k[l[i_mb,0]],energies[l[i_mb,0],l[i_mb,1]],
-            abs_k[l[i_sb2,0]]-abs_k[l[i_mb,0]],0,
-            color='g',label='h displacement 2',head_length=0,width=0)
-    #Vertical distance arrow
-    i_k = l[i_mb,0]
-    i_mb,i_sb1,i_sb2 = vertical_displacement(i_k,weights)
-    ax.scatter(abs_k[i_k],energies[i_k,i_mb],c='m',s=50,zorder=10)
-    ax.scatter(abs_k[i_k],energies[i_k,i_sb1],c='aqua',s=30)
-    ax.scatter(abs_k[i_k],energies[i_k,i_sb2],c='dodgerblue',s=30)
-
-    ax.arrow(abs_k[i_k],energies[i_k,i_mb],     #x,y,dx,dy
-            0,energies[i_k,i_sb1]-energies[i_k,i_mb],
-            color='aqua',label='v displacement 1',head_length=0,width=0)
-    ax.arrow(abs_k[i_k],energies[i_k,i_mb],
-            0,energies[i_k,i_sb2]-energies[i_k,i_mb],
-            color='dodgerblue',label='v displacement 2',head_length=0,width=0)
-
-    #Plot features
-    ax.legend()
-    ax.set_title(title)
+        ax.plot([abs_k[i_k],abs_k[i_k]],
+                [energies[i_k,i_mb],energies[i_k,i_sb1]],
+                color='aqua',label='lower band')
+        ax.plot([abs_k[i_k],abs_k[i_k]],
+                [energies[i_k,i_mb],energies[i_k,i_sb2]],
+                color='dodgerblue',label='higher band')
+        #Plot features
+        ax.legend(fontsize=20,loc='upper right')
+    ax.set_title(title,size=30)
     #Limits
     rg = np.max(energies[:,-1])-np.min(energies[:,N])
-    ax.set_ylim(e_*3,np.max(energies[:,-1])*2)
+    ax.set_ylim(e_*2,abs(e_/2))
+    ax.set_xlim(-3*mrl,3*mrl)
+#    ax.set_xticks([])
+#    ax.set_yticks([])
     plt.show()
 
 

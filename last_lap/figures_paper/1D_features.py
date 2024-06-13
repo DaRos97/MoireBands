@@ -8,7 +8,7 @@ import matplotlib as mpl
 import matplotlib.patches as patches
 import sys
 
-mass = 1.5
+mass = 1
 
 def Hamiltonian(k,V,phi,N,G):
     """
@@ -71,14 +71,14 @@ def plot_single_parameter_set(e_,energies,weights,mrl,list_momenta,title):
     fig.set_size_inches(18,12)
     for t in range(2*side_bands+1):
         ax.plot(list_momenta,energies[t],color='k',lw=LW)
-        ax.scatter(list_momenta,energies[t],s=weights[t]*20,c='b',lw=0)
+        ax.scatter(list_momenta,energies[t],s=weights[t]*70,c='b',lw=0)
     #Gap arrows
     ax.arrow(-mrl/2,energies[-1][ind_k(-mrl/2,list_momenta)],
             0,-gap(energies,-mrl/2,0,list_momenta),
-            color='r',label='gap 1',head_length=0,width=0)
-    ax.arrow(-mrl,energies[-2][ind_k(-mrl,list_momenta)],
-            0,-gap(energies,-mrl,1,list_momenta),
-            color='y',label='gap 2',head_length=0,width=0)
+            color='r',label='first gap',head_length=0,width=0)
+#    ax.arrow(-mrl,energies[-2][ind_k(-mrl,list_momenta)],
+#            0,-gap(energies,-mrl,1,list_momenta),
+#            color='y',label='gap 2',head_length=0,width=0)
     #Horizontal distance arrow
     l, inds = horizontal_displacement(e_,energies,weights,list_momenta)
     i_mb,i_sb1,i_sb2 = inds
@@ -88,10 +88,10 @@ def plot_single_parameter_set(e_,energies,weights,mrl,list_momenta,title):
 
     ax.arrow(list_momenta[l[i_mb,1]],energies[l[i_mb,0],l[i_mb,1]],
             list_momenta[l[i_sb1,1]]-list_momenta[l[i_mb,1]],0,
-            color='lime',label='h displacement 1',head_length=0,width=0)
+            color='lime',label='inner band',head_length=0,width=0)
     ax.arrow(list_momenta[l[i_mb,1]],energies[l[i_mb,0],l[i_mb,1]],
             list_momenta[l[i_sb2,1]]-list_momenta[l[i_mb,1]],0,
-            color='g',label='h displacement 2',head_length=0,width=0)
+            color='g',label='outer band',head_length=0,width=0)
     #Vertical distance arrow
     i_k = l[i_mb,1]
     i_mb,i_sb1,i_sb2 = vertical_displacement(i_k,weights)
@@ -101,23 +101,25 @@ def plot_single_parameter_set(e_,energies,weights,mrl,list_momenta,title):
 
     ax.arrow(list_momenta[i_k],energies[i_mb,i_k],     #x,y,dx,dy
             0,energies[i_sb1,i_k]-energies[i_mb,i_k],
-            color='aqua',label='v displacement 1',head_length=0,width=0)
+            color='aqua',label='lower band',head_length=0,width=0)
     ax.arrow(list_momenta[i_k],energies[i_mb,i_k],
             0,energies[i_sb2,i_k]-energies[i_mb,i_k],
-            color='dodgerblue',label='v displacement 2',head_length=0,width=0)
+            color='dodgerblue',label='upper band',head_length=0,width=0)
 
     #Plot features
-    ax.legend()
-    ax.set_title(title)
+    ax.legend(fontsize=20,loc='upper right')
+    #ax.set_title(title)
     #Limits
     rg = np.max(energies[-1])-np.min(energies[side_bands])
-    ax.set_ylim(e_*3,np.max(energies[-1])*2)
+    ax.set_ylim(e_*3,np.max(energies[-1])*2+0.1)
+    ax.set_xticks([])
+    ax.set_yticks([])
     plt.show()
 
 #Parameters
 
-side_bands = 8
-momentum_points = 501
+side_bands = 4
+momentum_points = 1001
 c = ['k','g','r','r','y','m','c']
 LW = 0.1    #line width
 
@@ -125,8 +127,8 @@ LW = 0.1    #line width
 #######################################################################################################
 #######################################################################################################
 #Many V and aM
-V_list = np.linspace(0.001,0.02,10)
-aM_list = np.linspace(4,25,22)
+V_list = np.linspace(0.015,0.02,1)
+aM_list = np.linspace(17,25,1)
 phi = 0
 
 gaps1 = np.zeros((len(V_list),len(aM_list)))
@@ -165,7 +167,7 @@ for v in range(len(V_list)):
         v_disp1[v,aM,1] = wp[i_sb1,i_k]/wp[i_mb,i_k]
         v_disp2[v,aM,0] = abs(en[i_sb2,i_k]-en[i_mb,i_k])
         v_disp2[v,aM,1] = wp[i_sb2,i_k]/wp[i_mb,i_k]
-        if 0:
+        if 1:
             plot_single_parameter_set(e_,en,wp,G,list_momenta,"aM="+"{:.1f}".format(aM_list[aM])+", V="+"{:.3f}".format(V_list[v]))
 
 s_ = 20
