@@ -33,6 +33,11 @@ initial_point = DFT_values[:-2] if fixed_SO else DFT_values
 
 len_pars = len(initial_point)
 
+initial_point=np.array(initial_point)
+print(len_pars,min(abs(initial_point[:7])),max(abs(initial_point[:7])))
+print(len_pars,min(abs(initial_point[7:])),max(abs(initial_point[7:])))
+exit()
+
 args_chi2 = (exp_data,TMD,machine,range_par,fixed_SO,DFT_values[-2:]) 
 initial_chi2 = fs.chi2(initial_point,*args_chi2)
 print("Initial chi2: ",initial_chi2)

@@ -21,17 +21,28 @@ coupling which will be different for P and AP case:
     - P:  t1(r) = f sum {j=1 to 6} e {iGM r} -> this means that there will be f connecting mini-BZ connected by GM
     - AP: t1(r) = f1 sum {j=1,3,5} e {iGM r} + f2 sum {j=2,4,6} e {iGM r} -> same as above but different strength 
         for different reciprocal moire vectors.
+    - AP2: t1(r) = f1 sum {j=1,4} e {iGM r} + f2 sum {j=2,5} e {iGM r} + f3 sum {j=3,6} e {iGM r} -> as AP but 3-fold -> hermitian again
 
 In first approximation we take the moire interlayer to be constant in k.
 
 Overall we have parameters: 
-    - P:  m1,m2, a,b,c, f
+    - P:  m1,m2, a,b,c, f1
     - AP: m1,m2, b,c,   f1,f2
+    - AP2: m1,m2, b,c,   f1,f2,f3
 m is the mass of the bands. See previous calculation to see the values similar to S11 and S3 close to Gamma.
 c is an offset in one of the two bands.
 
 # Code
 We need to do all the steps. Construct big Hamiltonian with moire copies and project on first BZ.
 Apply minimal spreading to see the differences as clear as possible.
-Tune mostly f1,f2 wrt f.
+Tune mostly f1,f2,f3 wrt f1.
+
+# Computed
+## Ygg
+    - Many AP with f1,f2
+
+# Computing
+    - AP with f1,f2,f3 in (-0.4,0.4,7)
+
+Hopping from K(WSe2) to K'(WS2) studyed by Rajit group -> justification for model AP
 

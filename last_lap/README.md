@@ -14,8 +14,7 @@ We care about the KGK image. Use 11-band model, with interlayer and Moire.
 
 #Presentation
 a) Monolayer fit: 
-    - Show DFT vs experiment
-    - Show best fittings -> related to band content
+    - Show DFT vs experiment vs best fit
+    - Show band content around Gamma and K
     - Fit of bands means only those bands should be considered -> related to interlayer coupling results.
-        This seen also by fitting only KGK.
-    
+b) Interlayer coupling:

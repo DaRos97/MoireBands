@@ -7,10 +7,14 @@ import os,sys
 machine = 'loc'
 final_fit_dn = 'temp/' #or ''
 
-for ind in range(0,20):
+for ind in [1,3]:#range(0,20):
     fixed_SO,range_par = fs.get_parameters_plot(ind)
 
     for TMD in fs.TMDs:
+        if ind == 1:
+            TMD = 'WS2'
+        elif ind == 3:
+            TMD = 'WSe2'
         print("Computing TMD: ",TMD,", in fixed SO: ",str(fixed_SO)," and range: ",range_par)
         exp_data = fs.get_exp_data(TMD,machine)
         pars = [0,]
@@ -31,6 +35,19 @@ for ind in range(0,20):
         else:
             full_pars = pars
         tb_en = fs.energy(full_pars,exp_data,TMD)
+        if 1:   #Just save energies
+            for bb in range(2):
+                fname = 'results/Data_GM/'+TMD+'_band'+str(bb+1)+'_11bandmodel.txt'
+                plt.figure()
+                plt.plot(np.array(exp_data[0][bb])[:,3],tb_en[0][0])
+                plt.show()
+                savefile = np.zeros((len(tb_en[0][bb]),3))
+                savefile[:,0] = np.array(exp_data[0][bb])[:,2]
+                savefile[:,1] = np.array(exp_data[0][bb])[:,3]
+                savefile[:,2] = tb_en[0][bb]
+                np.savetxt(fname,savefile,fmt='%.6e',delimiter='\t',
+                        header='The three columns are: kx,ky,energy.'
+                    )
         #
         pars_DFT = ps.initial_pt[TMD]
         DFT_en = fs.energy(pars_DFT,exp_data,TMD)

@@ -14,7 +14,7 @@ We need to compute the interlayer coupling to modify the shape of the band mostl
 
 #BZ cut parameters
 cut = 'KGK'
-n_pts = 200
+n_pts = 301
 K_list = fs.get_K(cut,n_pts)
 K_scalar = np.zeros(K_list.shape[0])
 for i in range(K_list.shape[0]):
@@ -115,11 +115,13 @@ if 1:   #Final plot
     #Different interlayers
     colors = {'no':'r','U1':'b','C6':'g','C3':'m'}
     legend_elements = []
+    ens = {}
     for int_type in best_pars[txt].keys():
         energies = fs.energy(K_list,hopping,epsilon,HSO,par_offset,best_pars[txt][int_type],int_type)
         for i in range(24,28):
             ax.plot((K_list[:,0]+K)/2/K*pic.shape[1],(EM-energies[:,i])/(EM-Em)*pic.shape[0],color=colors[int_type])
         legend_elements.append(Line2D([0],[0],ls='-',color=colors[int_type],label=int_type,linewidth=1))
+        ens[int_type] = np.copy(energies)
     ax.legend(handles=legend_elements,loc='upper right',fontsize=20)
     
     ax.set_xticks([0,pic.shape[1]//2,pic.shape[1]],[r"$K'$",r'$\Gamma$',r'$K$'],size=20)
@@ -132,8 +134,22 @@ if 1:   #Final plot
         fig.savefig('results/figures/'+txt+'.png')
         for int_type in best_pars[txt].keys():
             np.save('results/'+txt+'_'+int_type+'_pars_interlayer.npy',np.array(best_pars[txt][int_type]))
+        for int_type in ['C6','C3']:
+            fname = 'results/Data_GM/EvsK_bilayer_'+int_type+'.txt'
+            savefile = np.zeros((K_list.shape[0],6))
+            savefile[:,0] = K_list[:,0]
+            savefile[:,1] = K_list[:,1]
+            for nn in range(24,28):
+                savefile[:,2+nn-24] = ens[int_type][:,nn]
+            np.savetxt(fname,savefile,fmt='%.6e',delimiter='\t',
+                        header='The six columns are: kx,ky,energy band lowest energy to highest.'
+                    )
+            fname2 = 'results/Data_GM/interlayer_pars_bilayer_'+int_type+'.txt'
+            savefile2 = np.array(best_pars['fit'][int_type])
+            np.savetxt(fname2,savefile2,fmt='%.3e',delimiter='\t',
+                    header='The 4 rows are paramters: a, b, c, offset.'
+                    )
 
-        
 
 
 

@@ -14,27 +14,21 @@ else:
 """
 Extract KGK plot with different interlayers
 """
+
 #Moire parameters
-N = 6                               #####################
+N = 2                                #####################
 n_cells = int(1+3*N*(N+1))
 #Model parameters
-#type_of_stacking = 'P' if int(sys.argv[1])<len(fs.list_f['P']) else 'AP'
 type_of_stacking = 'AP'
 m1,m2,mu = (0.13533,0.53226,-1.16385)
 a,b,c = (-0.04,-0.03,-0.3) if type_of_stacking=='P' else (0,-0.08,-0.3)
-V,phi = (0.02,np.pi)
+V,phi = (0.03,np.pi)
 
-#f1 = fs.list_f['P'][int(sys.argv[1])] if type_of_stacking=='P' else fs.list_f['P'][(int(sys.argv[1])-len(fs.list_f['P']))%len(fs.list_f['AP'])]
-#f2 = f1 if type_of_stacking == 'P' else f1*((int(sys.argv[1])-len(fs.list_f['P']))//len(fs.list_f['AP']))
-NN = 7
-f_space = np.linspace(-0.4,0.4,NN)
-ind = int(sys.argv[1])
-f1 = f_space[(ind//NN)//NN]
-f2 = f_space[(ind//NN)%NN]
-f3 = f_space[(ind%NN)]
+f1 = 0
+f2 = 0.03
 
 
-all_pars = (type_of_stacking,m1,m2,mu,a,b,c,f1,f2,f3,N,V,phi)
+all_pars = (type_of_stacking,m1,m2,mu,a,b,c,f1,f2,N,V,phi)
 a_Moire = 79.8
 G_M = fs.get_Moire(a_Moire)
 
@@ -42,7 +36,7 @@ title = "Type of stacking: "+type_of_stacking+'\n'
 title += 'm1: '+"{:.3f}".format(m1)+', m2: '+"{:.3f}".format(m2)+r', $\mu$: '+"{:.3f}".format(mu)+'\n'
 title += 'a: '+"{:.3f}".format(a)+', b: '+"{:.3f}".format(b)+', c: '+"{:.3f}".format(c)+'\n'
 title += 'V: '+"{:.3f}".format(V)+r', $\phi$: '+"{:.3f}".format(phi)+'\n'
-title += 'f1: '+"{:.3f}".format(f1)+', f2: '+"{:.3f}".format(f2)+', f3: '+"{:.3f}".format(f3)
+title += 'f1: '+"{:.3f}".format(f1)+', f2: '+"{:.3f}".format(f2)
 print(title)
 #
 if 0:
@@ -61,13 +55,15 @@ if 0:
     e_pts = exp_pic.shape[0]//pixel_factor
     E_list = np.linspace(Em,EM,e_pts)
     kkk = K_list[:,0]
-else:
+else:   #use other bound to just look at the shape close to gamma
     EM = -0.8
     Em = -2
     K = 0.5
     k_pts = 200
+    dd = 0.1
     K_list = np.zeros((k_pts,2))
     K_list[:,0] = np.linspace(-K,K,k_pts)
+    K_list[:,1] = np.linspace(-dd,dd,k_pts)
     e_pts = 200
     E_list = np.linspace(Em,EM,e_pts)
     kkk = K_list[:,0]
@@ -94,12 +90,23 @@ else:
     energies = np.load(en_fn)
     weights = np.load(wg_fn)
 
-if 0: #plot some bands
+if 1: #plot some bands
+    N = 0
+    all_pars = (type_of_stacking,m1,m2,mu,a,b,c,f1,f2,N,V,phi)
+
     import matplotlib.pyplot as plt
-    plt.figure()
+    plt.figure(figsize=(20,7))
+    plt.subplot(1,2,1)
     for e in range(2*n_cells):
-        plt.plot(K_list[:,0],energies[:,e],linewidth=0.1,color='k')
-        plt.scatter(K_list[:,0],energies[:,e],s=weights[:,e],color='b',marker='o')
+        plt.plot(K_list[:,0],energies[:,e],linewidth=0.05,color='k')
+        plt.scatter(K_list[:,0],energies[:,e],s=weights[:,e]*50,lw=0,color='g',marker='o',zorder=3)
+    plt.xlim(-K,K)
+    plt.ylim(Em,EM)
+    plt.subplot(1,2,2)
+    for e in range(2*n_cells):
+        plt.plot(K_list[:,0],energies[:,e],linewidth=0.05,color='k')
+        ww = np.maximum(weights[:,e]-weights[::-1,e],0)
+        plt.scatter(K_list[:,0],energies[:,e],s=ww*100,lw=0,color='r',marker='o',zorder=3)
     plt.xlim(-K,K)
     plt.ylim(Em,EM)
     plt.show()
@@ -137,7 +144,7 @@ if 1:
     if machine == 'loc':
         plt.show()
     else:
-        plt.savefig(fs.get_fig_fn(DFT,N,pars_V,pixel_factor,a_Moire,pars_spread,machine))
+        plt.savefig(fs.get_fig_fn(all_pars,pars_spread,machine))
 
 
 

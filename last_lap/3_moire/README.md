@@ -35,6 +35,20 @@ If it does not give good positions of side bands (no not care too much about int
 let's consider changing also the interlayer parameters.
 
 
+# Results
+Near K: 
+    - (0.01-0) -> good first side band and start of second
+    - (0.01,5/9pi) -> also good
+    - (0.015,8/9pi&pi) -> ok
+    - (0.015,6/9pi) -> better but has gap at k
+Near Gamma:
+phase pi&3/9pi is the only without sizeable gap at gamma -> probably same image because of some symmetry.
+Amplitude either 0.03 or 0.035 but side bands at right position are a bit faint.
+
+K does not influence at all the bands near Gamma.
+
+Main bands are a bit modified by moire potential.
+
 # To check
 
 HSO

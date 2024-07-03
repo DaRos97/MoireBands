@@ -21,7 +21,7 @@ def big_H(K_,lu,all_pars,G_M):
     """Computes the large Hamiltonian containing all the moire replicas.
 
     """
-    type_of_stacking,m1,m2,mu,a,b,c,f1,f2,f3,N,V,phi = all_pars
+    type_of_stacking,m1,m2,mu,a,b,c,f1,f2,N,V,phi = all_pars
     n_cells = int(1+3*N*(N+1))          #Number of mBZ copies
     H_up = np.zeros((n_cells,n_cells),dtype=complex)
     H_down = np.zeros((n_cells,n_cells),dtype=complex)
@@ -29,9 +29,9 @@ def big_H(K_,lu,all_pars,G_M):
     #Diagonal parts
     for n in range(n_cells):
         Kn = K_ + G_M[0]*lu[n][0] + G_M[1]*lu[n][1]
-        H_up[n:(n+1),n:(n+1)] = -np.linalg.norm(Kn)**2/2/m1
-        H_down[n:(n+1),n:(n+1)] = -np.linalg.norm(Kn)**2/2/m2+c
-        H_int[n:(n+1),n:(n+1)] = get_t0(Kn,a,b,type_of_stacking)
+        H_up[n,n] = -np.linalg.norm(Kn)**2/2/m1
+        H_down[n,n] = -np.linalg.norm(Kn)**2/2/m2 + c
+        H_int[n,n] = get_t0(Kn,a,b,type_of_stacking)
     #Moirè part
     m = [[-1,1],[-1,0],[0,-1],[1,-1],[1,0],[0,1]]
     for n in range(0,N+1):      #Circles
@@ -46,9 +46,12 @@ def big_H(K_,lu,all_pars,G_M):
                 except:
                     continue
                 g = m.index(i)
+#                print(nn,ind_nn)
+#                print(g%2)
+#                input()
                 H_up[s,nn] = get_V(V,phi,g)
                 H_down[s,nn] = get_V(V,phi,g)
-                H_int[s,nn] = get_t1(f1,f2,f3,g)
+                H_int[s,nn] = get_t1(f1,f2,g)
 #                print('nn:',nn,', ind_nn:',ind_nn)
 #                print(get_t1('f1','f2',g))
 #                input()
@@ -68,9 +71,9 @@ def get_t0(Kn,a,b,type_of_stacking):
         res += b*np.exp(1j*np.dot(Kn,np.dot(R_z(np.pi/3*i),a_1))*dic_params_a_mono['WSe2'])
     return res
 
-def get_t1(f1,f2,f3,ind):
-    fff = [f1,f2,f3]
-    return fff[ind//2]
+def get_t1(f1,f2,ind):
+    fff = [f1,f2]
+    return fff[ind%2]
 
 def get_V(V,phi,ind):
     return V*np.exp(1j*(-1)**(ind%2)*phi)
@@ -94,7 +97,7 @@ def get_K(cut,n_pts):
 
 def extract_png(fig_fn,cut_bounds):
     pic_0 = np.array(np.asarray(Image.open(fig_fn)))
-    #We go from -1 to 1 in image K cause the picture is stupid
+    #We go from -1 to 1 in image K 'cause the picture is stupid
     Ki = -1.4
     Kf = 1.4
     Ei = 0
