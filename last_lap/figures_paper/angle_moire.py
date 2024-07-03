@@ -71,7 +71,6 @@ inset_ax_r.plot(list_t[:n],phis[:n],color='green')
 inset_ax_r.plot([0,list_t[n-1]],[np.pi/6,np.pi/6],color='gray',lw=0.5,ls='dashed')
 inset_ax_r.set_yticks([phis[0],np.pi/6,phis[n-1]],["{:.1f}".format(phis[0]/np.pi*180)+'°',"{:.1f}".format(30)+'°',"{:.1f}".format(phis[n-1]/np.pi*180)+'°'])
 
+
 plt.show()
-
-
 

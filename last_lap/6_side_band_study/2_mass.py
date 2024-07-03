@@ -2,23 +2,44 @@ import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-import os
+import os, sys
 
-sample = '3'
+#sample = '3'
 #sample = '11'
+sample = sys.argv[1]
+print("Fitting mass and offset of sample "+sample)
 
 dirname = "Figs/"
 dirname_data = "Data/"
-#Open image and take pixels
-filename = dirname + "S"+sample+"_cuted.png"
-im  = Image.open(filename)
-len_e_o, len_k_o, z = np.array(np.asarray(im)).shape
+#Open cuted image
+image_fn = dirname_data + "S"+sample+"_cuted.npy"
+len_e_o, len_k_o, z = np.load(image_fn).shape
 
-#to array
+#Cut further to fit better
 lim_y_d = {'3':400, '11':400}
-lim_x_d = {'3':160, '11':150}
-pic = np.array(np.asarray(im)[:lim_y_d[sample],lim_x_d[sample]:-lim_x_d[sample],:]) 
+lim_x_d = {'3':150, '11':150}
+pic = np.load(image_fn)[:lim_y_d[sample],lim_x_d[sample]:-lim_x_d[sample],:]
 len_e,len_k,z = pic.shape
+#Parameters of cuted image and fit image
+E_max_cut_d = {'3':-0.5,'11':-0.9}
+E_min_cut_d = {'3':-1.7,'11':-2.1}
+E_max_cut = E_max_cut_d[sample]
+E_min_cut = E_max_cut_d[sample]-(E_max_cut_d[sample]-E_min_cut_d[sample])*len_e/len_e_o
+K_cut = 0.6*len_k/len_k_o
+if 0:
+    fig = plt.figure()
+    plt.subplot(1,2,1)
+    plt.imshow(np.load(image_fn),cmap='gray')
+    plt.xticks([0,len_k_o//2,len_k_o],["{:.2f}".format(-0.6),"0","{:.2f}".format(0.6)])
+    plt.yticks([0,len_e_o//2,len_e_o],["{:.2f}".format(E_max_cut),"{:.2f}".format((E_max_cut+E_min_cut_d[sample])/2),"{:.2f}".format(E_min_cut_d[sample])])
+    y_off = len_e_o-abs((E_min_cut_d[sample]-E_min_cut)/(E_min_cut_d[sample]-E_max_cut)*len_e_o)
+    plt.plot([0,len_k_o],[y_off,y_off],'b')
+    plt.subplot(1,2,2)
+    plt.imshow(pic,cmap='gray')
+    plt.xticks([0,len_k//2,len_k],["{:.2f}".format(-K_cut),"0","{:.2f}".format(K_cut)])
+    plt.yticks([0,len_e//2,len_e],["{:.2f}".format(E_max_cut),"{:.2f}".format((E_max_cut+E_min_cut)/2),"{:.2f}".format(E_min_cut)])
+    plt.show()
+    exit()
 
 #Take for each column the darkest point, above and below a separatrix line b/w the two bands, 
 #and fit the points around it with a gaussian --> take max as darkest point
@@ -44,16 +65,6 @@ def find_max(col):
         return in_+int(popt[2]) if abs(in_+int(popt[2]))<len(col) else med
     except:
         return med
-    print(popt)
-    xx = np.linspace(0,len(new_arr),1000)
-    plt.plot(xx,inv_gauss(xx,*popt),'k-')
-    plt.plot(np.arange(len(new_arr)),new_arr,'r*')
-    plt.show()
-
-if 0:
-    plt.imshow(pic,cmap='gray')
-    plt.show()
-    exit()
 
 #Find darkest points in parabula
 data_filename = dirname_data + "S"+sample+"_darkest_points.npy"
@@ -72,21 +83,18 @@ except:
 for x in range(len_k):
     d_up = len_e - data[x]
     pic[d_up,x,:] = red
+
 if 0:
     new_im = Image.fromarray(np.uint8(pic))
     plt.figure()
     plt.imshow(new_im)
+    plt.xticks([0,len_k//2,len_k],["{:.2f}".format(-K_cut),"0","{:.2f}".format(K_cut)])
+    plt.yticks([0,len_e//2,len_e],["{:.2f}".format(E_max_cut),"{:.2f}".format((E_max_cut+E_min_cut)/2),"{:.2f}".format(E_min_cut)])
     plt.show()
     exit()
 
 #fitting of bands with simple model 
 popt_filename = dirname_data + "S"+sample+"_fit_parameters.npy"
-#Parameters of image
-E_max_cut_d = {'3':-0.5,'11':-0.9}
-E_min_cut_d = {'3':-1.7,'11':-2.2}
-E_max_cut = E_max_cut_d[sample]
-E_min_cut = E_min_cut_d[sample]*len_e/len_e_o
-K_cut = 0.6*len_k/len_k_o
 
 k_line = np.linspace(-K_cut,K_cut,len_k)
 e_line = np.linspace(E_min_cut,E_max_cut,len_e)
@@ -118,7 +126,7 @@ plt.plot(new_k,new_parabola,'g')
 y_off = len_e-abs((E_min_cut-popt[1])/(E_min_cut-E_max_cut)*len_e)
 plt.plot([0,len_k],[y_off,y_off],'b')
 
-plt.xticks([0,len_k//2,len_k],["{:.1f}".format(K_cut),"0","{:.1f}".format(K_cut)])
+plt.xticks([0,len_k//2,len_k],["{:.1f}".format(-K_cut),"0","{:.1f}".format(K_cut)])
 plt.yticks([0,len_e//2,len_e],["{:.1f}".format(E_max_cut),"{:.1f}".format((E_max_cut+E_min_cut)/2),"{:.1f}".format(E_min_cut)])
 plt.xlabel(r"$K_x\;(\mathring{A}^{-1})$",size=s_)
 plt.ylabel(r"$eV$",size=s_)
