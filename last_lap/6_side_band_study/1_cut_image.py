@@ -11,7 +11,7 @@ data_dn = "Data/"
 sample = sys.argv[1]
 print("Cutting image of sample "+sample)
 
-image_name = dirname + "S"+sample+"_KGK.png"         #experimental data
+image_name = dirname + "original_S"+sample+"_KGK.png"         #experimental data
 im  = Image.open(image_name)
 
 original_pic = np.array(np.asarray(im))
@@ -25,7 +25,7 @@ x_i = X_i[sample]
 y_i = Y_i[sample]
 x_f = X_f[sample]
 y_f = Y_f[sample]
-pic = np.array(np.asarray(im)[y_i:y_f,x_i:x_f])
+pic = original_pic[y_i:y_f,x_i:x_f]
 len_e,len_k,z = pic.shape
 
 if 0: #cut old image to get just new image without axes
@@ -40,7 +40,7 @@ E_max_fig = 0
 E_min_fig_d = {'3':-2.5, '11':-3.5}
 E_min_fig = E_min_fig_d[sample]
 K_fig = 1
-#Redemension image to wanted values
+#Redimension image to wanted values
 E_max_cut_d = {'3':-0.5,'11':-0.9}
 E_min_cut_d = {'3':-1.7,'11':-2.1}
 E_max_cut = E_max_cut_d[sample]

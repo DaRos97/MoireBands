@@ -27,61 +27,75 @@ E_min_d = {'3':-1.7,'11':-2.1}
 E_max = E_max_d[sample]
 E_min = E_min_d[sample]
 
-if 0:
+if 0:   #Plot cuted image with parabula and offset to make sure we are using same units as for the fit
     fig = plt.figure()
     plt.imshow(pic)
+    new_k = np.arange(len_k)
+    def func(k,m,offset):
+        return -k**2/2/m + offset
+    new_parabola = len_e*(E_max-func(np.linspace(K_i,K_f,len_k),*popt_fit))/(E_max-E_min)
+    plt.plot(new_k,new_parabola,'g')
     y_off = len_e-abs((E_min-popt_fit[1])/(E_min-E_max)*len_e)
     plt.plot([0,len_k],[y_off,y_off],'b')
+    #
+    plt.xlim(0,len_k)
+    plt.ylim(len_e,0)
     plt.xticks([0,len_k//2,len_k],["{:.1f}".format(K_i),"0","{:.1f}".format(K_f)])
     plt.yticks([0,len_e//2,len_e],["{:.1f}".format(E_max),"{:.1f}".format((E_max+E_min)/2),"{:.1f}".format(E_min)])
     plt.show()
     exit()
 
-fig = plt.figure(figsize=(15,5))
+fig = plt.figure(figsize=(20,6))
 #Cut at given E
 plt.subplot(1,3,1)
-y1_d = {'3':460, '11':310
-        }
-y1 = y1_d[sample]
-E_cut = E_min+y1/len_e*(E_max-E_min)
-
-#Offset
 offset_E = popt_fit[1]
-YYYY = (offset_E-E_min)/(E_max-E_min)*len_e
+ind_offsett = int(len_e*(E_max-offset_E)/(E_max-E_min))
+result_E_cut_VBM = 0.28      #This parameters decides essentially everything, is the energy distance from the VBM
+
+E_cut = offset_E - result_E_cut_VBM
+ind_E_cut = int(len_e*(E_max-E_cut)/(E_max-E_min))
+
+if 0:   #plot energy cut
+    print(E_cut)
+    print(ind_E_cut)
+    fig = plt.figure()
+    plt.imshow(pic)
+    plt.hlines(ind_E_cut,0,len_k,color='b')
+    plt.show()
+    exit()
 
 X = np.arange(len_k)
-Y = 256-pic[len_e-y1,:,0]
+Y = 256-pic[ind_E_cut,:,0]
 def l3(x,w1,s1,p1,w2,s2,p2,w3,s3,p3):    #lorentz with three peaks
     return w1/((x-p1)**2+s1**2) +w2/((x-p2)**2+s2**2) + w3/((x-p3)**2+s3**2)
 
-result_E_cut = E_cut-offset_E
-plt.title("Constant E="+"{:.2f}".format(result_E_cut)+" eV cut (from VBM)")
+plt.title("Constant E="+"{:.2f}".format(result_E_cut_VBM)+" eV cut (from VBM)")
 x_d = {'3':383, '11':400}
-x = x_d[sample]     #end_pixel in k direction for fit
-centers_d = {'3':[149,227,288], '11':[120,207,315]}
+x_end = x_d[sample]     #end_pixel in k direction for fit
+centers_d = {'3':[149,227,295], '11':[140,240,335]}
+rg_peak = int(0.04/(K_f-K_i)*len_k)     #Give a range for finding the peak of 0.05 A^-1
 c = centers_d[sample]
-popt,pcov = curve_fit(l3,X[:x],Y[:x],p0=[80000,10,c[0],230000,10,c[1],150000,20,c[2]],
-        bounds = (  (10 ,0  ,c[0]-20 ,100,0  ,c[1]-20,100,0  ,c[2]-20),
-                    (1e8,50 ,c[0]+20 ,1e8,50 ,c[1]+20,1e8,80 ,c[2]+20)
+popt,pcov = curve_fit(l3,X[:x_end],Y[:x_end],p0=[1e6,10,c[0],1e6,10,c[1],1e6,20,c[2]],
+        bounds = (  (1e2,0  ,c[0]-rg_peak ,1e2,0  ,c[1]-rg_peak,1e2,0  ,c[2]-rg_peak),
+                    (1e8,50 ,c[0]+rg_peak ,1e8,50 ,c[1]+rg_peak,1e8,80 ,c[2]+rg_peak)
             )
         )
 print("Constant E plot:")
-if 0:
-    txt_par = ["w1","s1","p1","w2","s2","p2","w3","s3","p3"]
+txt_par = ["w1","s1","p1","w2","s2","p2","w3","s3","p3"]
+if 1:
     for i in range(len(popt)):
         print(txt_par[i]+" ",popt[i])
 
 result_dist_k = abs(popt[2]-popt[5])/len_k*(K_f-K_i)
 print("Distance in k between main band and EXTERNAL side band: ","{:.4f}".format(result_dist_k)+" A^{-1}")
 plt.plot(X,Y,'b')
-plt.plot(X[:x],l3(X[:x],*popt),'r',label='rw='+"{:.1f}".format(popt[0]/popt[3]*100)+"%")
+plt.plot(X[:x_end],l3(X[:x_end],*popt),'r')
 plt.xticks([0,popt[2],popt[5],popt[8],len_k//2,len_k],["{:.2f}".format(K_i),"{:.2f}".format(K_i+popt[2]/len_k*(K_f-K_i)),"{:.2f}".format(K_i+popt[5]/len_k*(K_f-K_i)),"{:.2f}".format(K_i+popt[8]/len_k*(K_f-K_i)),"0","{:.2f}".format(K_f)])
 for i in range(3):
     plt.plot([popt[2+i*3],popt[2+i*3]],[0,255],c='gray',lw=0.5,ls='dashed')
 plt.xlabel(r"$\mathring{A}^{-1}$",size=s_)
 plt.ylabel('intensity (0-255)',size=s_)
 plt.ylim(0,255)
-print("Relative weight: ",popt[0]/popt[3])
 #plt.legend(fontsize=s_)
 
 #########################################################################
@@ -96,16 +110,17 @@ Y = 256-np.flip(pic[:,y2,0])
 
 x_i_d = {'3':286, '11':200}
 x_i = x_i_d[sample]
-x_f = len_e
-centers_d = {'3':[370,463,553], '11':[250,310,404]}
+x_f = len_e-90 if sample=='11' else len_e
+centers_d = {'3':[370,463,560], '11':[220,340,430]}
 c = centers_d[sample]
-popt2,pcov = curve_fit(l3,X[x_i:x_f],Y[x_i:x_f],p0=[570000,10,c[0],25832,10,c[1],3000,50,c[2]],
-        bounds = (  (10 ,0  ,c[0]-20,10 ,0  ,c[1]-20,10 ,0  ,c[2]-20),
-                    (1e8,200,c[0]+20,1e8,200,c[1]+20,1e8,200,c[2]+20)
+rg_peak = int(0.08/(E_max-E_min)*len_e)     #Give a range for finding the peak of 0.08 eV
+popt2,pcov = curve_fit(l3,X[x_i:x_f],Y[x_i:x_f],p0=[4e6,70,c[0],4e6,47,c[1],2e3,15,c[2]],
+        bounds = (  (1e2,0  ,c[0]-rg_peak,1e2,0  ,c[1]-rg_peak,1e2,0  ,c[2]-10),
+                    (1e8,200,c[0]+rg_peak,1e8,200,c[1]+rg_peak,1e8,30,c[2]+10)
             )
         )
 print("\nConstant K plot:")
-if 0:
+if 1:
     for i in range(len(popt2)):
         print(txt_par[i]+" ",popt2[i])
 result_dist_E = abs(popt2[5]-popt2[8])/len_e*(E_max-E_min)
@@ -113,13 +128,13 @@ print("Distance in energy between main band and UP side band: ","{:.4f}".format(
 
 plt.title("Constant K="+"{:.2f}".format(K_cut)+r" $\mathring{A}^{-1}$ cut")
 plt.plot(X,Y,'g')
-plt.plot(X[x_i:x_f],l3(X[x_i:x_f],*popt2),'r',label='rw='+"{:.1f}".format(popt2[6]/popt2[3]*100)+"%")
-plt.xticks([0,popt2[2],popt2[5],popt2[8],len_e],["{:.2f}".format(E_min),"{:.2f}".format(E_min+popt2[2]/len_e*(E_max-E_min)),"{:.2f}".format(E_min+popt2[5]/len_e*(E_max-E_min)),"{:.2f}".format(E_min+popt2[8]/len_e*(E_max-E_min)),"{:.2f}".format(E_max)])
+#popt2[-3:] = [2e3,15,430]
+plt.plot(X[x_i:x_f],l3(X[x_i:x_f],*popt2),'r')
+#plt.xticks([0,popt2[2],popt2[5],popt2[8],len_e],["{:.2f}".format(E_min),"{:.2f}".format(E_min+popt2[2]/len_e*(E_max-E_min)),"{:.2f}".format(E_min+popt2[5]/len_e*(E_max-E_min)),"{:.2f}".format(E_min+popt2[8]/len_e*(E_max-E_min)),"{:.2f}".format(E_max)])
 for i in range(3):
     plt.plot([popt2[2+i*3],popt2[2+i*3]],[0,255],c='gray',lw=0.5,ls='dashed')
 plt.xlabel("eV",size=s_)
 plt.ylim(0,255)
-print("Relative weight: ",popt2[6]/popt2[3])
 #plt.legend(fontsize=s_)
 
 #########################################################################
@@ -127,25 +142,23 @@ print("Relative weight: ",popt2[6]/popt2[3])
 #########################################################################
 #Figure
 plt.subplot(1,3,3)
-pic2 = np.flip(pic,axis=0)
+plt.imshow(pic)
 
-im = Image.fromarray(pic2) 
-plt.imshow(im)
-plt.hlines(y1,0,len_k,color='b')
+plt.hlines(ind_E_cut,0,len_k,color='b')
 plt.plot([y2,y2],[0,len_e],color='g')
 plt.xticks([0,y2,len_k//2,len_k],["{:.2f}".format(K_i),"{:.2f}".format(K_cut),"{:.2f}".format((K_i+K_f)/2),"{:.2f}".format(K_f)])
 plt.xlabel(r"$\mathring{A}^{-1}$",size=s_)
-plt.yticks([0,y1,YYYY,len_e],["{:.2f}".format(E_min),"{:.2f}".format(E_cut),"{:.2f}".format(offset_E),"{:.2f}".format(E_max)])
+plt.yticks([len_e,ind_E_cut,0],["{:.2f}".format(E_min),"{:.2f}".format(E_cut),"{:.2f}".format(E_max)])
 plt.ylabel("eV",size=s_)
 
-plt.hlines(YYYY,0,len_k,color='r',ls='dashed',lw=0.2)
-
 plt.xlim(0,len_k)
-plt.ylim(0,len_e)
+plt.ylim(len_e,0)
 
-fig.savefig('Figs/S'+sample+'_intensity_cuts.png')
+if 1:
+    fig.savefig('Figs/S'+sample+'_intensity_cuts.png')
 
 plt.show()
+#exit()
 
 #########################################################################
 #########################################################################
@@ -154,7 +167,7 @@ plt.show()
 #Result file
 result_cut_fn = dirname_data + "S"+sample+"_cut_data.npy"
 result = np.zeros((2,2))   #2 cuts (const energy and const momentum), 2 datafields (cut value and distance between bands)
-result[0] = [result_E_cut,result_dist_k]    #const E cut
+result[0] = [result_E_cut_VBM,result_dist_k]    #const E cut
 result[1] = [result_K_cut,result_dist_E]    #const K cut
 np.save(result_cut_fn,result)
 

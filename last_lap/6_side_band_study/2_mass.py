@@ -16,8 +16,8 @@ image_fn = dirname_data + "S"+sample+"_cuted.npy"
 len_e_o, len_k_o, z = np.load(image_fn).shape
 
 #Cut further to fit better
-lim_y_d = {'3':400, '11':400}
-lim_x_d = {'3':150, '11':150}
+lim_y_d = {'3':450, '11':400}
+lim_x_d = {'3':140, '11':150}
 pic = np.load(image_fn)[:lim_y_d[sample],lim_x_d[sample]:-lim_x_d[sample],:]
 len_e,len_k,z = pic.shape
 #Parameters of cuted image and fit image
@@ -26,7 +26,8 @@ E_min_cut_d = {'3':-1.7,'11':-2.1}
 E_max_cut = E_max_cut_d[sample]
 E_min_cut = E_max_cut_d[sample]-(E_max_cut_d[sample]-E_min_cut_d[sample])*len_e/len_e_o
 K_cut = 0.6*len_k/len_k_o
-if 0:
+
+if 0:   #Plot fit image
     fig = plt.figure()
     plt.subplot(1,2,1)
     plt.imshow(np.load(image_fn),cmap='gray')
@@ -93,7 +94,7 @@ if 0:
     plt.show()
     exit()
 
-#fitting of bands with simple model 
+#fitting of bands with simple model -> parabula with offset
 popt_filename = dirname_data + "S"+sample+"_fit_parameters.npy"
 
 k_line = np.linspace(-K_cut,K_cut,len_k)
@@ -126,8 +127,8 @@ plt.plot(new_k,new_parabola,'g')
 y_off = len_e-abs((E_min_cut-popt[1])/(E_min_cut-E_max_cut)*len_e)
 plt.plot([0,len_k],[y_off,y_off],'b')
 
-plt.xticks([0,len_k//2,len_k],["{:.1f}".format(-K_cut),"0","{:.1f}".format(K_cut)])
-plt.yticks([0,len_e//2,len_e],["{:.1f}".format(E_max_cut),"{:.1f}".format((E_max_cut+E_min_cut)/2),"{:.1f}".format(E_min_cut)])
+plt.xticks([0,len_k//2,len_k],["{:.2f}".format(-K_cut),"0","{:.2f}".format(K_cut)])
+plt.yticks([0,len_e//2,len_e],["{:.2f}".format(E_max_cut),"{:.2f}".format((E_max_cut+E_min_cut)/2),"{:.2f}".format(E_min_cut)])
 plt.xlabel(r"$K_x\;(\mathring{A}^{-1})$",size=s_)
 plt.ylabel(r"$eV$",size=s_)
 plt.title("S"+sample+": mass -> "+"{:.5f}".format(popt[0])+", offset -> "+"{:.3f}".format(popt[1])+' eV')

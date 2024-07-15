@@ -11,8 +11,8 @@ print("Computing side band distance of sample "+sample)
 dirname = "Figs/"
 dirname_data = "Data/"
 #
-nn = 91
-aM = np.linspace(fs.moire_length(0),30,nn)
+n_aM = 91 #number of aM points to evaluate
+aM = np.linspace(fs.moire_length(0),20,n_aM)
 #Mass
 fit_pars_fn = dirname_data + "S"+sample+"_fit_parameters.npy"
 popt_fit = np.load(fit_pars_fn)
@@ -21,50 +21,31 @@ M = popt_fit[0]
 exp_cut_fn = dirname_data + "S"+sample+"_cut_data.npy"
 exp_data = np.load(exp_cut_fn)
 
-V = 0.01
-phi = 0*np.pi
+V = 0.03
+phi = np.pi*0
+
+##############################################################
+fig,ax = plt.subplots()
+fig.set_size_inches(10,8)
+ax_up = ax.twiny()
+s_ = 20
 
 if 1:####################################################################### External band
-    energy = exp_data[0,0]
-    exp_dist_ext = exp_data[0,1]
+    energy = exp_data[0,0]      #energy of the cut taken from the VBM
+    exp_dist_ext = exp_data[0,1]    #momentum distance between maion and side band
 
-    d_e_K_analytic = np.zeros(nn)
-    d_e_M_analytic = np.zeros(nn)
-    d_e_K_numeric = np.zeros(nn)
-    d_e_M_numeric = np.zeros(nn)
+    d_e_K_analytic = np.zeros(n_aM)
+    d_e_M_analytic = np.zeros(n_aM)
+    d_e_K_numeric = np.zeros(n_aM)
+    d_e_M_numeric = np.zeros(n_aM)
 
-    for i in range(nn):
+    for i in range(n_aM):
         G = 2*np.pi/aM[i]
         d_e_K_analytic[i] = fs.dist_ext_KGK_an(G,M,energy,V)
         d_e_M_analytic[i] = fs.dist_ext_MGM_an(G,M,energy,V)
         d_e_K_numeric[i] = fs.dist_ext_KGK_num(G,M,energy,V,phi)
         d_e_M_numeric[i] = fs.dist_ext_MGM_num(G,M,energy,V,phi)
-
-if 1:####################################################################### Up band
-    momentum = abs(exp_data[1,0])
-    exp_dist_up = exp_data[1,1]
-
-    d_u_K_analytic = np.zeros(nn)
-    d_u_M_analytic = np.zeros(nn)
-    d_u_K_numeric = np.zeros(nn)
-    d_u_M_numeric = np.zeros(nn)
-
-    for i in range(nn):
-        G = 2*np.pi/aM[i]
-        d_u_K_analytic[i] = fs.dist_up_KGK_an(G,M,momentum,V,phi)
-        d_u_M_analytic[i] = fs.dist_up_MGM_an(G,M,momentum,V,phi)
-        d_u_K_numeric[i] = fs.dist_up_KGK_num(G,M,momentum,V,phi)
-        d_u_M_numeric[i] = fs.dist_up_MGM_num(G,M,momentum,V,phi)
-
-########################################################################## Picture
-
-fig,ax = plt.subplots()
-fig.set_size_inches(10,8)
-ax_r = ax.twinx()
-ax_up = ax.twiny()
-s_ = 20
-
-if 1:
+    #
     ax.plot(aM,d_e_K_analytic,'g',label=r'$K\Gamma K$')
     ax.plot(aM,d_e_M_analytic,'limegreen',label=r'$M\Gamma M$')
     ax.plot(aM,d_e_K_numeric,'g',ls='dashed',label=r'$K\Gamma K$ num')
@@ -75,7 +56,24 @@ if 1:
     ax.set_ylim(0,2*exp_dist_ext)
     ax.set_ylabel(r'$\lambda$ ($\mathring{A}^{-1}$)',size=s_)
     ax.legend(fontsize=s_-10,loc='upper left')
-if 1:
+
+if 0:####################################################################### Up band
+    ax_r = ax.twinx()
+    momentum = abs(exp_data[1,0])
+    exp_dist_up = exp_data[1,1]
+
+    d_u_K_analytic = np.zeros(n_aM)
+    d_u_M_analytic = np.zeros(n_aM)
+    d_u_K_numeric = np.zeros(n_aM)
+    d_u_M_numeric = np.zeros(n_aM)
+
+    for i in range(n_aM):
+        G = 2*np.pi/aM[i]
+        d_u_K_analytic[i] = fs.dist_up_KGK_an(G,M,momentum,V,phi)
+        d_u_M_analytic[i] = fs.dist_up_MGM_an(G,M,momentum,V,phi)
+        d_u_K_numeric[i] = fs.dist_up_KGK_num(G,M,momentum,V,phi)
+        d_u_M_numeric[i] = fs.dist_up_MGM_num(G,M,momentum,V,phi)
+    #
     ax_r.plot(aM,d_u_K_analytic,'firebrick',label=r'$K\Gamma K$')
     ax_r.plot(aM,d_u_M_analytic,'r',label=r'$M\Gamma M$')
     ax_r.plot(aM,d_u_K_numeric,'firebrick',ls='dashed',label=r'$K\Gamma K$ num')
@@ -93,7 +91,7 @@ xutl = []
 nt = 7
 up_theta = False
 for i in range(nt+1):
-    ind = int(nn/nt*i) if not i == nt else -1
+    ind = int(n_aM/nt*i) if not i == nt else -1
     xtv.append(aM[ind])
     xtl.append("{:.1f}".format(aM[ind]))
     if up_theta:

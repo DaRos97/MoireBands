@@ -5,21 +5,8 @@ import matplotlib.pyplot as plt
 a_WSe2 = 3.32   #Ang
 a_WS2 = 3.18   #Ang
 
-def dist_ext_MGM_an(g,m,e,v):
-    d0 = (g-np.sqrt(6*m*abs(e))+np.sqrt(6*m*abs(e)-3*g**2))/2
-    d2 = - 9*m*np.sqrt(2*m)*v**2/(4*g**2*np.sqrt(3*abs(e))-3*np.sqrt(2*m)*g*abs(e))
-    return d0+d2
-def dist_up_MGM_an(g,m,k,v,phi):
-    d0 = 2*g*(k-g)/3/m
-    d2 = 3*m/g/(k-g)*v**2
-    return d0+d2
-def dist_dw_MGM_an(g,m,k,v):
-    d0 = 2/3/m*g*(k+g)
-    d2 = 3*m/g/(k+g)*v**2
-    return d0+d2
-
 def dist_ext_KGK_an(g,m,e,v):
-    E = abs(e)
+    E = abs(3*v**2/2/g**2-e)
     d0 = g-np.sqrt(2*m*E)+np.sqrt(2*m*E-g**2/3)
     d1 = -2*m*v/2/np.sqrt(2*m*E-g**2/3)
     d2 = -3*m*np.sqrt(2*m)*v**2/(2*g**2*np.sqrt(E)-3*np.sqrt(2*m)*g*E)
@@ -29,9 +16,15 @@ def dist_up_KGK_an(g,m,k,v,phi):
     d1 = -v
     d2 = 3*m*(np.cos(3*phi)-3)/g/(3*k-2*g)*v**2
     return d0+d1+d2
-def dist_dw_KGK_an(g,m,k,v):
-    d0 = 2*g**2/3/m
-    d2 = 3*m*v**2/g**2
+
+def dist_ext_MGM_an(g,m,e,v):
+    E = abs(3*v**2/2/g**2-e)
+    d0 = (g-np.sqrt(6*m*E)+np.sqrt(6*m*E-3*g**2))/2
+    d2 = - 9*m*np.sqrt(2*m)*v**2/(4*g**2*np.sqrt(3*E)-3*np.sqrt(2*m)*g*E)
+    return d0+d2
+def dist_up_MGM_an(g,m,k,v,phi):
+    d0 = 2*g*(k-g)/3/m
+    d2 = 3*m/g/(k-g)*v**2
     return d0+d2
 
 def Ham(v_k,g,m,v,phi):
@@ -58,8 +51,9 @@ def dist_ext_KGK_num(g,m,e,v,phi):
         H = Ham(np.array([list_k[i],0]),g,m,v,phi)
         bands[i] = np.linalg.eigvalsh(H)[-3:-1] #Two top energy bands are the relevant ones
     #indices
-    ind_mb = np.argmin(abs(bands[:,0]-e))
-    ind_sb = np.argmin(abs(bands[:,1]-e))
+    E = np.linalg.eigvalsh(Ham(np.array([0,0]),g,m,v,phi))[-1]-e
+    ind_mb = np.argmin(abs(bands[:,0]-E))
+    ind_sb = np.argmin(abs(bands[:,1]-E))
     return list_k[ind_sb]-list_k[ind_mb]
 
 def dist_ext_MGM_num(g,m,e,v,phi):
@@ -70,8 +64,9 @@ def dist_ext_MGM_num(g,m,e,v,phi):
         H = Ham(np.array([list_k[i],list_k[i]/np.sqrt(3)]),g,m,v,phi)
         bands[i] = np.linalg.eigvalsh(H)[-4:-2] #Two top energy bands are the relevant ones
     #indices
-    ind_mb = np.argmin(abs(bands[:,0]-e))
-    ind_sb = np.argmin(abs(bands[:,1]-e))
+    E = np.linalg.eigvalsh(Ham(np.array([0,0]),g,m,v,phi))[-1]-e
+    ind_mb = np.argmin(abs(bands[:,0]-E))
+    ind_sb = np.argmin(abs(bands[:,1]-E))
     return list_k[ind_sb]-list_k[ind_mb]
 
 def dist_up_KGK_num(g,m,k,v,phi):
