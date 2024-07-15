@@ -18,13 +18,11 @@ TMDs = ['WSe2','WS2']
 cuts = ['KGK','KMKp']
 range_pars = np.linspace(0.1,1,10,endpoint=True)
 
-gamma = 1e4
-
 def chi2(pars,*args):
     """Compute square difference of bands with exp data.
 
     """
-    exp_data, TMD, machine, range_par, ty, H_SO = args
+    exp_data, TMD, machine, range_par, ty, H_SO, gamma = args
     tb_en = energy(pars,H_SO,exp_data,TMD)
     res = 0
     for c in range(2):        ###############
@@ -35,10 +33,10 @@ def chi2(pars,*args):
         f = plot_together(exp_data,tb_en,tb_en)
         plt.show()
     if res < ps.min_chi2:   #remove old temp and add new one
-        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,range_par,ty,machine)
+        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,range_par,ty,gamma,machine)
         os.system('rm '+temp_fn)
         ps.min_chi2 = res
-        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,range_par,ty,machine)
+        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,range_par,ty,gamma,machine)
         np.save(temp_fn,pars)
     return res
 
@@ -46,7 +44,7 @@ def pen_chi2(pars,*args):
     """Compute square difference of bands with exp data AND add a penalty for going away from DFT values.
 
     """
-    exp_data, TMD, machine, range_par, ty, H_SO = args
+    exp_data, TMD, machine, range_par, ty, H_SO, gamma = args
     res_chi2 = chi2(pars,*args)
     #
     DFT_values = ps.initial_pt[TMD]
@@ -434,14 +432,14 @@ def get_exp_data_fn(TMD,cut,band,machine):
 def get_exp_fn(TMD,cut,band,machine):
     return get_exp_dn(machine)+cut+'_'+TMD+'_band'+str(band)+'.txt'
 
-def get_fig_fn(TMD,range_par,ty,machine):
-    return get_fig_dn(machine)+TMD+'_'+ty+"_"+"{:.2f}".format(range_par).replace('.',',')+'.png'
+def get_fig_fn(TMD,range_par,ty,gamma,machine):
+    return get_fig_dn(machine)+TMD+'_'+str(gamma)+'_'+ty+"_"+"{:.2f}".format(range_par).replace('.',',')+'.png'
 
-def get_fit_fn(TMD,range_par,ty,res,machine):
-    return get_res_dn(machine)+'pars_'+TMD+'_'+ty+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+"{:.4f}".format(res)+'.npy'
+def get_fit_fn(TMD,range_par,ty,res,gamma,machine):
+    return get_res_dn(machine)+'pars_'+TMD+'_'+str(gamma)+'_'+ty+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+"{:.4f}".format(res)+'.npy'
 
-def get_temp_fit_fn(TMD,res,range_par,ty,machine):
-    return get_res_dn(machine)+'temp/pars_'+TMD+'_'+ty+"_"+"{:.2f}".format(range_par).replace('.',',')+'_'+"{:.4f}".format(res)+'.npy'
+def get_temp_fit_fn(TMD,res,range_par,ty,gamma,machine):
+    return get_res_dn(machine)+'temp/pars_'+TMD+'_'+str(gamma)+'_'+ty+"_"+"{:.2f}".format(range_par).replace('.',',')+'_'+"{:.4f}".format(res)+'.npy'
 
 def get_fig_dn(machine):
     return get_res_dn(machine)+'figures/'
