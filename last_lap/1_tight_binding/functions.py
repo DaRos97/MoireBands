@@ -49,8 +49,9 @@ def pen_chi2(pars,*args):
     #
     DFT_values = ps.initial_pt[TMD]
     penalization = gamma*(np.absolute(pars[:-1]-DFT_values[:-3])**4).sum()
-
-    print("chi2: "+"{:.4f}".format(res_chi2),",\tpenalty: ","{:.4f}".format(penalization))
+    
+    if machine == 'loc':
+        print("chi2: "+"{:.4f}".format(res_chi2),",\tpenalty: ","{:.4f}".format(penalization))
 
     return res_chi2 + penalization
 
