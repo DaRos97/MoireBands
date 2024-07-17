@@ -10,17 +10,20 @@ machine = fs.get_machine(os.getcwd())
 
 ind = 0 if len(sys.argv)==1 else int(sys.argv[1])
 #TMD,gamma = fs.get_parameters(int(sys.argv[1]))
-TMDs = ['WSe2','WS2']
-gammas = np.logspace(2,4,20)
-TMD = TMDs[ind//len(gammas)]
-gamma = int(gammas[ind%len(gammas)])
+TMD = fs.TMDs[ind//len(fs.gammas)]
+gamma = int(fs.gammas[ind%len(fs.gammas)])
 
+SO_min = True
 type_bound = 'fixed'
 
 range_dic = {'fixed': 0.1, 'relative': 0.5}
 range_par = range_dic[type_bound]
 
 print("Computing TMD: ",TMD," and range: ",range_par," ",type_bound,", gamma=",gamma)
+if SO_min:
+    print("SO: minimized")
+else:
+    print("SO: fixed")
 #Experimental data of monolayer 
 #For each material, 2 TVB (because of SO) on the 2 cuts
 exp_data = fs.get_exp_data(TMD,machine)
@@ -37,15 +40,15 @@ if 0 and machine == 'loc':    #plot exp to see if they are aligned
 
 #Arguments of chi^2 function
 DFT_values = ps.initial_pt[TMD]  #DFT values
-initial_point = np.array(DFT_values[:-2]) #not the SO values
+initial_point = np.array(DFT_values) if SO_min else np.array(DFT_values[:-2])
 len_pars = initial_point.shape[0]
-args_chi2 = (exp_data,TMD,machine,range_par,type_bound,fs.find_HSO(DFT_values[-2:]),gamma)
+args_chi2 = (exp_data,TMD,machine,range_par,type_bound,SO_min,fs.find_HSO(DFT_values[-2:]),gamma)
 
 #
 initial_chi2 = fs.chi2(initial_point,*args_chi2)
 print("Initial chi2: ",initial_chi2)
 
-Bounds = fs.get_bounds(initial_point,range_par,type_bound)
+Bounds = fs.get_bounds(initial_point,range_par,type_bound,SO_min)
 
 if 1:
     """
@@ -85,7 +88,7 @@ else:
 
 
 final_pars = np.array(result.x)
-fit_fn = fs.get_fit_fn(TMD,range_par,ty,min_chi2,gamma,machine)
+fit_fn = fs.get_fit_fn(TMD,range_par,type_bound,min_chi2,gamma,SO,machine)
 np.save(fit_fn,final_pars)
 
 

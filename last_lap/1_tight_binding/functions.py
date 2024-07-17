@@ -15,15 +15,20 @@ J_MX_plus = ((3,1), (5,1), (4,2), (10,6), (9,7), (11,7), (10,8))
 J_MX_minus = ((4,1), (3,2), (5,2), (9,6), (11,6), (10,7), (9,8), (11,8))
 
 TMDs = ['WSe2','WS2']
-cuts = ['KGK','KMKp']
+gammas = np.logspace(1,4,20)
 range_pars = np.linspace(0.1,1,10,endpoint=True)
+
+text_SO = ['SOmin','SOfixed']
+
 
 def chi2(pars,*args):
     """Compute square difference of bands with exp data.
 
     """
-    exp_data, TMD, machine, range_par, ty, H_SO, gamma = args
-    tb_en = energy(pars,H_SO,exp_data,TMD)
+    exp_data, TMD, machine, range_par, ty, SO, H_SO, gamma = args
+    if SO:
+        H_SO = find_HSO(pars[-2:])
+    tb_en = energy(pars,SO,H_SO,exp_data,TMD)
     res = 0
     for c in range(2):        ###############
         for b in range(2):
@@ -33,10 +38,11 @@ def chi2(pars,*args):
         f = plot_together(exp_data,tb_en,tb_en)
         plt.show()
     if res < ps.min_chi2:   #remove old temp and add new one
-        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,range_par,ty,gamma,machine)
-        os.system('rm '+temp_fn)
+        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,range_par,ty,gamma,SO,machine)
+        if not ps.min_chi2==1e5:
+            os.system('rm '+temp_fn)
         ps.min_chi2 = res
-        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,range_par,ty,gamma,machine)
+        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,range_par,ty,gamma,SO,machine)
         np.save(temp_fn,pars)
     return res
 
@@ -44,11 +50,15 @@ def pen_chi2(pars,*args):
     """Compute square difference of bands with exp data AND add a penalty for going away from DFT values.
 
     """
-    exp_data, TMD, machine, range_par, ty, H_SO, gamma = args
+    exp_data, TMD, machine, range_par, ty, SO, H_SO, gamma = args
     res_chi2 = chi2(pars,*args)
     #
     DFT_values = ps.initial_pt[TMD]
-    penalization = gamma*(np.absolute(pars[:-1]-DFT_values[:-3])**4).sum()
+    if SO:
+        penalization = gamma*(np.absolute(pars[:-3]-DFT_values[:-3])**2).sum()
+        penalization += gamma*(np.absolute(pars[-2:]-DFT_values[-2:])**2).sum()
+    else:
+        penalization = gamma*(np.absolute(pars[:-1]-DFT_values[:-3])**2).sum()
     
     if machine == 'loc':
         print("chi2: "+"{:.4f}".format(res_chi2),",\tpenalty: ","{:.4f}".format(penalization))
@@ -82,14 +92,14 @@ def plot_together(exp_data,dft_en,tb_en,title=''):
     plt.suptitle(title,size=s_+10)
     return plt.gcf()
 
-def energy(parameters,HSO,data,TMD):
+def energy(parameters,SO,HSO,data,TMD):
     """Compute energy along the two cuts of 2 TopValenceBand for all considered k.
 
     """
     hopping = find_t(parameters)
     epsilon = find_e(parameters)
     a_TMD = ps.dic_params_a_mono[TMD]
-    offset = parameters[-1]
+    offset = parameters[-3] if SO else parameters[-1]
     #
     args_H = (hopping,epsilon,HSO,a_TMD,offset)
     #
@@ -390,8 +400,9 @@ def get_exp_data(TMD,machine):
             np.save(data_fn,np.array(temp))
     return data
 
-def get_bounds(in_pt,r,ty):
+def get_bounds(in_pt,r,ty,SO):
     Bounds = []
+    off_ind = 3 if SO else 1
     for i in range(in_pt.shape[0]):     #tb parameters
         if ty=='relative':
             temp_1 = in_pt[i]*(1-r)
@@ -402,7 +413,7 @@ def get_bounds(in_pt,r,ty):
                 temp = (temp_1,temp_2)
         elif ty=='fixed':
             temp = (in_pt[i]-r,in_pt[i]+r)
-        if i == in_pt.shape[0]-1: #offset
+        if i == in_pt.shape[0]-off_ind: #offset
             Bounds.append((-3,0))
         else:
             Bounds.append(temp)
@@ -433,14 +444,17 @@ def get_exp_data_fn(TMD,cut,band,machine):
 def get_exp_fn(TMD,cut,band,machine):
     return get_exp_dn(machine)+cut+'_'+TMD+'_band'+str(band)+'.txt'
 
-def get_fig_fn(TMD,range_par,ty,gamma,machine):
-    return get_fig_dn(machine)+TMD+'_'+str(gamma)+'_'+ty+"_"+"{:.2f}".format(range_par).replace('.',',')+'.png'
+def get_fig_fn(TMD,range_par,ty,gamma,SO,machine):
+    tSO = text_SO[0] if SO else text_SO[1]
+    return get_fig_dn(machine)+TMD+'_'+tSO+'_'+str(gamma)+'_'+ty+"_"+"{:.2f}".format(range_par).replace('.',',')+'.png'
 
-def get_fit_fn(TMD,range_par,ty,res,gamma,machine):
-    return get_res_dn(machine)+'pars_'+TMD+'_'+str(gamma)+'_'+ty+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+"{:.4f}".format(res)+'.npy'
+def get_fit_fn(TMD,range_par,ty,res,gamma,SO,machine):
+    tSO = text_SO[0] if SO else text_SO[1]
+    return get_res_dn(machine)+'pars_'+TMD+'_'+tSO+'_'+str(gamma)+'_'+ty+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+"{:.4f}".format(res)+'.npy'
 
-def get_temp_fit_fn(TMD,res,range_par,ty,gamma,machine):
-    return get_res_dn(machine)+'temp/pars_'+TMD+'_'+str(gamma)+'_'+ty+"_"+"{:.2f}".format(range_par).replace('.',',')+'_'+"{:.4f}".format(res)+'.npy'
+def get_temp_fit_fn(TMD,res,range_par,ty,gamma,SO,machine):
+    tSO = text_SO[0] if SO else text_SO[1]
+    return get_res_dn(machine)+'temp/pars_'+TMD+'_'+tSO+'_'+str(gamma)+'_'+ty+"_"+"{:.2f}".format(range_par).replace('.',',')+'_'+"{:.4f}".format(res)+'.npy'
 
 def get_fig_dn(machine):
     return get_res_dn(machine)+'figures/'
@@ -479,13 +493,6 @@ def get_machine(cwd):
     elif cwd[:13] == '/users/rossid':
         return 'maf'
 
-def get_parameters(ind):
-    ind_tmd = ind//len(range_pars)
-    ind_rng = ind%len(range_pars)
-    return (TMDs[ind_tmd], range_pars[ind_rng])
-
-def get_parameters_plot(ind):
-    return range_pars[ind]
 
 
 
