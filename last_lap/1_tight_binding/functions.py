@@ -4,8 +4,7 @@ import scipy.linalg as la
 from pathlib import Path
 import os
 import matplotlib.pyplot as plt
-from time import time as T
-
+#
 
 a_1 = np.array([1,0])
 a_2 = np.array([-1/2,np.sqrt(3)/2])
@@ -15,55 +14,28 @@ J_MX_plus = ((3,1), (5,1), (4,2), (10,6), (9,7), (11,7), (10,8))
 J_MX_minus = ((4,1), (3,2), (5,2), (9,6), (11,6), (10,7), (9,8), (11,8))
 
 TMDs = ['WSe2','WS2']
-gammas = np.logspace(1,4,20)
-range_pars = np.linspace(0.1,1,10,endpoint=True)
-
-text_SO = ['SOmin','SOfixed']
-
 
 def chi2(pars,*args):
     """Compute square difference of bands with exp data.
 
     """
-    exp_data, TMD, machine, range_par, ty, SO, H_SO, gamma = args
-    if SO:
-        H_SO = find_HSO(pars[-2:])
-    tb_en = energy(pars,SO,H_SO,exp_data,TMD)
+    data, TMD, machine, ty, ind = args
+    H_SO = find_HSO(pars[-2:])
+    tb_en = energy(pars,H_SO,data,TMD)
+    #
     res = 0
-    for c in range(2):        ###############
-        for b in range(2):
-            args = np.argwhere(np.isfinite(exp_data[c][b][:,1]))    #select only non-nan values
-            res += np.sum(np.absolute(tb_en[c][b,args]-exp_data[c][b][args,1])**2)
-    if 0 and machine == 'loc':
-        f = plot_together(exp_data,tb_en,tb_en)
-        plt.show()
+    for b in range(2):
+        args = np.argwhere(np.isfinite(data[b][:,1]))    #select only non-nan values
+        res += np.sum(np.absolute(tb_en[b,args]-data[b][args,1])**2)
     if res < ps.min_chi2:   #remove old temp and add new one
-        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,range_par,ty,gamma,SO,machine)
+        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,ty,ind,machine)
         if not ps.min_chi2==1e5:
             os.system('rm '+temp_fn)
+            print("Chi2: ","{:.4f}".format(res))
         ps.min_chi2 = res
-        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,range_par,ty,gamma,SO,machine)
+        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,ty,ind,machine)
         np.save(temp_fn,pars)
     return res
-
-def pen_chi2(pars,*args):
-    """Compute square difference of bands with exp data AND add a penalty for going away from DFT values.
-
-    """
-    exp_data, TMD, machine, range_par, ty, SO, H_SO, gamma = args
-    res_chi2 = chi2(pars,*args)
-    #
-    DFT_values = ps.initial_pt[TMD]
-    if SO:
-        penalization = gamma*(np.absolute(pars[:-3]-DFT_values[:-3])**2).sum()
-        penalization += gamma*(np.absolute(pars[-2:]-DFT_values[-2:])**2).sum()
-    else:
-        penalization = gamma*(np.absolute(pars[:-1]-DFT_values[:-3])**2).sum()
-    
-    if machine == 'loc':
-        print("chi2: "+"{:.4f}".format(res_chi2),",\tpenalty: ","{:.4f}".format(penalization))
-
-    return res_chi2 + penalization
 
 def plot_together(exp_data,dft_en,tb_en,title=''):
     s_=20
@@ -92,36 +64,36 @@ def plot_together(exp_data,dft_en,tb_en,title=''):
     plt.suptitle(title,size=s_+10)
     return plt.gcf()
 
-def energy(parameters,SO,HSO,data,TMD):
+def egvals(H):
+    return la.eigvalsh(H)[12:14][::-1]
+
+def energy(parameters,HSO,data,TMD):
     """Compute energy along the two cuts of 2 TopValenceBand for all considered k.
 
     """
     hopping = find_t(parameters)
     epsilon = find_e(parameters)
     a_TMD = ps.dic_params_a_mono[TMD]
-    offset = parameters[-3] if SO else parameters[-1]
+    offset = parameters[-3]
     #
     args_H = (hopping,epsilon,HSO,a_TMD,offset)
     #
-    cut_energies = []
-    for c in range(2):
-        kpts = data[c][0].shape[0]
-        all_H = H_monolayer(np.array(data[c][0][:,2:]),*args_H)
-        ens = np.zeros((2,kpts))
-        for i in range(kpts):
-            #index of TVB is 13, the other is 12 (out of 22: 11 bands times 2 for SOC. 7/11 are valence -> 14 is the TVB)
-            ens[:,i] = la.eigvalsh(all_H[i])[12:14][::-1]
-        cut_energies.append(ens)
-    return cut_energies
+    kpts = data[0].shape[0]
+    all_H = H_monolayer(np.array(data[0][:,2:]),*args_H)
+    ens = np.zeros((2,kpts))
+    for i in range(kpts):
+        #index of TVB is 13, the other is 12 (out of 22: 11 bands times 2 for SOC. 7/11 are valence -> 14 is the TVB)
+        ens[:,i] = la.eigvalsh(all_H[i])[12:14][::-1]
+#        Ens = Parallel(n_jobs=16)(delayed(egvals)(H_i) for H_i in all_H)
+    return ens
 
 def H_monolayer(K_p,*args):
     """Monolayer Hamiltonian.       TO CHECK
 
     """
-    hopping,epsilon,HSO,a_mono,offset = args
-    t = hopping
+    t,epsilon,HSO,a_mono,offset = args
     delta = a_mono* np.array([a_1, a_1+a_2, a_2, -(2*a_1+a_2)/3, (a_1+2*a_2)/3, (a_1-a_2)/3, -2*(a_1+2*a_2)/3, 2*(2*a_1+a_2)/3, 2*(a_2-a_1)/3])
-    #first part without SO
+    #First part without SO
     vec = True if len(K_p.shape)==2 else False
     H_0 = np.zeros((11,11),dtype=complex) if not vec else np.zeros((11,11,K_p.shape[0]),dtype=complex)
     #Diagonal
@@ -379,7 +351,7 @@ def get_exp_data(TMD,machine):
 
     """
     data = []
-    offset_exp = {'WSe2':{'KGK':0,'KMKp':-0.04}, 'WS2':{'KGK':0,'KMKp':-0.003}} #To align the two cuts
+    offset_exp = {'WSe2':{'KGK':0,'KMKp':-0.0521}, 'WS2':{'KGK':0,'KMKp':0.0094}} #To align the two cuts -> fixed on symmetrized data
     for cut in ['KGK','KMKp']:
         data.append([])
         for band in range(1,3):
@@ -400,23 +372,18 @@ def get_exp_data(TMD,machine):
             np.save(data_fn,np.array(temp))
     return data
 
-def get_bounds(in_pt,r,ty,SO):
+def get_bounds(in_pt,ty):
     Bounds = []
-    off_ind = 3 if SO else 1
-    for i in range(in_pt.shape[0]):     #tb parameters
-        if ty=='relative':
-            temp_1 = in_pt[i]*(1-r)
-            temp_2 = in_pt[i]*(1+r)
-            if initial_point[i]<0:
-                temp = (temp_2,temp_1)
-            else:
-                temp = (temp_1,temp_2)
-        elif ty=='fixed':
+    off_ind = 3
+    for i in range(len(in_pt)):     #tb parameters
+        temp = (-2*abs(in_pt[i]),2*abs(in_pt[i]))
+        #
+        if i == len(in_pt)-off_ind: #offset
+            temp = (-3,0)
+        elif i == len(in_pt)-2 or i == len(in_pt)-1: #SOC
+            r = 0.1*in_pt[i]
             temp = (in_pt[i]-r,in_pt[i]+r)
-        if i == in_pt.shape[0]-off_ind: #offset
-            Bounds.append((-3,0))
-        else:
-            Bounds.append(temp)
+        Bounds.append(temp)
     return Bounds
 
 def find_vec_k(k_scalar,cut,TMD):
@@ -433,9 +400,9 @@ def find_vec_k(k_scalar,cut,TMD):
         K = np.array([4*np.pi/3,0])/a_mono
         Kp = np.array([2*np.pi/3,2*np.pi/np.sqrt(3)])/a_mono
         if k_scalar < 0:
-            k_pts = M + (M-K)*np.abs(k_scalar)/la.norm(M-K)
+            k_pts = M + (K-M)*np.abs(k_scalar)/la.norm(K-M)
         else:
-            k_pts = M + (M-Kp)*np.abs(k_scalar)/la.norm(M-Kp)
+            k_pts = M + (Kp-M)*np.abs(k_scalar)/la.norm(Kp-M)
     return k_pts
 
 def get_exp_data_fn(TMD,cut,band,machine):
@@ -444,17 +411,14 @@ def get_exp_data_fn(TMD,cut,band,machine):
 def get_exp_fn(TMD,cut,band,machine):
     return get_exp_dn(machine)+cut+'_'+TMD+'_band'+str(band)+'.txt'
 
-def get_fig_fn(TMD,range_par,ty,gamma,SO,machine):
-    tSO = text_SO[0] if SO else text_SO[1]
-    return get_fig_dn(machine)+TMD+'_'+tSO+'_'+str(gamma)+'_'+ty+"_"+"{:.2f}".format(range_par).replace('.',',')+'.png'
+def get_fig_fn(TMD,ty,ind,machine):
+    return get_fig_dn(machine)+TMD+'_'+str(ind)+'_'+ty+'.npy'
 
-def get_fit_fn(TMD,range_par,ty,res,gamma,SO,machine):
-    tSO = text_SO[0] if SO else text_SO[1]
-    return get_res_dn(machine)+'pars_'+TMD+'_'+tSO+'_'+str(gamma)+'_'+ty+'_'+"{:.2f}".format(range_par).replace('.',',')+'_'+"{:.4f}".format(res)+'.npy'
+def get_fit_fn(TMD,ty,chi,ind,machine):
+    return get_res_dn(machine)+'pars_'+TMD+'_'+str(ind)+'_'+ty+"_"+"{:.4f}".format(chi)+'.npy'
 
-def get_temp_fit_fn(TMD,res,range_par,ty,gamma,SO,machine):
-    tSO = text_SO[0] if SO else text_SO[1]
-    return get_res_dn(machine)+'temp/pars_'+TMD+'_'+tSO+'_'+str(gamma)+'_'+ty+"_"+"{:.2f}".format(range_par).replace('.',',')+'_'+"{:.4f}".format(res)+'.npy'
+def get_temp_fit_fn(TMD,chi,ty,ind,machine):
+    return get_res_dn(machine)+'temp/pars_'+TMD+'_'+str(ind)+'_'+ty+"_"+"{:.4f}".format(chi)+'.npy'
 
 def get_fig_dn(machine):
     return get_res_dn(machine)+'figures/'
@@ -493,8 +457,34 @@ def get_machine(cwd):
     elif cwd[:13] == '/users/rossid':
         return 'maf'
 
+def symmetrize(dataset):
+    """dataset has N k-entries, each containing a couple (k,E)"""
+    len_ds = len(dataset)//2 if len(dataset)%2 == 0 else len(dataset)//2+1
+    new_ds = np.zeros((len_ds,4))
+    for i in range(len_ds):
+        new_ds[i,0] = np.sqrt(dataset[i,2]**2+dataset[i,3]**2)
+        new_ds[i,2:] = dataset[i,2:]
+        if np.isnan(dataset[i,1]):
+            new_ds[i,1] = dataset[-1-i,1]
+        elif np.isnan(dataset[-1-i,1]):
+            new_ds[i,1] = dataset[i,1]
+        else:
+            new_ds[i,1] = (dataset[i,1]+dataset[-1-i,1])/2
+    return new_ds
 
-
+def get_symm_data(exp_data):
+    """ 2 bands, N k-points, (|k|,E,kx,ky)
+    """
+    symm_data = []
+    for i in range(2):
+        new_KGK = symmetrize(exp_data[0][i])
+        new_KGK[:,2] *= -1
+        new_KMK = symmetrize(exp_data[1][i])
+        new = np.zeros((len(new_KGK)+len(new_KMK),4))
+        new[:len(new_KGK)] = new_KGK[::-1]
+        new[len(new_KGK):] = new_KMK
+        symm_data.append(new)
+    return symm_data
 
 
 
