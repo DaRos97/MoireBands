@@ -376,13 +376,16 @@ def get_bounds(in_pt,ty):
     Bounds = []
     off_ind = 3
     for i in range(len(in_pt)):     #tb parameters
-        temp = (-2*abs(in_pt[i]),2*abs(in_pt[i]))
         #
         if i == len(in_pt)-off_ind: #offset
             temp = (-3,0)
         elif i == len(in_pt)-2 or i == len(in_pt)-1: #SOC
             r = 0.1*in_pt[i]
             temp = (in_pt[i]-r,in_pt[i]+r)
+        elif in_pt < 0:
+            temp = (-2*abs(in_pt[i]),0)
+        else:
+            temp = (0,2*abs(in_pt[i]))
         Bounds.append(temp)
     return Bounds
 
@@ -486,7 +489,8 @@ def get_symm_data(exp_data):
         symm_data.append(new)
     return symm_data
 
-
+def compute_parameter_distance(par,DFT):
+    return np.sum(np.absolute(par[:-3]-DFT[:-3])**2) + np.sum(np.absolute(par[-2:]-DFT[-2:])**2)
 
 
 

@@ -11,7 +11,7 @@ ss = 1 if machine == 'maf' else 0   #Jobs in mafalda start from 1
 
 ind = 0 if len(sys.argv)==1 else int(sys.argv[1])-ss
 #ind labels the random initialization, we only do for WSe2 to start
-TMD = fs.TMDs[1]
+TMD = fs.TMDs[0]
 
 type_bound = 'large'    #'large'->from -2p to 2p, so the largest conceivable
                         #'small'->just a percentage of the parameter
@@ -39,7 +39,7 @@ if 0 and machine == 'loc':
 
 #Arguments of chi^2 function
 DFT_values = ps.initial_pt[TMD]  #DFT values
-rand_vals = np.random.rand(len(DFT_values)-3)*0.1+0.95 #random value between 0.9 and 1.1
+rand_vals = np.random.rand(len(DFT_values)-3)*0.1+0.95 #random value between 0.95 and 1.05
 rand_vals = np.append(rand_vals,np.ones(3))
 initial_point = np.array(DFT_values)*rand_vals    #t,eps,lam,off
 len_pars = initial_point.shape[0]
