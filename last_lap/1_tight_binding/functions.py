@@ -382,10 +382,9 @@ def get_bounds(in_pt,ty):
         elif i == len(in_pt)-2 or i == len(in_pt)-1: #SOC
             r = 0.1*in_pt[i]
             temp = (in_pt[i]-r,in_pt[i]+r)
-        elif in_pt < 0:
-            temp = (-2*abs(in_pt[i]),0)
         else:
-            temp = (0,2*abs(in_pt[i]))
+            r = 0.5*abs(in_pt[i])
+            temp = (in_pt[i]-r,in_pt[i]+r)
         Bounds.append(temp)
     return Bounds
 
