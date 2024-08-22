@@ -37,7 +37,10 @@ def chi2(pars,*args):
             print("Chi2: ","{:.4f}".format(final_res))
         ps.min_chi2 = final_res
         temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,spec_args,ind,machine)
-        np.save(temp_fn,pars)
+        try:
+            np.save(temp_fn,pars)
+        except:
+            print("Unable to write to FS, skipping this step")
     return final_res
 
 def plot_together(exp_data,dft_en,tb_en,title=''):
