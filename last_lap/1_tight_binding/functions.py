@@ -38,9 +38,6 @@ def chi2(pars,*args):
         ps.min_chi2 = final_res
         temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,spec_args,ind,machine)
         np.save(temp_fn,pars)
-    #
-    if 1:
-        print("{:.4f}".format(final_res), '\t',"{:.4f}".format(par_dis))
     return final_res
 
 def plot_together(exp_data,dft_en,tb_en,title=''):
@@ -430,6 +427,9 @@ def get_fit_fn(TMD,spec_args,chi,ind,machine):
 def get_temp_fit_fn(TMD,chi,spec_args,ind,machine):
     return get_temp_dn(machine,spec_args)+'pars_'+TMD+'_'+str(ind)+"_"+"{:.4f}".format(chi)+'.npy'
 
+def get_res_fn(TMD,spec_args,machine):
+    return get_res_dn(machine)+'res_'+TMD+'_'+get_spec_args_txt(spec_args)+'.npy'
+
 def get_fig_dn(machine):
     return get_res_dn(machine)+'figures/'
 
@@ -533,12 +533,59 @@ txt = ['ppe','ppo','pme','pmo','p0e','p0o','d0','dp1','dm1','dp2','dm2']
 
 orb_txt = ['dxz','dyz','poz','pox','poy','dz2','dxy','dx2','pez','pex','pey']
 
+def get_orbital_content(TMD,spec_args,machine):
+    print("_____________________________________________________________________________")
+    print("Orbital content:")
+    a_mono = ps.dic_params_a_mono[TMD]
+    k_pts = np.array([np.zeros(2),np.matmul(R_z(np.pi/3),np.array([4/3*np.pi/a_mono,0]))])    #Gamma and K (K+ of Fange et al., 2015)
+    txt_pt = ['Gamma:','K:    ']
+    fun_pt = [[d0,p0e],[dp2,ppe]]
+    txt_fun_pt = [['d0 ','p0e'],['dp2','ppe']]
+    #
+    file = get_res_fn(TMD,spec_args,machine)
+    full_pars = np.load(file)
+    DFT_pars = np.array(ps.initial_pt[TMD])
+    #
+    args_DFT = (find_t(DFT_pars),find_e(DFT_pars),find_HSO(DFT_pars[-2:]),a_mono,DFT_pars[-3])
+    H_DFT = H_monolayer(k_pts,*args_DFT)
+    args_res = (find_t(full_pars),find_e(full_pars),find_HSO(full_pars[-2:]),a_mono,full_pars[-3])
+    H_res = H_monolayer(k_pts,*args_res)
+    #
+    print("      \tDFT values\t\tres values")
+    for i in range(2):
+        H0 = H_DFT[i,11:,11:]    #Spinless Hamiltonian
+        H1 = H_res[i,11:,11:]    #Spinless Hamiltonian
+        k = k_pts[i]
+        E0,evec0 = np.linalg.eigh(H0)
+        E1,evec1 = np.linalg.eigh(H1)
+        a0 = evec0[:,6]
+        a1 = evec1[:,6]
+        #
+        v0 = [fun_pt[i][0](a0),fun_pt[i][1](a0)]
+        v1 = [fun_pt[i][0](a1),fun_pt[i][1](a1)]
+        print(txt_pt[i]+'\t'+txt_fun_pt[i][0]+':    '+"{:.3f}".format(np.absolute(v0[0]))+'\t\t'+txt_fun_pt[i][0]+':    '+"{:.3f}".format(np.absolute(v1[0])))
+        print('      '+'\t'+txt_fun_pt[i][1]+':    '+"{:.3f}".format(np.absolute(v0[1]))+'\t\t'+txt_fun_pt[i][1]+':    '+"{:.3f}".format(np.absolute(v1[1])))
+        print('      '+'\tweight: '+"{:.3f}".format(np.absolute(v0[0])**2+np.absolute(v0[1])**2)+'\t\tweight: '+"{:.3f}".format(np.absolute(v1[0])**2+np.absolute(v1[1])**2))
+        if i == 0:
+            print("________________________________________________________")
 
 
 
 
-
-
+def get_table(TMD,spec_args,machine):
+    print("_____________________________________________________________________________")
+    print("Table of parameters with distance from DFT")
+    file = get_res_fn(TMD,spec_args,machine)
+    full_pars = np.load(file)
+    pars_dft = ps.initial_pt[TMD]
+    list_names = ps.list_names_all
+    for i in range(len(pars_dft)):
+        percentage = np.abs((full_pars[i]-pars_dft[i])/pars_dft[i]*100)
+        l = 10 - len(list_names[i])
+        sp1 = '' if percentage>10 else ' '
+        sp2 = '' if pars_dft[i]<0 else ' '
+        sp3 = '' if full_pars[i]<0 else ' '
+        print(list_names[i],':',' '*l,sp2,"{:.5f}".format(pars_dft[i]),'  ->  ',sp3,"{:.5f}".format(full_pars[i]),'    ',sp1,"{:.2f}".format(percentage),'%')
 
 
 

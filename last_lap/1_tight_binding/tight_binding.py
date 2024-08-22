@@ -71,13 +71,14 @@ result = minimize(fs.chi2,
             'maxiter': 1e8,
             },
         )
+
 min_chi2 = result.fun
 print("Minimum chi2: ",min_chi2)
 
-
-final_pars = np.array(result.x)
-fit_fn = fs.get_fit_fn(TMD,spec_args,min_chi2,ind,machine)
-np.save(fit_fn,final_pars)
+if 0:
+    final_pars = np.array(result.x)
+    fit_fn = fs.get_fit_fn(TMD,spec_args,min_chi2,ind,machine)
+    np.save(fit_fn,final_pars)
 
 
 
