@@ -13,10 +13,12 @@ ind = 0 if len(sys.argv)==1 else int(sys.argv[1])-ss
 #ind labels the random initialization, we only do for WSe2 to start
 TMD = fs.TMDs[0]
 
-type_bound = 'large'    #'large'->from -2p to 2p, so the largest conceivable
-                        #'small'->just a percentage of the parameter
+P = 1.0
+rp = 1.0
+rl = 0.1
+spec_args = (P,rp,rl)
 
-print("Computing TMD: ",TMD," and range: ",type_bound)
+print("Computing TMD: ",TMD," with parameters: ",spec_args)
 
 #Experimental data of monolayer 
 #For each material, 2 TVB (because of SO) on the 2 cuts
@@ -43,12 +45,15 @@ rand_vals = np.random.rand(len(DFT_values)-3)*0.1+0.95 #random value between 0.9
 rand_vals = np.append(rand_vals,np.ones(3))
 initial_point = np.array(DFT_values)*rand_vals    #t,eps,lam,off
 len_pars = initial_point.shape[0]
-args_chi2 = (symm_data,TMD,machine,type_bound,ind)
+args_chi2 = (symm_data,TMD,machine,spec_args,ind)
 #
+temp_dn = fs.get_temp_dn(machine,spec_args)
+if not Path(temp_dn).is_dir():
+    os.system("mkdir "+temp_dn)
 initial_chi2 = fs.chi2(initial_point,*args_chi2)
 print("Initial chi2: ",initial_chi2)
 
-Bounds = fs.get_bounds(DFT_values,type_bound)
+Bounds = fs.get_bounds(DFT_values,spec_args)
 
 """
 We want a minimization of tb bands vs experiment which penalizes going away from DFT initial values.
@@ -71,7 +76,7 @@ print("Minimum chi2: ",min_chi2)
 
 
 final_pars = np.array(result.x)
-fit_fn = fs.get_fit_fn(TMD,type_bound,min_chi2,ind,machine)
+fit_fn = fs.get_fit_fn(TMD,spec_args,min_chi2,ind,machine)
 np.save(fit_fn,final_pars)
 
 

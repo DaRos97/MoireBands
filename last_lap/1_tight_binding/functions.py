@@ -19,7 +19,7 @@ def chi2(pars,*args):
     """Compute square difference of bands with exp data.
 
     """
-    data, TMD, machine, ty, ind = args
+    data, TMD, machine, spec_args, ind = args
     H_SO = find_HSO(pars[-2:])
     tb_en = energy(pars,H_SO,data,TMD)
     #
@@ -27,15 +27,21 @@ def chi2(pars,*args):
     for b in range(2):
         args = np.argwhere(np.isfinite(data[b][:,1]))    #select only non-nan values
         res += np.sum(np.absolute(tb_en[b,args]-data[b][args,1])**2)
-    if res < ps.min_chi2:   #remove old temp and add new one
-        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,ty,ind,machine)
+    par_dis = compute_parameter_distance(pars,np.array(ps.initial_pt[TMD]))
+    final_res = res + spec_args[0]*par_dis
+    #
+    if final_res < ps.min_chi2:   #remove old temp and add new one
+        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,spec_args,ind,machine)
         if not ps.min_chi2==1e5:
             os.system('rm '+temp_fn)
-            print("Chi2: ","{:.4f}".format(res))
-        ps.min_chi2 = res
-        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,ty,ind,machine)
+            print("Chi2: ","{:.4f}".format(final_res))
+        ps.min_chi2 = final_res
+        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,spec_args,ind,machine)
         np.save(temp_fn,pars)
-    return res
+    #
+    if 1:
+        print("{:.4f}".format(final_res), '\t',"{:.4f}".format(par_dis))
+    return final_res
 
 def plot_together(exp_data,dft_en,tb_en,title=''):
     s_=20
@@ -173,8 +179,9 @@ def H_monolayer(K_p,*args):
     H[11:,11:] = H_TB
     #
     H = np.transpose(H,(2,0,1))
+    
     H += HSO
-
+    
     #Offset
     H += np.identity(22)*offset
     return H
@@ -372,7 +379,8 @@ def get_exp_data(TMD,machine):
             np.save(data_fn,np.array(temp))
     return data
 
-def get_bounds(in_pt,ty):
+def get_bounds(in_pt,spec_args):
+    P, rp, rl = spec_args
     Bounds = []
     off_ind = 3
     for i in range(len(in_pt)):     #tb parameters
@@ -380,10 +388,10 @@ def get_bounds(in_pt,ty):
         if i == len(in_pt)-off_ind: #offset
             temp = (-3,0)
         elif i == len(in_pt)-2 or i == len(in_pt)-1: #SOC
-            r = 0.1*in_pt[i]
+            r = rl*in_pt[i]
             temp = (in_pt[i]-r,in_pt[i]+r)
         else:
-            r = 0.5*abs(in_pt[i])
+            r = rp*abs(in_pt[i])
             temp = (in_pt[i]-r,in_pt[i]+r)
         Bounds.append(temp)
     return Bounds
@@ -407,20 +415,20 @@ def find_vec_k(k_scalar,cut,TMD):
             k_pts = M + (Kp-M)*np.abs(k_scalar)/la.norm(Kp-M)
     return k_pts
 
+def get_spec_args_txt(spec_args):
+    return "{:.1f}".format(spec_args[0]).replace('.',',')+'_'+"{:.1f}".format(spec_args[1]).replace('.',',')+'_'+"{:.1f}".format(spec_args[2]).replace('.',',')
+
 def get_exp_data_fn(TMD,cut,band,machine):
     return get_exp_dn(machine)+'extracted_data_'+cut+'_'+TMD+'_band'+str(band)+'.npy'
 
 def get_exp_fn(TMD,cut,band,machine):
     return get_exp_dn(machine)+cut+'_'+TMD+'_band'+str(band)+'.txt'
 
-def get_fig_fn(TMD,ty,ind,machine):
-    return get_fig_dn(machine)+TMD+'_'+str(ind)+'_'+ty+'.npy'
+def get_fit_fn(TMD,spec_args,chi,ind,machine):
+    return get_res_dn(machine)+'pars_'+TMD+'_'+str(ind)+'_'+get_spec_args_txt(spec_args)+"_"+"{:.4f}".format(chi)+'.npy'
 
-def get_fit_fn(TMD,ty,chi,ind,machine):
-    return get_res_dn(machine)+'pars_'+TMD+'_'+str(ind)+'_'+ty+"_"+"{:.4f}".format(chi)+'.npy'
-
-def get_temp_fit_fn(TMD,chi,ty,ind,machine):
-    return get_res_dn(machine)+'temp/pars_'+TMD+'_'+str(ind)+'_'+ty+"_"+"{:.4f}".format(chi)+'.npy'
+def get_temp_fit_fn(TMD,chi,spec_args,ind,machine):
+    return get_temp_dn(machine,spec_args)+'pars_'+TMD+'_'+str(ind)+"_"+"{:.4f}".format(chi)+'.npy'
 
 def get_fig_dn(machine):
     return get_res_dn(machine)+'figures/'
@@ -430,6 +438,9 @@ def get_exp_dn(machine):
 
 def get_res_dn(machine):
     return get_home_dn(machine)+'results/'
+
+def get_temp_dn(machine,spec_args):
+    return get_res_dn(machine)+'temp_'+get_spec_args_txt(spec_args)+'/'
 
 def get_home_dn(machine):
     if machine == 'loc':
@@ -491,9 +502,36 @@ def get_symm_data(exp_data):
 def compute_parameter_distance(par,DFT):
     return np.sum(np.absolute(par[:-3]-DFT[:-3])**2) + np.sum(np.absolute(par[-2:]-DFT[-2:])**2)
 
+def R_z(t):
+    return np.array([[np.cos(t),-np.sin(t)],[np.sin(t),np.cos(t)]])
 
+def ppe(a):
+    return -1/np.sqrt(2)*(a[9]+1j*a[10])
+def ppo(a):
+    return -1/np.sqrt(2)*(a[3]+1j*a[4])
+def pme(a):
+    return  1/np.sqrt(2)*(a[9]-1j*a[10])
+def pmo(a):
+    return  1/np.sqrt(2)*(a[3]-1j*a[4])
+def p0e(a):
+    return a[8]
+def p0o(a):
+    return a[2]
+def d0(a):
+    return a[5]
+def dp1(a):
+    return -1/np.sqrt(2)*(a[0]+1j*a[1])
+def dm1(a):
+    return  1/np.sqrt(2)*(a[0]-1j*a[1])
+def dp2(a):
+    return  1/np.sqrt(2)*(a[7]+1j*a[6])
+def dm2(a):
+    return  1/np.sqrt(2)*(a[7]-1j*a[6])
 
+fun = [ppe,ppo,pme,pmo,p0e,p0o,d0,dp1,dm1,dp2,dm2]
+txt = ['ppe','ppo','pme','pmo','p0e','p0o','d0','dp1','dm1','dp2','dm2']
 
+orb_txt = ['dxz','dyz','poz','pox','poy','dz2','dxy','dx2','pez','pex','pey']
 
 
 
