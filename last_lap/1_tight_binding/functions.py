@@ -414,6 +414,15 @@ def find_vec_k(k_scalar,cut,TMD):
             k_pts = M + (Kp-M)*np.abs(k_scalar)/la.norm(Kp-M)
     return k_pts
 
+def get_spec_args(ind):
+    lP = [10,1,0.1]
+    lrp = [1]
+    lrl = [0.1,0.2,0.3]
+    ll = [lP,lrp,lrl]
+    import itertools
+    combs = list(itertools.product(*ll))
+    return combs[ind]
+
 def get_spec_args_txt(spec_args):
     return "{:.1f}".format(spec_args[0]).replace('.',',')+'_'+"{:.1f}".format(spec_args[1]).replace('.',',')+'_'+"{:.1f}".format(spec_args[2]).replace('.',',')
 

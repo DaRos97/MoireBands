@@ -8,16 +8,15 @@ import matplotlib.pyplot as plt
 
 machine = fs.get_machine(os.getcwd())
 
-ind = 0 if len(sys.argv)==1 else int(sys.argv[1])
-#ind labels the random initialization, we only do for WSe2 to start
+#ind labels the random initialization
+ind = 0 if len(sys.argv) in [1,2] else int(sys.argv[2])
+
 TMD = fs.TMDs[0]
 
-P = 1.0
-rp = 1.0
-rl = 0.1
-spec_args = (P,rp,rl)
+ind_spec_args = 0 if len(sys.argv)==1 else int(sys.argv[1])
+spec_args = fs.get_spec_args(ind_spec_args)
 
-print("Computing TMD: ",TMD," with parameters: ",spec_args)
+print("Computing TMD: ",TMD," with parameters: ",spec_args," and ind_random: ",ind)
 
 #Experimental data of monolayer 
 #For each material, 2 TVB (because of SO) on the 2 cuts
