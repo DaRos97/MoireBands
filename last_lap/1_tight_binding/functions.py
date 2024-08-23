@@ -34,13 +34,12 @@ def chi2(pars,*args):
         temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,spec_args,ind,machine)
         if not ps.min_chi2==1e5:
             os.system('rm '+temp_fn)
-            print("Chi2: ","{:.4f}".format(final_res))
         ps.min_chi2 = final_res
         temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,spec_args,ind,machine)
         try:
             np.save(temp_fn,pars)
         except:
-            print("Unable to write to FS, skipping this step")
+            print("Unable to write to file system, skipping this step")
     return final_res
 
 def plot_together(exp_data,dft_en,tb_en,title=''):
@@ -424,17 +423,11 @@ def get_exp_data_fn(TMD,cut,band,machine):
 def get_exp_fn(TMD,cut,band,machine):
     return get_exp_dn(machine)+cut+'_'+TMD+'_band'+str(band)+'.txt'
 
-def get_fit_fn(TMD,spec_args,chi,ind,machine):
-    return get_res_dn(machine)+'pars_'+TMD+'_'+str(ind)+'_'+get_spec_args_txt(spec_args)+"_"+"{:.4f}".format(chi)+'.npy'
-
 def get_temp_fit_fn(TMD,chi,spec_args,ind,machine):
-    return get_temp_dn(machine,spec_args)+'pars_'+TMD+'_'+str(ind)+"_"+"{:.4f}".format(chi)+'.npy'
+    return get_temp_dn(machine,spec_args)+'pars_'+TMD+'_'+str(ind)+"_"+"{:.8f}".format(chi)+'.npy'
 
 def get_res_fn(TMD,spec_args,machine):
     return get_res_dn(machine)+'res_'+TMD+'_'+get_spec_args_txt(spec_args)+'.npy'
-
-def get_fig_dn(machine):
-    return get_res_dn(machine)+'figures/'
 
 def get_exp_dn(machine):
     return get_home_dn(machine)+'inputs/'
@@ -504,6 +497,12 @@ def get_symm_data(exp_data):
 
 def compute_parameter_distance(par,DFT):
     return np.sum(np.absolute(par[:-3]-DFT[:-3])**2) + np.sum(np.absolute(par[-2:]-DFT[-2:])**2)
+
+########################################################################################################
+########################################################################################################
+########################################################################################################
+########################################################################################################
+########################################################################################################
 
 def R_z(t):
     return np.array([[np.cos(t),-np.sin(t)],[np.sin(t),np.cos(t)]])

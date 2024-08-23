@@ -7,9 +7,8 @@ from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 
 machine = fs.get_machine(os.getcwd())
-ss = 1 if machine == 'maf' else 0   #Jobs in mafalda start from 1
 
-ind = 0 if len(sys.argv)==1 else int(sys.argv[1])-ss
+ind = 0 if len(sys.argv)==1 else int(sys.argv[1])
 #ind labels the random initialization, we only do for WSe2 to start
 TMD = fs.TMDs[0]
 
@@ -64,21 +63,17 @@ result = minimize(fs.chi2,
         bounds = Bounds,
         method = 'Nelder-Mead',
         options = {
-            'disp': True if machine=='loc' else False,
+            'disp': False,
             'adaptive' : True,
             'fatol': 1e-8,
             'xatol': 1e-8,
-            'maxiter': 1e8,
+            'maxiter': 1e6,
             },
         )
 
 min_chi2 = result.fun
 print("Minimum chi2: ",min_chi2)
 
-if 0:
-    final_pars = np.array(result.x)
-    fit_fn = fs.get_fit_fn(TMD,spec_args,min_chi2,ind,machine)
-    np.save(fit_fn,final_pars)
 
 
 
