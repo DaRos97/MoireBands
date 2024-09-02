@@ -4,6 +4,7 @@ import scipy.linalg as la
 from pathlib import Path
 import os
 import matplotlib.pyplot as plt
+import itertools
 #
 
 a_1 = np.array([1,0])
@@ -379,7 +380,7 @@ def get_exp_data(TMD,machine):
     return data
 
 def get_bounds(in_pt,spec_args):
-    P, rp, rl = spec_args
+    P, rp, rl, cv = spec_args
     Bounds = []
     off_ind = 3
     for i in range(len(in_pt)):     #tb parameters
@@ -391,7 +392,8 @@ def get_bounds(in_pt,spec_args):
             temp = (in_pt[i]-r,in_pt[i]+r)
         else:
             r = rp*abs(in_pt[i])
-            temp = (in_pt[i]-r,in_pt[i]+r)
+            mm, MM = (cv,0) if in_pt[i]>0 else (0,cv)
+            temp = (in_pt[i]-r-mm,in_pt[i]+r+MM)
         Bounds.append(temp)
     return Bounds
 
@@ -418,13 +420,13 @@ def get_spec_args(ind):
     lP = [10,1,0.1]
     lrp = [1]
     lrl = [0.1,0.2,0.3]
-    ll = [lP,lrp,lrl]
-    import itertools
+    lcv = [0.01]
+    ll = [lP,lrp,lrl,lcv]
     combs = list(itertools.product(*ll))
     return combs[ind]
 
 def get_spec_args_txt(spec_args):
-    return "{:.1f}".format(spec_args[0]).replace('.',',')+'_'+"{:.1f}".format(spec_args[1]).replace('.',',')+'_'+"{:.1f}".format(spec_args[2]).replace('.',',')
+    return "{:.1f}".format(spec_args[0]).replace('.',',')+'_'+"{:.1f}".format(spec_args[1]).replace('.',',')+'_'+"{:.1f}".format(spec_args[2]).replace('.',',')+'_'+"{:.2f}".format(spec_args[3]).replace('.',',')
 
 def get_exp_data_fn(TMD,cut,band,machine):
     return get_exp_dn(machine)+'extracted_data_'+cut+'_'+TMD+'_band'+str(band)+'.npy'
