@@ -22,7 +22,10 @@ We should also discriminate the solutions based on the orbital content at G and 
 - `maf.sh`
 Copies both temp/ and resutls/ from hpc to local and remove old results.
 
-#Plot
+# Extract best result
+- `best_result.py`
+
+# Plot
 - `Plot_final.py`
 
 #DFT distance
@@ -34,8 +37,65 @@ Also here can decide which result to use for the table.
 - `orbital_content.py`
 Computes the relevant orbital content close to Gamma and K.
 
-# Computed
+# Computed three pars
+## Baobab
+    - 1-500 bound 10.0 1.0 0.3
+## Yggdrasil
+## Mafalda
+    - 1-50 bound 10.0 1.0 0.2
+    - 1-50 bound 1.0 1.0 0.1
+    - 1-50 bound 1.0 1.0 0.2
+    - 1-50 bound 1.0 1.0 0.3
+## Bamboo
+    - 1-500 bound 10.0 1.0 0.2
+
+
+# Computed four pars
+## Yggdrasil
+    - 1-100 bound 10.0 1.0 0.2 0.01
+    - 1-100 bound 10.0 1.0 0.3 0.01
+    - 1-100 bound 5.0 1.0 0.2 0.01
+    - 1-100 bound 5.0 1.0 0.3 0.01
+    - 1-20 bound [10.0,7.5,5,2.5] [0.5,1.0,1.5] [0.1,0.3,0.5] [0,0.01,0.1]
+
+
+
 # Computing
+
+## Baobab
+## Yggdrasil
+## Mafalda
+## Bamboo
+    
+
+
+
+
+
+
+# Notes
+Coefficient of `chi2_1` between 1 and 10 seems good. 
+Maybe adjusting the bound on (e,t):
+    - not just percentage but also either a constant term, maybe depending on 
+      the absolute value of the term and/or the importance of the term (nn or nnn)
+
+Just `t1_1111` and `t6_96` are changing sign
+
+Can make code faster by reducing the number of k-points to consider
+
+The top of lower band at K is always too small. Need to check HSO -> Clebsch-Gordan coefficients
+
+
+
+
+
+
+
+
+
+
+
+
 
 # OLD RESULTS -> range of parameters and slow computation
 # Computed

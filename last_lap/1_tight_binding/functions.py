@@ -285,72 +285,80 @@ def find_e(dic_params_H):
     return e
 
 def find_HSO(SO_pars):
-    """Compute the SO Hamiltonian. TO CHECK.
+    """Compute the SO Hamiltonian. Taken from arXiv:1401....(paco guinea)
+    They compute exactly the same thing BUT with a basis change.
 
     """
     l_M = SO_pars[0]
     l_X = SO_pars[1]
     ####
     Mee_uu = np.zeros((6,6),dtype=complex)
-    Mee_uu[1,2] = 1j*l_M
-    Mee_uu[2,1] = -1j*l_M
-    Mee_uu[4,5] = -1j*l_X/2
-    Mee_uu[5,4] = 1j*l_X/2
+    Mee_uu[1,2] = -1j*l_M
+    Mee_uu[2,1] = 1j*l_M
+    Mee_uu[3,4] = -1j*l_X/2
+    Mee_uu[4,3] = 1j*l_X/2
     Mee_dd = -Mee_uu
     #
     Moo_uu = np.zeros((5,5),dtype=complex)
     Moo_uu[0,1] = -1j*l_M/2
     Moo_uu[1,0] = 1j*l_M/2
-    Moo_uu[3,4] = -1j*l_X/2
-    Moo_uu[4,3] = 1j*l_X/2
+    Moo_uu[2,3] = -1j*l_X/2
+    Moo_uu[3,2] = 1j*l_X/2
     Moo_dd = -Moo_uu
-    #
-    Moe_ud = np.zeros((5,6),dtype=complex)
-    Moe_ud[0,0] = l_M*np.sqrt(3)/2
-    Moe_ud[0,1] = 1j*l_M/2
-    Moe_ud[0,2] = -l_M/2
-    Moe_ud[1,0] = -1j*l_M*np.sqrt(3)/2
-    Moe_ud[1,1] = -l_M/2
-    Moe_ud[1,2] = -1j*l_M/2
-    Moe_ud[2,4] = -l_X/2
-    Moe_ud[2,5] = 1j*l_X/2
-    Moe_ud[3,3] = l_X/2
-    Moe_ud[4,3] = -1j*l_X/2
-    Meo_du = np.conjugate(Moe_ud.T)
     #
     Meo_ud = np.zeros((6,5),dtype=complex)
     Meo_ud[0,0] = -l_M*np.sqrt(3)/2
     Meo_ud[0,1] = 1j*l_M*np.sqrt(3)/2
-    Meo_ud[1,0] = -1j*l_M/2
-    Meo_ud[1,1] = l_M/2
-    Meo_ud[2,0] = l_M/2
-    Meo_ud[2,1] = 1j*l_M/2
-    Meo_ud[3,3] = -l_X/2
-    Meo_ud[3,4] = 1j*l_X/2
-    Meo_ud[4,2] = l_X/2
-    Meo_ud[5,2] = -1j*l_X/2
+    Meo_ud[1,0] = l_M/2
+    Meo_ud[1,1] = 1j*l_M/2
+    Meo_ud[2,0] = -1j*l_M/2
+    Meo_ud[2,1] = l_M/2
+    Meo_ud[3,4] = l_X/2
+    Meo_ud[4,4] = -1j*l_X/2
+    Meo_ud[5,2] = -l_X/2
+    Meo_ud[5,3] = 1j*l_X/2
     Moe_du = np.conjugate(Meo_ud.T)
     #
+    Meo_du = np.zeros((6,5),dtype=complex)
+    Meo_du[0,0] = l_M*np.sqrt(3)/2
+    Meo_du[0,1] = 1j*np.sqrt(3)*l_M/2
+    Meo_du[1,0] = -l_M/2
+    Meo_du[1,1] = -1j*l_M/2
+    Meo_du[2,0] = -1j*l_M/2
+    Meo_du[2,1] = -l_M/2
+    Meo_du[3,4] = -l_X/2
+    Meo_du[4,4] = -1j*l_X/2
+    Meo_du[5,2] = l_X/2
+    Meo_du[5,3] = 1j*l_X/2
+    Moe_du = np.conjugate(Moe_ud.T)
+    #
     Muu = np.zeros((11,11),dtype=complex)
-    Muu[:5,:5] = Moo_uu
-    Muu[5:,5:] = Mee_uu
+    Muu[:6,:6] = Mee_uu
+    Muu[6:,6:] = Moo_uu
     Mdd = np.zeros((11,11),dtype=complex)
-    Mdd[:5,:5] = Moo_dd
-    Mdd[5:,5:] = Mee_dd
+    Mdd[:6,:6] = Mee_dd
+    Mdd[6:,6:] = Moo_dd
     Mud = np.zeros((11,11),dtype=complex)
-    Mud[:5,5:] = Moe_ud
-    Mud[5:,:5] = Meo_ud
+    Mud[:6,6:] = Meo_ud
+    Mud[6:,:6] = Moe_ud
     Mdu = np.zeros((11,11),dtype=complex)
-    Mdu[:5,5:] = Moe_du
-    Mdu[5:,:5] = Meo_du
+    Mdu[:6,6:] = Meo_du
+    Mdu[6:,:6] = Moe_du
     #
     HSO = np.zeros((22,22),dtype=complex)
     HSO[:11,:11] = Muu
     HSO[11:,11:] = Mdd
     HSO[:11,11:] = Mud
     HSO[11:,:11] = Mdu
-    ####
-    return HSO
+    #### Now we do the basis transformation
+    P = np.zeros((11,11))
+    P[0,5] = P[1,7] = P[2,6] = P[3,9] = P[4,10] = P[5,8] = 1
+    P[6,0] = P[7,1] = P[8,3] = P[9,4] = P[10,2] = 1
+    Pf = np.zeros((22,22))
+    Pf[:11,:11] = P
+    Pf[11:,11:] = P
+    HSOf = np.linalg.inv(P) @ HSO @ P
+    return HSOf
 
 def get_exp_data(TMD,machine):
     """For given material, takes the two cuts and the two bands and returns the lists of energy and momentum for the 2 top valence bands. 
@@ -417,10 +425,10 @@ def find_vec_k(k_scalar,cut,TMD):
     return k_pts
 
 def get_spec_args(ind):
-    lP = [10,1,0.1]
-    lrp = [1]
-    lrl = [0.1,0.2,0.3]
-    lcv = [0.01]
+    lP = [10,7.5,5,2.5]
+    lrp = [0.5,1,1.5]
+    lrl = [0.1,0.3,0.5]
+    lcv = [0,0.01,0.1]
     ll = [lP,lrp,lrl,lcv]
     combs = list(itertools.product(*ll))
     return combs[ind]
@@ -439,6 +447,12 @@ def get_temp_fit_fn(TMD,chi,spec_args,ind,machine):
 
 def get_res_fn(TMD,spec_args,machine):
     return get_res_dn(machine)+'res_'+TMD+'_'+get_spec_args_txt(spec_args)+'.npy'
+
+def get_fig_fn(TMD,spec_args,machine):
+    return get_fig_dn(machine)+'fig_'+TMD+'_'+get_spec_args_txt(spec_args)+'.png'
+
+def get_fig_dn(machine):
+    return get_res_dn(machine)+'figures/'
 
 def get_exp_dn(machine):
     return get_home_dn(machine)+'inputs/'

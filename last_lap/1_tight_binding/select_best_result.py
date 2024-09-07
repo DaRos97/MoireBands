@@ -5,16 +5,17 @@ import os,sys
 import matplotlib.pyplot as plt
 
 plots = 1
+plots_pts = 0
+
 selection = 0 if len(sys.argv)==1 else int(sys.argv[1])  #0->chi2, 1->chi2_0, 2->chi2_1
+ind_0 = 0 if len(sys.argv) in [1,2] else int(sys.argv[2])
 txt_b = ['chi2','chi2_0','chi2_1']
 
 machine = 'loc'
 TMD = fs.TMDs[0]
 
-P = 10
-rp = 1.0
-rl = 0.1
-spec_args = (P,rp,rl)
+P,rp,rl,cv = fs.get_spec_args(ind_0)
+spec_args = (P,rp,rl,cv)
 
 print("Computing TMD: ",TMD," with parameters: ",spec_args)
 print("Considering solution with best ",txt_b[selection])
@@ -57,18 +58,24 @@ for file in os.listdir(fs.get_temp_dn(machine,spec_args)):
         arr_sol.append(np.array([ind,chi2,chi2_0,chi2_1]))
 
 arr_sol = np.array(arr_sol)
-if 0 and plots:   #plot par_distances
+best_i0 = np.where(arr_sol == np.array([best_ind,best_chi2,best_chi2_0,best_chi2_1]))[0][0]
+
+if plots_pts:   #plot par_distances
     plt.figure()
     plt.scatter(arr_sol[:,0],arr_sol[:,3],s=arr_sol[:,2]*50,lw=0)
+    plt.scatter(arr_sol[best_i0,0],arr_sol[best_i0,3],s=arr_sol[best_i0,2]*100,lw=0,c='r')
     plt.title("Distribution of chi2_1 from DFT")
     plt.show()
     plt.figure()
-    plt.scatter(arr_sol[:,0],arr_sol[:,2],s=arr_sol[:,3]*10,lw=0)
+    plt.scatter(arr_sol[:,0],arr_sol[:,2],s=arr_sol[:,3]*100,lw=0)
+    plt.scatter(arr_sol[best_i0,0],arr_sol[best_i0,2],s=arr_sol[best_i0,3]*200,lw=0,c='r')
     plt.title("Distribution of chi2_0")
     plt.show()
 
 if not best_ind==0:
-    print("Best sol found has ind=",best_ind," and (chi2_0, chi2_1) = (",best_chi2_0,", ",best_chi2_1,')')
+    print("Best sol found has ind=",best_ind," and (chi2, chi2_0, chi2_1) = (","{:.4f}".format(best_chi2),", ","{:.4f}".format(best_chi2_0),", ","{:.4f}".format(best_chi2_1),')')
+    print("__________________________________________________________")
+    print("__________________________________________________________")
     if plots:
         HSO = fs.find_HSO(best_pars[-2:])
         tb_en = fs.energy(pars,fs.find_HSO(best_pars[-2:]),symm_data,TMD)
@@ -77,7 +84,7 @@ if not best_ind==0:
         plt.figure(figsize=(40,20))
         k_lim = exp_data[0][0][-1,0]
         ikl = exp_data[0][0].shape[0]//2
-        title = "TMD: "+TMD
+        title = "TMD: "+TMD+", spec_ind = "+str(ind_0)+" -> ("+fs.get_spec_args_txt(spec_args)+")"+", chi2="+"{:.3f}".format(chi2)
         s_ = 20
         for b in range(2):
             #exp
@@ -96,12 +103,15 @@ if not best_ind==0:
         plt.axvline(-(symm_data[b][-1,0]-k_lim)+k_lim,color='k',alpha = 0.2)
         plt.ylabel("E(eV)",size=s_)
         plt.suptitle(title,size=s_+10)
-        plt.show()
+        plt.savefig(fs.get_fig_fn(TMD,spec_args,machine))
+        if 0:
+            plt.show()
 
     #Save best result
     np.save(fs.get_res_fn(TMD,spec_args,machine),best_pars)
-    fs.get_orbital_content(TMD,spec_args,machine)
-    fs.get_table(TMD,spec_args,machine)
+    if 0:
+        fs.get_orbital_content(TMD,spec_args,machine)
+        fs.get_table(TMD,spec_args,machine)
 else:
     print("No best solution found")
 
