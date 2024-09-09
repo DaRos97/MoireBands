@@ -5,7 +5,7 @@ import os,sys
 import matplotlib.pyplot as plt
 
 plots = 1
-plots_pts = 0
+plots_pts = 1
 
 selection = 0 if len(sys.argv)==1 else int(sys.argv[1])  #0->chi2, 1->chi2_0, 2->chi2_1
 ind_0 = 0 if len(sys.argv) in [1,2] else int(sys.argv[2])
@@ -15,6 +15,11 @@ machine = 'loc'
 TMD = fs.TMDs[0]
 
 P,rp,rl,cv = fs.get_spec_args(ind_0)
+if 0:
+    P = 0
+    rp = 2
+    rl = 1
+    cv = 0
 spec_args = (P,rp,rl,cv)
 
 print("Computing TMD: ",TMD," with parameters: ",spec_args)
@@ -104,12 +109,12 @@ if not best_ind==0:
         plt.ylabel("E(eV)",size=s_)
         plt.suptitle(title,size=s_+10)
         plt.savefig(fs.get_fig_fn(TMD,spec_args,machine))
-        if 0:
+        if 1:
             plt.show()
 
     #Save best result
     np.save(fs.get_res_fn(TMD,spec_args,machine),best_pars)
-    if 0:
+    if 1:
         fs.get_orbital_content(TMD,spec_args,machine)
         fs.get_table(TMD,spec_args,machine)
 else:

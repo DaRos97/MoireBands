@@ -43,33 +43,6 @@ def chi2(pars,*args):
             print("Unable to write to file system, skipping this step")
     return final_res
 
-def plot_together(exp_data,dft_en,tb_en,title=''):
-    s_=20
-    plt.figure(figsize=(40,20))
-    for c in range(2):
-        if c == 0:
-            ax1 = plt.subplot(1,2,1)
-        else:
-            ax2 = plt.subplot(1,2,2,sharey=ax1)
-        for b in range(2):
-            dft = (dft_en[c][b,:]-tb_en[c][b,:]).any()
-            plt.scatter(exp_data[c][b][:,0],exp_data[c][b][:,1],color='b',marker='*',label='experiment' if b == 0 else '')
-            plt.scatter(exp_data[c][b][:,0],tb_en[c][b,:],color='r',marker='.',label='minimization' if b == 0 else '',s=5)
-            if dft:
-                plt.scatter(exp_data[c][b][:,0],dft_en[c][b,:],color='g',marker='^',label='DFT' if b == 0 else '',s=5)
-        plt.legend(fontsize=s_,markerscale=2)
-        if c == 0:
-            plt.xticks([exp_data[c][b][0,0],(exp_data[c][b][-1,0]+exp_data[c][b][0,0])/2,exp_data[c][b][-1,0]],['$K$','$\Gamma$','$K$'],size=s_)
-        else:
-            plt.xticks([exp_data[c][b][0,0],(exp_data[c][b][-1,0]+exp_data[c][b][0,0])/2,exp_data[c][b][-1,0]],['$K$','$M$','$K$'],size=s_)
-        plt.axvline(exp_data[c][b][0,0],color='k',alpha = 0.2)
-        plt.axvline((exp_data[c][b][-1,0]+exp_data[c][b][0,0])/2,color='k',alpha = 0.2)
-        plt.axvline(exp_data[c][b][-1,0],color='k',alpha = 0.2)
-#        plt.xlabel("$A^{-1}$",size=s_)
-        plt.ylabel("E(eV)",size=s_)
-    plt.suptitle(title,size=s_+10)
-    return plt.gcf()
-
 def egvals(H):
     return la.eigvalsh(H)[12:14][::-1]
 
@@ -330,7 +303,7 @@ def find_HSO(SO_pars):
     Meo_du[4,4] = -1j*l_X/2
     Meo_du[5,2] = l_X/2
     Meo_du[5,3] = 1j*l_X/2
-    Moe_du = np.conjugate(Moe_ud.T)
+    Moe_ud = np.conjugate(Meo_du.T)
     #
     Muu = np.zeros((11,11),dtype=complex)
     Muu[:6,:6] = Mee_uu
@@ -357,7 +330,7 @@ def find_HSO(SO_pars):
     Pf = np.zeros((22,22))
     Pf[:11,:11] = P
     Pf[11:,11:] = P
-    HSOf = np.linalg.inv(P) @ HSO @ P
+    HSOf = np.linalg.inv(Pf) @ HSO @ Pf
     return HSOf
 
 def get_exp_data(TMD,machine):
@@ -519,6 +492,12 @@ def get_symm_data(exp_data):
         new[len(new_KGK):] = new_KMK
         symm_data.append(new)
     return symm_data
+
+def get_reduced_data(symm_data,ind):
+    red_data = []
+    for i in range(2):
+        red_data.append(symm_data[i][::ind])
+    return red_data
 
 def compute_parameter_distance(par,DFT):
     return np.sum(np.absolute(par[:-3]-DFT[:-3])**2) + np.sum(np.absolute(par[-2:]-DFT[-2:])**2)
