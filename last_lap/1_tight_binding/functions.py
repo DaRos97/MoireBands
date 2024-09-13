@@ -28,10 +28,11 @@ def chi2(pars,*args):
     for b in range(2):
         args = np.argwhere(np.isfinite(data[b][:,1]))    #select only non-nan values
         res += np.sum(np.absolute(tb_en[b,args]-data[b][args,1])**2)
+    plt.show()
     par_dis = compute_parameter_distance(pars,np.array(ps.initial_pt[TMD]))
     final_res = res + spec_args[0]*par_dis
     #
-    if final_res < ps.min_chi2:   #remove old temp and add new one
+    if final_res < ps.min_chi2 and ind>-1:   #remove old temp and add new one
         temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,spec_args,ind,machine)
         if not ps.min_chi2==1e5:
             os.system('rm '+temp_fn)
@@ -398,10 +399,10 @@ def find_vec_k(k_scalar,cut,TMD):
     return k_pts
 
 def get_spec_args(ind):
-    lP = [10,7.5,5,2.5]
-    lrp = [0.5,1,1.5]
-    lrl = [0.1,0.3,0.5]
-    lcv = [0,0.01,0.1]
+    lP = np.arange(10)
+    lrp = np.linspace(0.5,3,11)
+    lrl = np.linspace(0.1,0.5,5)
+    lcv = [0]
     ll = [lP,lrp,lrl,lcv]
     combs = list(itertools.product(*ll))
     return combs[ind]
@@ -465,19 +466,23 @@ def get_machine(cwd):
         return 'maf'
 
 def symmetrize(dataset):
-    """dataset has N k-entries, each containing a couple (k,E)"""
+    """datasìet has N k-entries, each containing a couple (k,E,kx,ky)"""
+    new_ds = []
     len_ds = len(dataset)//2 if len(dataset)%2 == 0 else len(dataset)//2+1
-    new_ds = np.zeros((len_ds,4))
     for i in range(len_ds):
-        new_ds[i,0] = np.sqrt(dataset[i,2]**2+dataset[i,3]**2)
-        new_ds[i,2:] = dataset[i,2:]
-        if np.isnan(dataset[i,1]):
-            new_ds[i,1] = dataset[-1-i,1]
+        temp = np.zeros(4)
+        temp[0] = np.abs(dataset[i,0])#np.sqrt(dataset[i,2]**2+dataset[i,3]**2)
+        temp[2:] = dataset[i,2:]
+        if np.isnan(dataset[i,1]) and np.isnan(dataset[-1-i,1]):
+            temp[1] = np.nan
+        elif np.isnan(dataset[i,1]):
+            temp[1] = dataset[-1-i,1]
         elif np.isnan(dataset[-1-i,1]):
-            new_ds[i,1] = dataset[i,1]
+            temp[1] = dataset[i,1]
         else:
-            new_ds[i,1] = (dataset[i,1]+dataset[-1-i,1])/2
-    return new_ds
+            temp[1] = (dataset[i,1]+dataset[-1-i,1])/2
+        new_ds.append(temp)
+    return np.array(new_ds)
 
 def get_symm_data(exp_data):
     """ 2 bands, N k-points, (|k|,E,kx,ky)
@@ -487,6 +492,7 @@ def get_symm_data(exp_data):
         new_KGK = symmetrize(exp_data[0][i])
         new_KGK[:,2] *= -1
         new_KMK = symmetrize(exp_data[1][i])
+        new_KMK[:,0] = exp_data[0][0][-1,0] - exp_data[1][0][0,0] - new_KMK[:,0]
         new = np.zeros((len(new_KGK)+len(new_KMK),4))
         new[:len(new_KGK)] = new_KGK[::-1]
         new[len(new_KGK):] = new_KMK
