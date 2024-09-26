@@ -1,4 +1,5 @@
 import numpy as np
+import CORE_functions as cfs
 import functions as fs
 import parameters as ps
 from pathlib import Path
@@ -9,13 +10,13 @@ from time import time as ttt
 from datetime import timedelta
 
 ti = ttt()
-machine = fs.get_machine(os.getcwd())
+machine = cfs.get_machine(os.getcwd())
 
 #ind labels the random initialization
 ind = 0 if len(sys.argv) in [1,2] else int(sys.argv[2])
 ind_reduced = 7 #Take 1 every .. pts in the exp data -> faster
 
-TMD = fs.TMDs[0]
+TMD = cfs.TMDs[0]
 
 ind_spec_args = 0 if len(sys.argv)==1 else int(sys.argv[1])
 spec_args = fs.get_spec_args(ind_spec_args)
