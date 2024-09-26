@@ -6,7 +6,7 @@ import matplotlib as mpl
 from tqdm import tqdm
 from pathlib import Path
 
-cut = 'KGK'
+cut = 'MGM'
 k_pts = 1001
 mass = 1
 N = 3

@@ -6,6 +6,14 @@ import os
 import matplotlib.pyplot as plt
 import itertools
 #
+def get_spec_args(ind):
+    lP = np.linspace(0.05,0.15,6)
+    lrp = np.linspace(1,3,3)
+    lrl = np.linspace(0.1,0.5,3)
+    lcv = [0]
+    ll = [lP,lrp,lrl,lcv]
+    combs = list(itertools.product(*ll))
+    return combs[ind]
 
 a_1 = np.array([1,0])
 a_2 = np.array([-1/2,np.sqrt(3)/2])
@@ -398,17 +406,8 @@ def find_vec_k(k_scalar,cut,TMD):
             k_pts = M + (Kp-M)*np.abs(k_scalar)/la.norm(Kp-M)
     return k_pts
 
-def get_spec_args(ind):
-    lP = np.arange(10)
-    lrp = np.linspace(0.5,3,11)
-    lrl = np.linspace(0.1,0.5,5)
-    lcv = [0]
-    ll = [lP,lrp,lrl,lcv]
-    combs = list(itertools.product(*ll))
-    return combs[ind]
-
 def get_spec_args_txt(spec_args):
-    return "{:.1f}".format(spec_args[0]).replace('.',',')+'_'+"{:.1f}".format(spec_args[1]).replace('.',',')+'_'+"{:.1f}".format(spec_args[2]).replace('.',',')+'_'+"{:.2f}".format(spec_args[3]).replace('.',',')
+    return "{:.3f}".format(spec_args[0]).replace('.',',')+'_'+"{:.3f}".format(spec_args[1]).replace('.',',')+'_'+"{:.3f}".format(spec_args[2]).replace('.',',')+'_'+"{:.3f}".format(spec_args[3]).replace('.',',')
 
 def get_exp_data_fn(TMD,cut,band,machine):
     return get_exp_dn(machine)+'extracted_data_'+cut+'_'+TMD+'_band'+str(band)+'.npy'

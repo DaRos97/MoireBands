@@ -57,6 +57,16 @@ Computes the relevant orbital content close to Gamma and K.
     - 1-100 bound 5.0 1.0 0.2 0.01
     - 1-100 bound 5.0 1.0 0.3 0.01
     - 1-20 bound [10.0,7.5,5,2.5] [0.5,1.0,1.5] [0.1,0.3,0.5] [0,0.01,0.1]
+    - 1-50 bound 0 1 1 0
+    - 1-50 bound 0 2 1 0
+## Bamboo
+    - 1-50 bound 10 0.5 0.1 0
+    - 1-50 bound [10,0] [0.5,3] [0.01,2] 0
+## Baobab
+    - 1-20 bound [0-3,4] [0.5-3,11] [0.1-0.5,5] 0
+    - 1-20 bound [0.1-0.9,5] [1-3,3] [0.1-0.5,3] 0
+    # New name from here with 3 digits in spec args
+    - 1-20 bound [0.05-0.15,6] [1-3,3] [0.1-0.5,3] 0
 
 
 
@@ -81,9 +91,15 @@ Maybe adjusting the bound on (e,t):
 
 Just `t1_1111` and `t6_96` are changing sign
 
-Can make code faster by reducing the number of k-points to consider
+Can make code faster by reducing the number of k-points to consider -> `ind_reduced` parameter
+The coefficient P changes with ths factor.
 
-The top of lower band at K is always too small. Need to check HSO -> Clebsch-Gordan coefficients
+The top of lower band at K is always too small. And if you get close to it the orbital content at K changes to 0.
+
+With `ind_reduced=7` the parameter P is below 1. 
+With 0.1 get nice results but a bit far in parameter space, 0.3 is too big.
+Problem is the SOC which saturates the bound every time
+
 
 
 

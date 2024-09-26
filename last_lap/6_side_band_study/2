@@ -30,7 +30,6 @@ a_Ms = np.zeros(nn)
 for i in range(nn):
     theta = list_t[i]
     phis[i] = np.arctan(-np.tan(theta/2)*(a_d+a_u)/(a_d-a_u))
-    a_Ms[i] = a_M(theta)
 
 fig,ax = plt.subplots()
 
@@ -45,12 +44,12 @@ ax.set_xlabel(r"$\theta$",size=s_)
 ax.set_xticks([-np.pi,-np.pi/2,0,np.pi/2,np.pi],[r"$-\pi$",r"$-\pi/2$",r"$0$",r"$\pi/2$",r"$\pi$"])
 ax.set_ylabel(r"$a_M$ ($\mathring{A}$)",size=s_)
 
-ax_r.set_ylabel(r"$\eta$",size=s_)
+ax_r.set_ylabel(r"$\varphi$",size=s_)
 ax_r.set_yticks([-np.pi/2,0,np.pi/2],[r"$-\pi/2$",r"$0$",r"$\pi/2$"])
 
 
 #inset_ax = inset_axes(ax, width="30%", height=1.5, loc="upper left")
-inset_ax = ax.inset_axes([.592,.6,.3,.3])
+inset_ax = ax.inset_axes([.085,.6,.3,.3])
 inset_ax.grid()
 
 #first 5 degrees in inset
