@@ -1,42 +1,33 @@
-import numpy as np
 import sys,os
+import numpy as np
+cwd = os.getcwd()
+if cwd[6:11] == 'dario':
+    master_folder = cwd[:43]
+elif cwd[:20] == '/home/users/r/rossid':
+    master_folder = cwd[:20] + '/git/MoireBands/last_lap'
+elif cwd[:13] == '/users/rossid':
+    master_folder = cwd[:13] + '/git/MoireBands/last_lap'
+sys.path.insert(1, master_folder)
+import CORE_functions as cfs
 import functions as fs
-
-sys.path.insert(1, '/home/dario/Desktop/git/MoireBands/last_lap/1_tight_binding')
+sys.path.insert(1, master_folder+'/1_tight_binding')
 import parameters as ps
-
-machine = fs.get_machine(os.getcwd())
 
 """
 Get tb pars from step 1
 """
+machine = cfs.get_machine(cwd)
 
+def get_spec_args_txt(spec_args):
+    return "{:.3f}".format(spec_args[0]).replace('.',',')+'_'+"{:.3f}".format(spec_args[1]).replace('.',',')+'_'+"{:.3f}".format(spec_args[2]).replace('.',',')+'_'+"{:.3f}".format(spec_args[3]).replace('.',',')
+
+spec_args_dic = {'WSe2': (0.11,1.,0.3,0),'WS2': (0.11,1.,0.3,0)}
 #DFT values
-for TMD in ['WSe2','WS2']:
+for TMD in cfs.TMDs:
     pars = ps.initial_pt[TMD]  #DFT values
     np.save(fs.get_home_dn(machine)+'inputs/pars_'+TMD+'_DFT.npy',pars)
-
-#Minimization values
-vals = [('WSe2',0.4,True),
-        ('WS2',0.2,True)
-        ]
-for val in vals:
-    TMD, range_par, fixed_SO = val
-    pars = [0]
-    for file in os.listdir('/home/dario/Desktop/git/MoireBands/last_lap/1_tight_binding/results/temp/'):
-        terms = file.split('_')
-        if terms[1] == TMD and terms[2]=="{:.2f}".format(range_par).replace('.',',') and str(fixed_SO)==terms[3]:
-            pars = np.load('/home/dario/Desktop/git/MoireBands/last_lap/1_tight_binding/results/temp/'+file)
-    if len(pars)==1:
-        print("Parameters not found for TMD: ",TMD,", range_par: ",range_par," and fixed SO: ",str(fixed_SO))
-        continue
-
-    if fixed_SO:
-        SO_values = ps.initial_pt[TMD][-2:]
-        full_pars = list(pars)
-        for i in range(2):
-            full_pars.append(SO_values[i])
-    else:
-        full_pars = pars
-
+    #
+    fn = '../1_tight_binding/results/'+'res_'+TMD+'_'+get_spec_args_txt(spec_args_dic[TMD])+'.npy'
+    print(fn)
+    full_pars = np.load(fn)
     np.save(fs.get_home_dn(machine)+'inputs/pars_'+TMD+'_fit.npy',full_pars)
