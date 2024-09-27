@@ -26,9 +26,11 @@ Here we compute the full KGK image with Moire replicas.
 """
 
 #Moire parameters
-ind = 0 if len(sys.argv)==1 else sys.argv[1]
+ind = 0 if len(sys.argv)==1 else int(sys.argv[1])
+if machine == 'maf':
+    ind -= 1
 DFT = True
-sample, interlayer_type, Vg, Vk, phiG, phiK = fs.get_pars(int(ind))
+sample, interlayer_type, Vg, Vk, phiG, phiK = fs.get_pars()
 N = 1 if len(sys.argv)<3 else int(sys.argv[2])                               #####################
 pixel_factor = 5                                        ###################################
 n_cells = int(1+3*N*(N+1))
@@ -81,38 +83,45 @@ k_pts = exp_pic.shape[1]//pixel_factor
 K_list = fs.get_K(cut,k_pts)
 
 if 1:# and machine=='loc':    #Compute (no-)moire image superimposed to experiment
-    ens_temp_fn = 'results/E_'+title+'.npy'
-    evc_temp_fn = 'results/EV_'+title+'.npy'
+    ens_temp_fn = 'results/E_data/E_'+title+'.npy'
+    wei_temp_fn = 'results/E_data/W_'+title+'.npy'
+    ind_TVB = n_cells*30    #top valence band
+    ind_LVB = n_cells*22    #lowest considered VB
     if not Path(ens_temp_fn).is_file():
-        energies = np.zeros((k_pts,44*n_cells))
+        energies = np.zeros((k_pts,ind_TVB-ind_LVB))
+        weights = np.zeros((k_pts,ind_TVB-ind_LVB))
         look_up = fs.lu_table(N)
         pars_moire = (N,pars_V,G_M,H_moire)
         for i in tqdm(range(k_pts)):
             K_i = K_list[i]
             H_tot = fs.big_H(K_i,look_up,pars_monolayer,pars_interlayer,pars_moire)
-            energies[i,:],evecs = eigh(H_tot)
+            energies[i,:],evecs = eigh(H_tot,subset_by_index=[ind_LVB,ind_TVB-1])           #Diagonalize to get eigenvalues and eigenvectors
+            ab = np.absolute(evecs)**2
+            weights[i,:] = np.sum(ab[:22,:ind_TVB-ind_LVB],axis=0) + np.sum(ab[22*n_cells:22*n_cells+22,:ind_TVB-ind_LVB],axis=0)
         np.save(ens_temp_fn,energies)
-        np.save(evc_temp_fn,evecs)
+        np.save(wei_temp_fn,weights)
     else:
         energies = np.load(ens_temp_fn)
-        evecs = np.load(evc_temp_fn)
+        weights = np.load(wei_temp_fn)
     #
     fig = plt.figure(figsize=(20,15))
     ax = fig.add_subplot()
     pe,pk,z = exp_pic.shape
-    for e in range(44*n_cells):
-        if e >= 24*n_cells and e <= 28*n_cells:
-            color='b'
-        else:
-            color = 'r'
+    for e in range(ind_TVB-ind_LVB):
+        color = 'b'
         ax.plot((K_list[:,0]+K0)/2/K0*pk,
                 (EM-energies[:,e])/(EM-Em)*pe,
                 color=color,
-                lw=0.5
+                lw=0.1
+                )
+        ax.scatter((K_list[:,0]+K0)/2/K0*pk,
+                (EM-energies[:,e])/(EM-Em)*pe,
+                s=weights[:,e],
+                color=color,
                 )
     ax.imshow(exp_pic)
     ax.set_title(title)
-    if machine=='loc' and 0:
+    if machine=='loc':
         plt.show()
     else:
         plt.savefig('results/figures/moire_twisted/'+title+'.png')

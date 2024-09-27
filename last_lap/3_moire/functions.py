@@ -273,5 +273,5 @@ def get_home_dn(machine):
     elif machine == 'hpc':
         return '/home/users/r/rossid/3_moire/'
     elif machine == 'maf':
-        pass
+        return '/users/rossid/3_moire/'
 
