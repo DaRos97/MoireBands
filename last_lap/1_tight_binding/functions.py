@@ -1,12 +1,15 @@
 import numpy as np
 import CORE_functions as cfs
-import parameters as ps
 import scipy.linalg as la
 from pathlib import Path
 import os
 import matplotlib.pyplot as plt
 import itertools
-#
+
+"""temp value of chi 2"""
+global min_chi2
+min_chi2 = 1e5
+
 def get_spec_args(ind):
     lP = np.linspace(0.05,0.15,6)
     lrp = np.linspace(1,3,3)
@@ -28,15 +31,16 @@ def chi2(pars,*args):
     for b in range(2):
         args = np.argwhere(np.isfinite(data[b][:,1]))    #select only non-nan values
         res += np.sum(np.absolute(tb_en[b,args]-data[b][args,1])**2)
-    par_dis = compute_parameter_distance(pars,np.array(ps.initial_pt[TMD]))
+    par_dis = compute_parameter_distance(pars,np.array(cfs.initial_pt[TMD]))
     final_res = res + spec_args[0]*par_dis
     #
-    if final_res < ps.min_chi2 and ind>-1:   #remove old temp and add new one
-        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,spec_args,ind,machine)
-        if not ps.min_chi2==1e5:
+    global min_chi2
+    if final_res < min_chi2 and ind>-1:   #remove old temp and add new one
+        temp_fn = get_temp_fit_fn(TMD,min_chi2,spec_args,ind,machine)
+        if not min_chi2==1e5:
             os.system('rm '+temp_fn)
-        ps.min_chi2 = final_res
-        temp_fn = get_temp_fit_fn(TMD,ps.min_chi2,spec_args,ind,machine)
+        min_chi2 = final_res
+        temp_fn = get_temp_fit_fn(TMD,min_chi2,spec_args,ind,machine)
         try:
             np.save(temp_fn,pars)
         except:
@@ -93,7 +97,7 @@ def find_vec_k(k_scalar,cut,TMD):
     """Compute vector k depending on modulus and cut.
 
     """
-    a_mono = ps.dic_params_a_mono[TMD]
+    a_mono = cfs.dic_params_a_mono[TMD]
     k_pts = np.zeros(2)
     if cut == 'KGK':
         k_pts[0] = k_scalar
@@ -226,7 +230,7 @@ orb_txt = ['dxz','dyz','poz','pox','poy','dz2','dxy','dx2','pez','pex','pey']
 def get_orbital_content(TMD,spec_args,machine):
     print("_____________________________________________________________________________")
     print("Orbital content:")
-    a_mono = ps.dic_params_a_mono[TMD]
+    a_mono = cfs.dic_params_a_mono[TMD]
     k_pts = np.array([np.zeros(2),np.matmul(cfs.R_z(np.pi/3),np.array([4/3*np.pi/a_mono,0]))])    #Gamma and K (K+ of Fange et al., 2015)
     txt_pt = ['Gamma:','K:    ']
     fun_pt = [[d0,p0e],[dp2,ppe]]
@@ -234,7 +238,7 @@ def get_orbital_content(TMD,spec_args,machine):
     #
     file = get_res_fn(TMD,spec_args,machine)
     full_pars = np.load(file)
-    DFT_pars = np.array(ps.initial_pt[TMD])
+    DFT_pars = np.array(cfs.initial_pt[TMD])
     #
     args_DFT = (cfs.find_t(DFT_pars),cfs.find_e(DFT_pars),cfs.find_HSO(DFT_pars[-2:]),a_mono,DFT_pars[-3])
     H_DFT = cfs.H_monolayer(k_pts,*args_DFT)
@@ -267,8 +271,8 @@ def get_table(TMD,spec_args,machine):
     print("Table of parameters with distance from DFT")
     file = get_res_fn(TMD,spec_args,machine)
     full_pars = np.load(file)
-    pars_dft = ps.initial_pt[TMD]
-    list_names = ps.list_names_all
+    pars_dft = cfs.initial_pt[TMD]
+    list_names = cfs.list_names_all
     for i in range(len(pars_dft)):
         percentage = np.abs((full_pars[i]-pars_dft[i])/pars_dft[i]*100)
         l = 10 - len(list_names[i])

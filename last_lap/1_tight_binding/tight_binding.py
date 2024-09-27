@@ -10,7 +10,6 @@ elif cwd[:13] == '/users/rossid':
 sys.path.insert(1, master_folder)
 import CORE_functions as cfs
 import functions as fs
-import parameters as ps
 from pathlib import Path
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
@@ -56,7 +55,7 @@ if 0 and machine == 'loc':
     exit()
 
 #Arguments of chi^2 function
-DFT_values = ps.initial_pt[TMD]  #DFT values
+DFT_values = cfs.initial_pt[TMD]  #DFT values
 rand_vals = np.random.rand(len(DFT_values)-3)*0.1+0.95 #random value between 0.95 and 1.05
 rand_vals = np.append(rand_vals,np.ones(3))
 initial_point = np.array(DFT_values)*rand_vals    #t,eps,lam,off
