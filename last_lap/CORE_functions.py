@@ -360,6 +360,9 @@ dic_params_twist = {
 def moire_length(theta):
     return 1/np.sqrt(1/dic_params_a_mono['WSe2']**2+1/dic_params_a_mono['WS2']**2-2*np.cos(theta)/dic_params_a_mono['WSe2']/dic_params_a_mono['WS2'])
 
+def miniBZ_rotation(theta):
+    return np.arctan(-np.tan(theta/2)*(dic_params_a_mono['WSe2']+dic_params_a_mono['WS2'])/(dic_params_a_mono['WSe2']-dic_params_a_mono['WS2']))
+
 initial_pt = {    
         'WS2': [
             #'e1':   

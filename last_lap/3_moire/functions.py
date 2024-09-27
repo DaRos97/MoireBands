@@ -210,12 +210,14 @@ def normalize_spread(spread,k_pts,e_pts):
     picture = np.flip(normalized_lor.T,axis=0)   #invert e-axis to have the same structure
     return picture
 
-def get_Moire(a_M):     
-    """Compute Moire reciprocal lattice vectors.
+def get_reciprocal_moire(theta):     
+    """Compute moire reciprocal lattice vectors.
+    They depend on the moire length for the size and on the orientation of the mini-BZ for the direction.
 
     """
-    G_M = [0,4*np.pi/np.sqrt(3)/a_M*np.array([0,1])]    
-    G_M[0] = np.tensordot(cfs.R_z(-np.pi/3),G_M[1],1)
+    
+    G_M = [0,np.matmul(cfs.R_z(cfs.miniBZ_rotation(theta)),4*np.pi/np.sqrt(3)/cfs.moire_length(theta)*np.array([0,1]))]
+    G_M[0] = np.matmul(cfs.R_z(-np.pi/3),G_M[1])
     return G_M
 
 def get_list_fn(l):

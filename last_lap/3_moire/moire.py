@@ -30,9 +30,9 @@ ind = 0 if len(sys.argv)==1 else int(sys.argv[1])
 if machine == 'maf':
     ind -= 1
 DFT = True
-sample, interlayer_type, Vg, Vk, phiG, phiK = fs.get_pars()
-N = 1 if len(sys.argv)<3 else int(sys.argv[2])                               #####################
-pixel_factor = 5                                        ###################################
+sample, interlayer_type, Vg, Vk, phiG, phiK = fs.get_pars(ind)
+N = 1 if len(sys.argv)<3 else int(sys.argv[2])
+pixel_factor = 5
 n_cells = int(1+3*N*(N+1))
 zoom = True if sample=='S11' else False
 """
@@ -52,7 +52,7 @@ title = "sample_"+sample+",N_"+str(N)+",tb_pars_"+txt_dft+',interlayer_'+interla
 Hamiltonian of Moire interlayer (diagonal with correct signs of phase)
 Compute it here because is k-independent.
 """
-G_M = fs.get_Moire(a_Moire)
+G_M = fs.get_reciprocal_moire(t_twist)
 H_moire = [fs.H_moire(0,pars_V),fs.H_moire(1,pars_V)]
 pars_moire = (N,pars_V,G_M,H_moire)
 #Monolayer parameters
