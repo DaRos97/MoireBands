@@ -63,23 +63,16 @@ def get_interlayer_H(k,pars,interlayer_type):
     H += np.identity(44)*pars[-1]       
     return H
 
-def extract_png(fig_fn,cut_bounds):
+def extract_png(fig_fn,cut_bounds,sample):
     pic_0 = np.array(np.asarray(Image.open(fig_fn)))
     #We go from -1 to 1 in image K cause the picture is stupid
-    Ki = -1.4
-    Kf = 1.4
-    Ei = 0
-    Ef = -3.5
-    #Empirically extracted for S11 from -1 to +1
-    P_ki = 810      #pixel corresponding to ki=-1
-    P_kf = 2370     #pixel corresponding to ki=+1
+    Ki, Kf, Ei, Ef, P_ki, P_kf, p_ei, p_ef = cfs.dic_pars_samples[sample]
+    #Empirically extracted for sample from -1 to +1
     p_len = int((P_kf-P_ki)/2*(Kf-Ki))   #number of pixels from Ki to Kf
     p_ki = int((P_ki+P_kf)//2 - p_len//2)
     p_kf = int((P_ki+P_kf)//2 + p_len//2)
     #
-    p_ei = 85       #pixel corresponding to ei=0
-    p_ef = 1908     #pixel corresponding to ef=-3.5
-    if len(cut_bounds) == 4:#Image cut
+    if len(cut_bounds) == 4:#cut image
         ki,kf,ei,ef = cut_bounds
         pc_lenk = int(p_len/(Kf-Ki)*(kf-ki)) #number of pixels in cut image
         pc_ki = int((p_ki+p_kf)//2-pc_lenk//2)
@@ -114,8 +107,9 @@ def get_pars_fn(TMD,machine,dft=False):
     get_dft = '_DFT' if dft else '_fit'
     return get_home_dn(machine)+'inputs/pars_'+TMD+get_dft+'.npy'
 
-def get_S11_fn(machine):
-    return get_home_dn(machine)+'inputs/S11_KGK_WSe2onWS2_v1.png'
+def get_sample_fn(sample,machine):
+    v = 'v2' if sample == 'S3' else 'v1'
+    return get_home_dn(machine)+'inputs/'+sample+'_KGK_WSe2onWS2_'+v+'.png'
 
 def get_home_dn(machine):
     if machine == 'loc':
@@ -124,27 +118,6 @@ def get_home_dn(machine):
         return '/home/users/r/rossid/2_interlayer_coupling/'
     elif machine == 'maf':
         pass
-
-def get_machine(cwd):
-    """Selects the machine the code is running on by looking at the working directory. Supports local, hpc (baobab or yggdrasil) and mafalda.
-
-    Parameters
-    ----------
-    pwd : string
-        Result of os.pwd(), the working directory.
-
-    Returns
-    -------
-    string
-        An acronim for the computing machine.
-    """
-    if cwd[6:11] == 'dario':
-        return 'loc'
-    elif cwd[:20] == '/home/users/r/rossid':
-        return 'hpc'
-    elif cwd[:13] == '/users/rossid':
-        return 'maf'
-
 
 
 

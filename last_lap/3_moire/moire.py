@@ -1,98 +1,121 @@
-import numpy as np
-import functions as fs
 import sys,os
+import numpy as np
+cwd = os.getcwd()
+if cwd[6:11] == 'dario':
+    master_folder = cwd[:43]
+elif cwd[:20] == '/home/users/r/rossid':
+    master_folder = cwd[:20] + '/git/MoireBands/last_lap'
+elif cwd[:13] == '/users/rossid':
+    master_folder = cwd[:13] + '/git/MoireBands/last_lap'
+sys.path.insert(1, master_folder)
+import CORE_functions as cfs
+import functions as fs
 from pathlib import Path
 from scipy.linalg import eigh
 import matplotlib.pyplot as plt
 
-machine = fs.get_machine(os.getcwd())
+machine = cfs.get_machine(os.getcwd())
 if machine=='loc':
     from tqdm import tqdm
     save = False
 else:
-    tqdm = fs.tqdm
+    tqdm = cfs.tqdm
     save = True
 """
 Here we compute the full KGK image with Moire replicas.
 """
 
 #Moire parameters
-N = 4 if len(sys.argv)<3 else int(sys.argv[2])                               #####################
+ind = 0 if len(sys.argv)==1 else sys.argv[1]
+DFT = True
+sample, interlayer_type, Vg, Vk, phiG, phiK = fs.get_pars(int(ind))
+N = 1 if len(sys.argv)<3 else int(sys.argv[2])                               #####################
 pixel_factor = 5                                        ###################################
 n_cells = int(1+3*N*(N+1))
+zoom = True if sample=='S11' else False
 """
 Moirè potential of bilayer
 Different at Gamma (d_z^2 orbital) -> first two parameters, and K (d_xy orbitals) -> last two parameters
 Gamma point values from paper "G valley TMD moirè bands" (first in eV, second in radiants)
 K point values from Louk's paper (first in eV, second in radiants)
 """
-DFT, interlayer_type, pars_V, a_Moire = fs.get_pars(int(sys.argv[1]))  #228 for physiscal pars
-txt_dft = 'DFT' if DFT else 'fit'
-title = "tb pars: "+txt_dft+', interlayer: '+interlayer_type+", pars_V: "+fs.get_list_fn(pars_V)+", a_Moire: "+str(a_Moire)
-print(title)
-if 0 and machine=='loc':
-    exit()
+pars_V = (Vg,Vk,phiG,phiK)
+t_twist = cfs.dic_params_twist[sample][1]*np.pi/180
+a_Moire = cfs.moire_length(t_twist)
 #
-G_M = fs.get_Moire(a_Moire)
-H_moire = [fs.H_moire(0,pars_V),fs.H_moire(1,pars_V)]   
+txt_dft = 'DFT' if DFT else 'fit'
+title = "sample_"+sample+",N_"+str(N)+",tb_pars_"+txt_dft+',interlayer_'+interlayer_type+",_pars_V_"+fs.get_list_fn(pars_V)+",a_Moire_"+"{:.4f}".format(a_Moire)
+#
 """
 Hamiltonian of Moire interlayer (diagonal with correct signs of phase)
 Compute it here because is k-independent.
 """
+G_M = fs.get_Moire(a_Moire)
+H_moire = [fs.H_moire(0,pars_V),fs.H_moire(1,pars_V)]
 pars_moire = (N,pars_V,G_M,H_moire)
 #Monolayer parameters
 hopping = {}
 epsilon = {}
 HSO = {}
 offset = {}
-for TMD in fs.materials:
+for TMD in cfs.TMDs:
     temp = np.load(fs.get_pars_mono_fn(TMD,machine,DFT))
-    hopping[TMD] = fs.find_t(temp)
-    epsilon[TMD] = fs.find_e(temp)
-    HSO[TMD] = fs.find_HSO(temp)
+    hopping[TMD] = cfs.find_t(temp)
+    epsilon[TMD] = cfs.find_e(temp)
+    HSO[TMD] = cfs.find_HSO(temp[-2:])
     offset[TMD] = temp[-3]
 pars_monolayer = (hopping,epsilon,HSO,offset)
 #Interlayer parameters
-pars_interlayer = [interlayer_type,np.load(fs.get_pars_interlayer_fn(interlayer_type,DFT,machine))]
-#if 0:   #Extract S11 image
-S11_fn = fs.get_S11_fn(machine)
-K = 4/3*np.pi/fs.dic_params_a_mono['WSe2']
-EM = -0.5
-Em = -2.5
-bounds_original = (K,EM,Em)
-exp_pic_original = fs.extract_png(S11_fn,[-K,K,EM,Em])
-if 1:  #use zoomed S11
-    S11_fn = fs.get_S11zoom_fn(machine)
-    K = 4/3*np.pi/fs.dic_params_a_mono['WSe2']
-    EM = -0.7
-    Em = -1.8
-    bounds = (K,EM,Em)
-    exp_pic = fs.extract_zoom_png(S11_fn,[-K,K,EM,Em])
-else:
-    bounds = bounds_original
-    exp_pic = exp_pic_original
+pars_interlayer = [interlayer_type,np.load(fs.get_pars_interlayer_fn(sample,interlayer_type,DFT,machine))]
+
+K0 = 4/3*np.pi/cfs.dic_params_a_mono['WSe2']
+sample_fn = fs.get_sample_fn(sample,machine,zoom)
+energy_bounds = {'S11': (-0.5,-2.5), 'S3': (-0.2,-1.8), 'S11zoom':(-0.7,-1.8)}
+label = sample+'zoom' if zoom else sample
+EM, Em = energy_bounds[label]
+exp_pic = fs.extract_png(sample_fn,[-K0,K0,EM,Em],label)
+
 #BZ cut parameters
 cut = 'KGK'
-k_pts = exp_pic_original.shape[1]//pixel_factor
+k_pts = exp_pic.shape[1]//pixel_factor
 K_list = fs.get_K(cut,k_pts)
 
-if 0 and machine=='loc':    #Compute no-moire image superimposed to experiment
-    N = 0
-    energies = np.zeros((k_pts,44))
-    look_up = fs.lu_table(N)
-    pars_moire = (N,pars_V,G_M,H_moire)
-    for i in tqdm(range(k_pts)):
-        K_i = K_list[i]
-        H_tot = fs.big_H(K_i,look_up,pars_monolayer,pars_interlayer,pars_moire)
-        energies[i,:],evecs = eigh(H_tot)
+if 1:# and machine=='loc':    #Compute (no-)moire image superimposed to experiment
+    ens_temp_fn = 'results/E_'+title+'.npy'
+    evc_temp_fn = 'results/EV_'+title+'.npy'
+    if not Path(ens_temp_fn).is_file():
+        energies = np.zeros((k_pts,44*n_cells))
+        look_up = fs.lu_table(N)
+        pars_moire = (N,pars_V,G_M,H_moire)
+        for i in tqdm(range(k_pts)):
+            K_i = K_list[i]
+            H_tot = fs.big_H(K_i,look_up,pars_monolayer,pars_interlayer,pars_moire)
+            energies[i,:],evecs = eigh(H_tot)
+        np.save(ens_temp_fn,energies)
+        np.save(evc_temp_fn,evecs)
+    else:
+        energies = np.load(ens_temp_fn)
+        evecs = np.load(evc_temp_fn)
     #
-    plt.figure(figsize=(20,15))
-    px,py,z = exp_pic.shape
-    for e in range(44):
-        plt.plot((K_list[:,0]-K_list[0,0])/(K_list[-1,0]-K_list[0,0])*py,(energies[:,e]-Em)/(EM-Em)*px,color='r')
-    plt.ylim(0,px)
-    plt.imshow(exp_pic[::-1,:,:])
-    plt.show()
+    fig = plt.figure(figsize=(20,15))
+    ax = fig.add_subplot()
+    pe,pk,z = exp_pic.shape
+    for e in range(44*n_cells):
+        if e >= 24*n_cells and e <= 28*n_cells:
+            color='b'
+        else:
+            color = 'r'
+        ax.plot((K_list[:,0]+K0)/2/K0*pk,
+                (EM-energies[:,e])/(EM-Em)*pe,
+                color=color,
+                lw=0.5
+                )
+    ax.imshow(exp_pic)
+    ax.set_title(title)
+    if machine=='loc' and 0:
+        plt.show()
+    else:
+        plt.savefig('results/figures/moire_twisted/'+title+'.png')
     exit()
 
 #Compute energies and weights along KGK
