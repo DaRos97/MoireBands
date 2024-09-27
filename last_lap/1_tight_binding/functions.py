@@ -50,7 +50,7 @@ def get_exp_data(TMD,machine):
 
     """
     data = []
-    offset_exp = {'WSe2':{'KGK':0,'KMKp':-0.0521}, 'WS2':{'KGK':0,'KMKp':0.0094}} #To align the two cuts -> fixed on symmetrized data
+    offset_exp = {'WSe2':{'KGK':0,'KMKp':-0.0521}, 'WS2':{'KGK':0,'KMKp':-0.0025}} #To align the two cuts -> fixed on symmetrized data
     for cut in ['KGK','KMKp']:
         data.append([])
         for band in range(1,3):
@@ -236,10 +236,10 @@ def get_orbital_content(TMD,spec_args,machine):
     full_pars = np.load(file)
     DFT_pars = np.array(ps.initial_pt[TMD])
     #
-    args_DFT = (find_t(DFT_pars),find_e(DFT_pars),find_HSO(DFT_pars[-2:]),a_mono,DFT_pars[-3])
-    H_DFT = H_monolayer(k_pts,*args_DFT)
-    args_res = (find_t(full_pars),find_e(full_pars),find_HSO(full_pars[-2:]),a_mono,full_pars[-3])
-    H_res = H_monolayer(k_pts,*args_res)
+    args_DFT = (cfs.find_t(DFT_pars),cfs.find_e(DFT_pars),cfs.find_HSO(DFT_pars[-2:]),a_mono,DFT_pars[-3])
+    H_DFT = cfs.H_monolayer(k_pts,*args_DFT)
+    args_res = (cfs.find_t(full_pars),cfs.find_e(full_pars),cfs.find_HSO(full_pars[-2:]),a_mono,full_pars[-3])
+    H_res = cfs.H_monolayer(k_pts,*args_res)
     #
     print("      \tDFT values\t\tres values")
     for i in range(2):

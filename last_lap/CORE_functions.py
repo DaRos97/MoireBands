@@ -37,10 +37,6 @@ def energy(parameters,HSO,data,TMD):
 #        Ens = Parallel(n_jobs=16)(delayed(egvals)(H_i) for H_i in all_H)
     return ens
 
-def egvals1214(H):
-    return la.eigvalsh(H)[12:14][::-1]
-
-
 def H_monolayer(K_p,*args):
     """Monolayer Hamiltonian.       TO CHECK
 
@@ -126,7 +122,8 @@ def H_monolayer(K_p,*args):
     H[:11,:11] = H_TB
     H[11:,11:] = H_TB
     #
-    H = np.transpose(H,(2,0,1))
+    if len(H.shape)==3:
+        H = np.transpose(H,(2,0,1))
     
     H += HSO
     
@@ -237,6 +234,9 @@ def find_HSO(SO_pars):
     They compute exactly the same thing BUT with a basis change.
 
     """
+    if len(SO_pars)>2:
+        print("Wrong pars in HSO")
+        exit()
     l_M = SO_pars[0]
     l_X = SO_pars[1]
     ####

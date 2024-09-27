@@ -1,9 +1,17 @@
+import sys,os
 import numpy as np
+cwd = os.getcwd()
+if cwd[6:11] == 'dario':
+    master_folder = cwd[:43]
+elif cwd[:20] == '/home/users/r/rossid':
+    master_folder = cwd[:20] + '/git/MoireBands/last_lap'
+elif cwd[:13] == '/users/rossid':
+    master_folder = cwd[:13] + '/git/MoireBands/last_lap'
+sys.path.insert(1, master_folder)
 import CORE_functions as cfs
 import functions as fs
 import parameters as ps
 from pathlib import Path
-import os,sys
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 from time import time as ttt
@@ -16,7 +24,7 @@ machine = cfs.get_machine(os.getcwd())
 ind = 0 if len(sys.argv) in [1,2] else int(sys.argv[2])
 ind_reduced = 7 #Take 1 every .. pts in the exp data -> faster
 
-TMD = cfs.TMDs[0]
+TMD = cfs.TMDs[1]
 
 ind_spec_args = 0 if len(sys.argv)==1 else int(sys.argv[1])
 spec_args = fs.get_spec_args(ind_spec_args)
