@@ -10,8 +10,6 @@ elif cwd[:13] == '/users/rossid':
 sys.path.insert(1, master_folder)
 import CORE_functions as cfs
 import functions as fs
-sys.path.insert(1, master_folder+'/1_tight_binding')
-import parameters as ps
 
 """
 Get tb pars from step 1
@@ -24,7 +22,7 @@ def get_spec_args_txt(spec_args):
 spec_args_dic = {'WSe2': (0.11,1.,0.3,0),'WS2': (0.11,1.,0.3,0)}
 #DFT values
 for TMD in cfs.TMDs:
-    pars = ps.initial_pt[TMD]  #DFT values
+    pars = cfs.initial_pt[TMD]  #DFT values
     np.save(fs.get_home_dn(machine)+'inputs/pars_'+TMD+'_DFT.npy',pars)
     #
     fn = '../1_tight_binding/results/'+'res_'+TMD+'_'+get_spec_args_txt(spec_args_dic[TMD])+'.npy'
