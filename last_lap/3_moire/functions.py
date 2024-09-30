@@ -7,9 +7,9 @@ import itertools
 def get_pars(ind):
     DFT = [True,False]
     samples = ['S11','S3']
-    int_types = ['U1','C6','C3',] #1
-    pars_Vgs = [0.02,0.03,0.04,0.05]   #5
-    pars_Vks = [0.01,0.02]  #5
+    int_types = ['U1','C6','C3',]
+    pars_Vgs = [0.005,0.01,0.02,0.03]
+    pars_Vks = [0.001,0.005,0.01]
     phi_G = [np.pi,]
     phi_K = [-106*2*np.pi/360,]
     #

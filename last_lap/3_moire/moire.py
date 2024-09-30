@@ -47,6 +47,7 @@ a_Moire = cfs.moire_length(t_twist)
 #
 txt_dft = 'DFT' if DFT else 'fit'
 title = "sample_"+sample+",N_"+str(N)+",tb_pars_"+txt_dft+',interlayer_'+interlayer_type+",_pars_V_"+fs.get_list_fn(pars_V)+",a_Moire_"+"{:.4f}".format(a_Moire)
+print(title)
 #
 """
 Hamiltonian of Moire interlayer (diagonal with correct signs of phase)
@@ -108,23 +109,26 @@ if 1:# and machine=='loc':    #Compute (no-)moire image superimposed to experime
     ax = fig.add_subplot()
     pe,pk,z = exp_pic.shape
     for e in range(ind_TVB-ind_LVB):
-        color = 'b'
+        color = 'r'
         ax.plot((K_list[:,0]+K0)/2/K0*pk,
                 (EM-energies[:,e])/(EM-Em)*pe,
                 color=color,
-                lw=0.1
+                lw=0.05,
+                zorder=2
                 )
+        color = 'b'
         ax.scatter((K_list[:,0]+K0)/2/K0*pk,
                 (EM-energies[:,e])/(EM-Em)*pe,
-                s=weights[:,e],
+                s=weights[:,e]*100,
+                lw=0,
                 color=color,
+                zorder=3
                 )
-    ax.imshow(exp_pic)
+    ax.imshow(exp_pic,zorder=1)
     ax.set_title(title)
     if machine=='loc':
         plt.show()
-    else:
-        plt.savefig('results/figures/moire_twisted/'+title+'.png')
+    plt.savefig('results/figures/moire_twisted/'+title+'.png')
     exit()
 
 #Compute energies and weights along KGK
