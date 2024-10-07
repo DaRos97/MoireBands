@@ -1,41 +1,33 @@
 # Content
-We fit the monolayer bands with the 11 band model, starting from the DFT values. 
-The ARPES data at KGK and KMK is adjusted (offset in one of the 2) to make the bands coincide at K. In particular,
-we symmetrize the two sides of KGK and KMK and adjust the offset so that the symmetrized bands coincide at K.
+We fit the monolayer bands with the 11 band model, starting from the DFT values of the tight-binding model. 
+The ARPES data at KGK and KMK is adjusted (offset in one of the 2) to make the bands coincide at K in the upper band.
+
+In particular, we symmetrize the two sides of KGK and KMK and adjust the offset so that the symmetrized bands 
+coincide at K.
 
 We start from the DFT values and add a small (random) deviation in order to get to different minima of chi2. 
 Each realization is numbered with an index given as parameter.
 Usually the minimization does not finish so we save the intermediate results.
 
-After we have a bunch of results, we compute the distance of the solution to the initial DFT with another chi2
-and choose the closest one. 
+There are many ways to impose to the system to stay closer to the DFT values:
+    1- After we have a bunch of results, we compute the distance of the solution to the initial DFT with another chi2
+    and choose the closest one. 
+    2- Add directly the `chi2_1` part (chi square distance of parameters) to the energy part (chi2_0) for different values of the coupling between the 2.
+
 We should also discriminate the solutions based on the orbital content at G and K.
 
-#Compute files
+#Compute scripts
 - `tight_binding.py`
 - `functions.py`
-- `parameters.py`
 
-#Copy from hpc
+#Copy from hpc: 'bash_code/'+
 - `ygg.sh`
 - `bao.sh`
 - `maf.sh`
-Copies both temp/ and resutls/ from hpc to local and remove old results.
 
-# Extract best result
-- `best_result.py`
+#Analyze results
+- `select_best_result.py`
 
-# Plot
-- `Plot_final.py`
-
-#DFT distance
-- `distance_dft.py`
-Computes a table with difference of resulting pars from DFT ones, with percentage.
-Also here can decide which result to use for the table.
-
-#Orbital content
-- `orbital_content.py`
-Computes the relevant orbital content close to Gamma and K.
 
 # Computed three pars
 ## Baobab
@@ -76,10 +68,6 @@ Computes the relevant orbital content close to Gamma and K.
 ## Yggdrasil
 ## Mafalda
 ## Bamboo
-    
-
-
-
 
 
 

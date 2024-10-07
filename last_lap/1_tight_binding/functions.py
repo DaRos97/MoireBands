@@ -2,20 +2,21 @@ import numpy as np
 import CORE_functions as cfs
 import scipy.linalg as la
 from pathlib import Path
-import os
+import sys,os
 import matplotlib.pyplot as plt
 import itertools
 
 """temp value of chi 2"""
 global min_chi2
+global evaluation_step
 min_chi2 = 1e5
+evaluation_step = 0
 
 def get_spec_args(ind):
     lP = np.linspace(0.05,0.15,6)
     lrp = np.linspace(1,3,3)
     lrl = np.linspace(0.1,0.5,3)
-    lcv = [0]
-    ll = [lP,lrp,lrl,lcv]
+    ll = [cfs.TMDs,lP,lrp,lrl]
     combs = list(itertools.product(*ll))
     return combs[ind]
 
@@ -23,29 +24,66 @@ def chi2(pars,*args):
     """Compute square difference of bands with exp data.
 
     """
-    data, TMD, machine, spec_args, ind = args
+    reduced_data, exp_data, machine, spec_args, ind_random = args
     H_SO = cfs.find_HSO(pars[-2:])
-    tb_en = cfs.energy(pars,H_SO,data,TMD)
+    tb_en = cfs.energy(pars,H_SO,reduced_data,spec_args[0])
     #
     res = 0
     for b in range(2):
-        args = np.argwhere(np.isfinite(data[b][:,1]))    #select only non-nan values
-        res += np.sum(np.absolute(tb_en[b,args]-data[b][args,1])**2)
-    par_dis = compute_parameter_distance(pars,np.array(cfs.initial_pt[TMD]))
-    final_res = res + spec_args[0]*par_dis
+        targ = np.argwhere(np.isfinite(reduced_data[b][:,1]))    #select only non-nan values
+        res += np.sum(np.absolute(tb_en[b,targ]-reduced_data[b][targ,1])**2)
+    par_dis = compute_parameter_distance(pars,np.array(cfs.initial_pt[spec_args[0]]))
+    final_res = res + spec_args[1]*par_dis
     #
     global min_chi2
-    if final_res < min_chi2 and ind>-1:   #remove old temp and add new one
-        temp_fn = get_temp_fit_fn(TMD,min_chi2,spec_args,ind,machine)
+    if final_res < min_chi2 and ind_random >= 0:   #remove old temp and add new one
+        temp_fn = get_temp_fit_fn(min_chi2,spec_args,ind_random,machine)
         if not min_chi2==1e5:
             os.system('rm '+temp_fn)
         min_chi2 = final_res
-        temp_fn = get_temp_fit_fn(TMD,min_chi2,spec_args,ind,machine)
-        try:
-            np.save(temp_fn,pars)
-        except:
-            print("Unable to write to file system, skipping this step")
-    print(final_res)
+        temp_fn = get_temp_fit_fn(min_chi2,spec_args,ind_random,machine)
+        np.save(temp_fn,pars)
+
+
+    #Plot each nnnn steps
+    global evaluation_step
+    evaluation_step += 1
+    nnnn = 50
+    if evaluation_step%nnnn==0:
+        fig = plt.figure(figsize=(20,20))
+        ax = fig.add_subplot(1,1,1)
+        ax.set_title("{:.7f}".format(final_res))
+        KGK_end = exp_data[0][0][-1,0]
+        KMKp_beg = exp_data[1][0][0,0]
+        ikl = exp_data[0][0].shape[0]//2+1
+        for b in range(2):
+            ax.plot(exp_data[0][b][:,0],exp_data[0][b][:,1],color='b',marker='*',label='experiment' if b == 0 else '')
+            ax.plot(exp_data[1][b][:,0]+KGK_end-KMKp_beg,exp_data[1][b][:,1],color='b',marker='*')
+            #
+            ax.plot(reduced_data[b][:,0],reduced_data[b][:,1],color='r',marker='*',label='new symm' if b == 0 else '')
+            targ = np.argwhere(np.isfinite(reduced_data[b][:,1]))    #select only non-nan values
+            ax.plot(reduced_data[b][targ,0],tb_en[b,targ],color='g',marker='^',ls='-',label='fit' if b == 0 else '')
+        #
+        ax.set_xlabel(r'$A^{-1}$')
+        ax.set_ylabel('E(eV)')
+        plt.legend()
+        plt.savefig('temp.png')
+        plt.close(fig)
+        print("New fig ",evaluation_step//nnnn)
+
+        #fig of distance from DFT values
+        fig = plt.figure(figsize=(15,20))
+        ax1 = fig.add_subplot(2,1,1)
+        ax1.bar(np.arange(len(pars)),pars-cfs.initial_pt[spec_args[0]],color='r')
+        ax1.set_ylabel("Absolute")
+        ax2 = fig.add_subplot(2,1,2)
+        ax2.bar(np.arange(len(pars)),(pars-cfs.initial_pt[spec_args[0]])/abs(np.array(cfs.initial_pt[spec_args[0]]))*100,color='b')
+        ax2.set_ylabel("Percentage")
+        fig.tight_layout()
+        plt.savefig('memp.png')
+        plt.close(fig)
+#        plt.show()
+#    print("final res: ","{:.7f}".format(final_res))
     return final_res
 
 def get_exp_data(TMD,machine):
@@ -76,9 +114,9 @@ def get_exp_data(TMD,machine):
     return data
 
 def get_bounds(in_pt,spec_args):
-    P, rp, rl, cv = spec_args
+    TMD, P, rp, rl, ind_reduced = spec_args
     Bounds = []
-    off_ind = 3
+    off_ind = 3     #index of offset
     for i in range(len(in_pt)):     #tb parameters
         #
         if i == len(in_pt)-off_ind: #offset
@@ -88,8 +126,7 @@ def get_bounds(in_pt,spec_args):
             temp = (in_pt[i]-r,in_pt[i]+r)
         else:
             r = rp*abs(in_pt[i])
-            mm, MM = (cv,0) if in_pt[i]>0 else (0,cv)
-            temp = (in_pt[i]-r-mm,in_pt[i]+r+MM)
+            temp = (in_pt[i]-r,in_pt[i]+r)
         Bounds.append(temp)
     return Bounds
 
@@ -113,7 +150,7 @@ def find_vec_k(k_scalar,cut,TMD):
     return k_pts
 
 def get_spec_args_txt(spec_args):
-    return "{:.3f}".format(spec_args[0]).replace('.',',')+'_'+"{:.3f}".format(spec_args[1]).replace('.',',')+'_'+"{:.3f}".format(spec_args[2]).replace('.',',')+'_'+"{:.3f}".format(spec_args[3]).replace('.',',')
+    return spec_args[0]+'_'+"{:.3f}".format(spec_args[1]).replace('.',',')+'_'+"{:.3f}".format(spec_args[2]).replace('.',',')+'_'+"{:.3f}".format(spec_args[3]).replace('.',',')+'_'+str(spec_args[4])
 
 def get_exp_data_fn(TMD,cut,band,machine):
     return get_exp_dn(machine)+'extracted_data_'+cut+'_'+TMD+'_band'+str(band)+'.npy'
@@ -121,8 +158,8 @@ def get_exp_data_fn(TMD,cut,band,machine):
 def get_exp_fn(TMD,cut,band,machine):
     return get_exp_dn(machine)+cut+'_'+TMD+'_band'+str(band)+'.txt'
 
-def get_temp_fit_fn(TMD,chi,spec_args,ind,machine):
-    return get_temp_dn(machine,spec_args)+'pars_'+TMD+'_'+str(ind)+"_"+"{:.8f}".format(chi)+'.npy'
+def get_temp_fit_fn(chi,spec_args,ind_random,machine):
+    return get_temp_dn(machine,spec_args)+'temp_'+str(ind_random)+"_"+"{:.8f}".format(chi)+'.npy'
 
 def get_res_fn(TMD,spec_args,machine):
     return get_res_dn(machine)+'res_'+TMD+'_'+get_spec_args_txt(spec_args)+'.npy'
@@ -227,18 +264,19 @@ txt = ['ppe','ppo','pme','pmo','p0e','p0o','d0','dp1','dm1','dp2','dm2']
 
 orb_txt = ['dxz','dyz','poz','pox','poy','dz2','dxy','dx2','pez','pex','pey']
 
-def get_orbital_content(TMD,spec_args,machine):
+def get_orbital_content(spec_args,machine,fn=''):
     print("_____________________________________________________________________________")
     print("Orbital content:")
-    a_mono = cfs.dic_params_a_mono[TMD]
+    a_mono = cfs.dic_params_a_mono[spec_args[0]]
     k_pts = np.array([np.zeros(2),np.matmul(cfs.R_z(np.pi/3),np.array([4/3*np.pi/a_mono,0]))])    #Gamma and K (K+ of Fange et al., 2015)
     txt_pt = ['Gamma:','K:    ']
     fun_pt = [[d0,p0e],[dp2,ppe]]
     txt_fun_pt = [['d0 ','p0e'],['dp2','ppe']]
     #
-    file = get_res_fn(TMD,spec_args,machine)
-    full_pars = np.load(file)
-    DFT_pars = np.array(cfs.initial_pt[TMD])
+    if fn=='':
+        fn = get_res_fn(spec_args,machine)
+    full_pars = np.load(fn)
+    DFT_pars = np.array(cfs.initial_pt[spec_args[0]])
     #
     args_DFT = (cfs.find_t(DFT_pars),cfs.find_e(DFT_pars),cfs.find_HSO(DFT_pars[-2:]),a_mono,DFT_pars[-3])
     H_DFT = cfs.H_monolayer(k_pts,*args_DFT)
@@ -266,12 +304,13 @@ def get_orbital_content(TMD,spec_args,machine):
 
 
 
-def get_table(TMD,spec_args,machine):
+def get_table(spec_args,machine,fn=''):
     print("_____________________________________________________________________________")
     print("Table of parameters with distance from DFT")
-    file = get_res_fn(TMD,spec_args,machine)
-    full_pars = np.load(file)
-    pars_dft = cfs.initial_pt[TMD]
+    if fn=='':
+        fn = get_res_fn(spec_args,machine)
+    full_pars = np.load(fn)
+    pars_dft = cfs.initial_pt[spec_args[0]]
     list_names = cfs.list_names_all
     for i in range(len(pars_dft)):
         percentage = np.abs((full_pars[i]-pars_dft[i])/pars_dft[i]*100)
