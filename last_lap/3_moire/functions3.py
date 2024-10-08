@@ -16,7 +16,7 @@ def get_pars(ind):
     ll = [samples,int_types,pars_Vgs,pars_Vks,phi_G,phi_K]
     combs = list(itertools.product(*ll))
     #
-    return combs[ind] 
+    return combs[ind]
 
 def big_H(K_,lu,pars_monolayer,pars_interlayer,pars_moire):
     """Computes the large Hamiltonian containing all the moire replicas.
@@ -62,7 +62,7 @@ def big_H(K_,lu,pars_monolayer,pars_interlayer,pars_moire):
     return final_H
 
 def H_interlayer_c(pars_interlayer):
-    H = np.zeros((22,22))    
+    H = np.zeros((22,22))
     H[8,8] = H[8+11,8+11] = pars_interlayer[1][2]
     return H
 
@@ -83,7 +83,7 @@ def H_interlayer(k_,pars_interlayer):
         t_k = 0
     ind_pze = 8
     for i in range(2):
-        H[ind_pze+11*i,ind_pze+11*i] = t_k 
+        H[ind_pze+11*i,ind_pze+11*i] = t_k
     return H
 
 def H_moire(g,pars_V):          #g is a integer from 0 to 5
@@ -149,14 +149,14 @@ def lu_table(N):
 
     """
     n_cells = int(1+3*N*(N+1))
-    lu = []     
+    lu = []
     m = [[-1,1],[-1,0],[0,-1],[1,-1],[1,0],[0,1]]
     for n in range(0,N+1):      #circles go from 0 (central BZ) to N included
         i = 0
         j = 0
         for s in range(np.sign(n)*(1+(n-1)*n*3),n*(n+1)*3+1):       #mini-BZ index
             if s == np.sign(n)*(1+(n-1)*n*3):
-                lu.append((n,0))           
+                lu.append((n,0))
             else:
                 lu.append((lu[-1][0]+m[i][0],lu[-1][1]+m[i][1]))
                 if j == n-1:
@@ -202,7 +202,7 @@ def normalize_spread(spread,k_pts,e_pts):
     max_lor = np.max(np.ravel(spread))
     min_lor = np.min(np.ravel(np.nonzero(spread)))
     whitest = 255
-    blackest = 0     
+    blackest = 0
     normalized_lor = np.zeros((k_pts,e_pts))
     for i in range(k_pts):
         for j in range(e_pts):
@@ -210,12 +210,11 @@ def normalize_spread(spread,k_pts,e_pts):
     picture = np.flip(normalized_lor.T,axis=0)   #invert e-axis to have the same structure
     return picture
 
-def get_reciprocal_moire(theta):     
+def get_reciprocal_moire(theta):
     """Compute moire reciprocal lattice vectors.
     They depend on the moire length for the size and on the orientation of the mini-BZ for the direction.
 
     """
-    
     G_M = [0,np.matmul(cfs.R_z(cfs.miniBZ_rotation(theta)),4*np.pi/np.sqrt(3)/cfs.moire_length(theta)*np.array([0,1]))]
     G_M[0] = np.matmul(cfs.R_z(-np.pi/3),G_M[1])
     return G_M

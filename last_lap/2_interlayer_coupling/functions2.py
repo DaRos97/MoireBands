@@ -103,6 +103,9 @@ def plot_bands_on_exp(energies,pic,K_list,bounds,title=''):
     return plt.gcf()
 #    plt.show()
 
+def get_SOC_fn(TMD,machine):
+    return get_home_dn(machine)+'inputs/'+TMD+'_SOC.npy'
+
 def get_pars_fn(TMD,machine,dft=False):
     get_dft = '_DFT' if dft else '_fit'
     return get_home_dn(machine)+'inputs/pars_'+TMD+get_dft+'.npy'

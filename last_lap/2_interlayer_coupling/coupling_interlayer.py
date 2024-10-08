@@ -15,7 +15,7 @@ from matplotlib import rc
 from matplotlib.lines import Line2D
 rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
 rc('text', usetex=True)
-import functions as fs
+import functions2 as fs
 from PIL import Image
 from pathlib import Path
 
@@ -25,7 +25,7 @@ We need to compute the interlayer coupling to modify the shape of the band mostl
 
 machine = cfs.get_machine(cwd)
 sample = 'S11' if len(sys.argv) == 1 else sys.argv[1]
-DFT = False
+DFT = True
 #BZ cut parameters
 cut = 'KGK'
 n_pts = 301
@@ -48,7 +48,10 @@ epsilon = {}
 HSO = {}
 par_offset = {}
 for TMD in cfs.TMDs:
-    pars_mono[TMD] = np.load(fs.get_pars_fn(TMD,machine,DFT))
+    DFT_1 = DFT if TMD=='WSe2' else True
+    pars_mono[TMD] = np.load(fs.get_pars_fn(TMD,machine,DFT_1))
+    if not DFT_1:
+        pars_mono[TMD] = np.append(pars_mono[TMD],np.load(fs.get_SOC_fn(TMD,machine)))
     hopping[TMD] = cfs.find_t(pars_mono[TMD])
     epsilon[TMD] = cfs.find_e(pars_mono[TMD])
     HSO[TMD] = cfs.find_HSO(pars_mono[TMD][-2:])
@@ -81,11 +84,11 @@ legend_elements = []
 ens = {}
 for int_type in best_interlayer_pars[txt].keys():
     energies = fs.energy(K_list,hopping,epsilon,HSO,par_offset,best_interlayer_pars[txt][int_type],int_type)
-    for i in range(22,30):
+    for i in range(22,30):  #22-26
         ax.plot((K_list[:,0]+K0)/2/K0*pic.shape[1],(EM-energies[:,i])/(EM-Em)*pic.shape[0],color=colors[int_type])
     legend_elements.append(Line2D([0],[0],ls='-',color=colors[int_type],label=int_type,linewidth=1))
     ens[int_type] = np.copy(energies)
-ax.legend(handles=legend_elements,loc='upper right',fontsize=20)
+ax.legend(handles=legend_elements,loc='upper center',fontsize=15)
 
 ax.set_xticks([0,pic.shape[1]//2,pic.shape[1]],[r"$K'$",r'$\Gamma$',r'$K$'],size=20)
 ax.set_yticks([0,pic.shape[0]//2,pic.shape[0]],["{:.2f}".format(EM),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(Em)])
@@ -93,27 +96,12 @@ ax.set_ylabel("$E\;(eV)$",size=20)
 ax.set_ylim(pic.shape[0],0)
 ax.set_title(txt,size=20)
 plt.show()
+
 if input("Save?[y/N]")=='y':
     title = sample+'_'+txt
     fig.savefig('results/figures/'+title+'.png')
     for int_type in best_interlayer_pars[txt].keys():
         np.save('results/'+title+'_'+int_type+'_pars_interlayer.npy',np.array(best_interlayer_pars[txt][int_type]))
-    exit()
-    for int_type in ['C6','C3']:
-        fname = 'results/Data_GM/EvsK_bilayer_'+int_type+'.txt'
-        savefile = np.zeros((K_list.shape[0],6))
-        savefile[:,0] = K_list[:,0]
-        savefile[:,1] = K_list[:,1]
-        for nn in range(24,28):
-            savefile[:,2+nn-24] = ens[int_type][:,nn]
-        np.savetxt(fname,savefile,fmt='%.6e',delimiter='\t',
-                    header='The six columns are: kx,ky,energy band lowest energy to highest.'
-                )
-        fname2 = 'results/Data_GM/interlayer_pars_bilayer_'+int_type+'.txt'
-        savefile2 = np.array(best_interlayer_pars['fit'][int_type])
-        np.savetxt(fname2,savefile2,fmt='%.3e',delimiter='\t',
-                header='The 4 rows are paramters: a, b, c, offset.'
-                )
 
 
 

@@ -23,7 +23,7 @@ elif cwd[:13] == '/users/rossid':
     master_folder = cwd[:13] + '/git/MoireBands/last_lap'
 sys.path.insert(1, master_folder)
 import CORE_functions as cfs
-import functions as fs
+import functions1 as fs
 from pathlib import Path
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt

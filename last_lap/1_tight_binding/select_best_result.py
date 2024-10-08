@@ -9,7 +9,7 @@ elif cwd[:13] == '/users/rossid':
     master_folder = cwd[:13] + '/git/MoireBands/last_lap'
 sys.path.insert(1, master_folder)
 import CORE_functions as cfs
-import functions as fs
+import functions1 as fs
 import matplotlib.pyplot as plt
 from pathlib import Path
 
@@ -88,7 +88,7 @@ if not best_i0==-1:
     if Path(best_fn).is_file():
         os.system('rm '+best_fn)
     np.save(best_fn,best_pars)
-    if 0:
+    if 1:
         fs.get_orbital_content(spec_args,machine,best_fn)
         fs.get_table(spec_args,machine,best_fn)
     #
@@ -119,7 +119,8 @@ if not best_i0==-1:
         plt.ylabel("E(eV)",size=s_)
         plt.suptitle(title,size=s_+10)
         plt.savefig(fs.get_fig_fn(spec_args,machine))
-        if 0:
+        if 1:
+            print(full_pars)
             plt.show()
 
 else:
