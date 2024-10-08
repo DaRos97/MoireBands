@@ -13,26 +13,66 @@ min_chi2 = 1e5
 evaluation_step = 0
 
 def get_spec_args(ind):
-    lP = np.linspace(0.05,0.15,6)
-    lrp = np.linspace(1,3,3)
-    lrl = np.linspace(0.1,0.5,3)
+    lP = np.linspace(0.05,0.14,4)
+    lrp = np.linspace(0.5,2,4)
+    lrl = [0,]#np.linspace(0.1,0.5,3)
     ll = [cfs.TMDs,lP,lrp,lrl]
     combs = list(itertools.product(*ll))
     return combs[ind]
 
-def chi2(pars,*args):
+def chi2_SOC(pars_SOC,*args):
     """Compute square difference of bands with exp data.
 
     """
-    reduced_data, exp_data, machine, spec_args, ind_random = args
-    H_SO = cfs.find_HSO(pars[-2:])
-    tb_en = cfs.energy(pars,H_SO,reduced_data,spec_args[0])
+    reduced_data, other_pars, TMD, machine = args
+    H_SO = cfs.find_HSO(pars_SOC[1:])
+    full_pars = np.append(other_pars,pars_SOC)
+    tb_en = cfs.energy(full_pars,H_SO,reduced_data,TMD)
+    #
+    final_res = 0
+    real_res = 0
+    k_pts = len(reduced_data[0][:,1])
+    plot = False
+    if plot:
+        fig = plt.figure(figsize=(20,20))
+        ax = fig.add_subplot(1,1,1)
+    for b in range(2):
+        targ = np.argwhere(np.isfinite(reduced_data[b][:,1]))    #select only non-nan values
+        #
+        farg = np.zeros(4,dtype=int)
+        farg[0] = np.argmax(reduced_data[b][:k_pts//4,1])
+        farg[1] = np.argmin(reduced_data[b][:k_pts//2,1])
+        farg[2] = k_pts//2+np.argmax(reduced_data[b][k_pts//2:3*k_pts//4,1])
+        farg[3] = 3*k_pts//4+np.argmin(np.isfinite(reduced_data[b][3*k_pts//4:,1]))-1
+        #
+        if plot:
+            ax.plot(reduced_data[b][:,0],reduced_data[b][:,1],color='r',marker='*',label='new symm' if b == 0 else '')
+            ax.plot(reduced_data[b][targ,0],tb_en[b,targ],color='g',marker='^',ls='-',label='fit' if b == 0 else '')
+        #
+        for i in range(0,3,2):  #just the maxima at gamma and K
+            real_res += np.absolute(tb_en[b,farg[i]]-reduced_data[b][farg[i],1])**2
+            if plot:
+                print(np.absolute(tb_en[b,farg[i]]-reduced_data[b][farg[i],1]))
+                ax.scatter(reduced_data[b][farg[i],0],reduced_data[b][farg[i],1],c='k',marker='*',zorder=10,s=200)
+    final_res = real_res
+    if plot:
+        plt.show()
+    return final_res
+
+def chi2(pars_tb,*args):
+    """Compute square difference of bands with exp data.
+
+    """
+    reduced_data, H_SO, pars_SOC, machine, spec_args, ind_random = args
+#    H_SO = cfs.find_HSO(pars[-2:])
+    full_pars = np.append(pars_tb,pars_SOC)
+    tb_en = cfs.energy(full_pars,H_SO,reduced_data,spec_args[0])
     #
     res = 0
     for b in range(2):
         targ = np.argwhere(np.isfinite(reduced_data[b][:,1]))    #select only non-nan values
         res += np.sum(np.absolute(tb_en[b,targ]-reduced_data[b][targ,1])**2)
-    par_dis = compute_parameter_distance(pars,np.array(cfs.initial_pt[spec_args[0]]))
+    par_dis = compute_parameter_distance(pars_tb,spec_args[0])
     final_res = res + spec_args[1]*par_dis
     #
     global min_chi2
@@ -42,48 +82,40 @@ def chi2(pars,*args):
             os.system('rm '+temp_fn)
         min_chi2 = final_res
         temp_fn = get_temp_fit_fn(min_chi2,spec_args,ind_random,machine)
-        np.save(temp_fn,pars)
+        np.save(temp_fn,pars_tb)
 
-
-    #Plot each nnnn steps
-    global evaluation_step
-    evaluation_step += 1
-    nnnn = 50
-    if evaluation_step%nnnn==0:
-        fig = plt.figure(figsize=(20,20))
-        ax = fig.add_subplot(1,1,1)
-        ax.set_title("{:.7f}".format(final_res))
-        KGK_end = exp_data[0][0][-1,0]
-        KMKp_beg = exp_data[1][0][0,0]
-        ikl = exp_data[0][0].shape[0]//2+1
-        for b in range(2):
-            ax.plot(exp_data[0][b][:,0],exp_data[0][b][:,1],color='b',marker='*',label='experiment' if b == 0 else '')
-            ax.plot(exp_data[1][b][:,0]+KGK_end-KMKp_beg,exp_data[1][b][:,1],color='b',marker='*')
+    if machine=='loc':    #Plot each nnnn steps
+        global evaluation_step
+        evaluation_step += 1
+        nnnn = 200
+        if evaluation_step%nnnn==0:
+            fig = plt.figure(figsize=(20,20))
+            ax = fig.add_subplot(1,1,1)
+            ax.set_title("{:.7f}".format(final_res))
+            for b in range(2):
+                ax.plot(reduced_data[b][:,0],reduced_data[b][:,1],color='r',marker='*',label='new symm' if b == 0 else '')
+                targ = np.argwhere(np.isfinite(reduced_data[b][:,1]))    #select only non-nan values
+                ax.plot(reduced_data[b][targ,0],tb_en[b,targ],color='g',marker='^',ls='-',label='fit' if b == 0 else '')
             #
-            ax.plot(reduced_data[b][:,0],reduced_data[b][:,1],color='r',marker='*',label='new symm' if b == 0 else '')
-            targ = np.argwhere(np.isfinite(reduced_data[b][:,1]))    #select only non-nan values
-            ax.plot(reduced_data[b][targ,0],tb_en[b,targ],color='g',marker='^',ls='-',label='fit' if b == 0 else '')
-        #
-        ax.set_xlabel(r'$A^{-1}$')
-        ax.set_ylabel('E(eV)')
-        plt.legend()
-        plt.savefig('temp.png')
-        plt.close(fig)
-        print("New fig ",evaluation_step//nnnn)
+            ax.set_xlabel(r'$A^{-1}$')
+            ax.set_ylabel('E(eV)')
+            plt.legend()
+            plt.savefig('results/figures/temp.png')
+            plt.close(fig)
+            print("New fig ",evaluation_step//nnnn)
 
-        #fig of distance from DFT values
-        fig = plt.figure(figsize=(15,20))
-        ax1 = fig.add_subplot(2,1,1)
-        ax1.bar(np.arange(len(pars)),pars-cfs.initial_pt[spec_args[0]],color='r')
-        ax1.set_ylabel("Absolute")
-        ax2 = fig.add_subplot(2,1,2)
-        ax2.bar(np.arange(len(pars)),(pars-cfs.initial_pt[spec_args[0]])/abs(np.array(cfs.initial_pt[spec_args[0]]))*100,color='b')
-        ax2.set_ylabel("Percentage")
-        fig.tight_layout()
-        plt.savefig('memp.png')
-        plt.close(fig)
-#        plt.show()
-#    print("final res: ","{:.7f}".format(final_res))
+            #fig of distance from DFT values
+            fig = plt.figure(figsize=(15,20))
+            ax1 = fig.add_subplot(2,1,1)
+            ax1.bar(np.arange(len(pars_tb)),pars_tb-cfs.initial_pt[spec_args[0]][:-3],color='r')
+            ax1.set_ylabel("Absolute")
+            ax2 = fig.add_subplot(2,1,2)
+            ax2.bar(np.arange(len(pars_tb)),(pars_tb-cfs.initial_pt[spec_args[0]][:-3])/abs(np.array(cfs.initial_pt[spec_args[0]][:-3]))*100,color='b')
+            ax2.set_ylabel("Percentage")
+            fig.tight_layout()
+            plt.savefig('results/figures/memp.png')
+            plt.close(fig)
+    #    print("final res: ","{:.7f}".format(final_res))
     return final_res
 
 def get_exp_data(TMD,machine):
@@ -117,11 +149,11 @@ def get_bounds(in_pt,spec_args):
     TMD, P, rp, rl, ind_reduced = spec_args
     Bounds = []
     off_ind = 3     #index of offset
-    for i in range(len(in_pt)):     #tb parameters
+    for i in range(in_pt.shape[0]):     #tb parameters
         #
-        if i == len(in_pt)-off_ind: #offset
+        if i == in_pt.shape[0]-off_ind: #offset
             temp = (-3,0)
-        elif i == len(in_pt)-2 or i == len(in_pt)-1: #SOC
+        elif i == in_pt.shape[0]-2 or i == in_pt.shape[0]-1: #SOC
             r = rl*in_pt[i]
             temp = (in_pt[i]-r,in_pt[i]+r)
         else:
@@ -227,8 +259,15 @@ def get_reduced_data(symm_data,ind):
         red_data.append(symm_data[i][::ind])
     return red_data
 
-def compute_parameter_distance(par,DFT):
-    return np.sum(np.absolute(par[:-3]-DFT[:-3])**2) + np.sum(np.absolute(par[-2:]-DFT[-2:])**2)
+def compute_parameter_distance(pars,TMD):
+    DFT_vals = np.array(cfs.initial_pt[TMD])
+    len_tb = DFT_vals.shape[0]
+    if pars.shape[0]==len_tb:
+        return np.sum(np.absolute(pars[:-3]-DFT_vals[:-3])**2) + np.sum(np.absolute(pars[-2:]-DFT[-2:])**2)
+    elif pars.shape[0]==len_tb-3:
+        return np.sum(np.absolute(pars-DFT_vals[:-3])**2)
+    else:
+        print("compute_parameter_distance error")
 
 ########################################################################################################
 ########################################################################################################

@@ -119,9 +119,7 @@ def H_monolayer(K_p,*args):
     #
     if len(H.shape)==3:
         H = np.transpose(H,(2,0,1))
-    
     H += HSO
-    
     #Offset
     H += np.identity(22)*offset
     return H
@@ -238,17 +236,19 @@ def find_HSO(SO_pars):
     Mee_uu = np.zeros((6,6),dtype=complex)
     Mee_uu[1,2] = -1j*l_M
     Mee_uu[2,1] = 1j*l_M
+    #
     Mee_uu[3,4] = -1j*l_X/2
     Mee_uu[4,3] = 1j*l_X/2
     Mee_dd = -Mee_uu
-    #
+    ###
     Moo_uu = np.zeros((5,5),dtype=complex)
     Moo_uu[0,1] = -1j*l_M/2
     Moo_uu[1,0] = 1j*l_M/2
+    #
     Moo_uu[2,3] = -1j*l_X/2
     Moo_uu[3,2] = 1j*l_X/2
     Moo_dd = -Moo_uu
-    #
+    ###
     Meo_ud = np.zeros((6,5),dtype=complex)
     Meo_ud[0,0] = -l_M*np.sqrt(3)/2
     Meo_ud[0,1] = 1j*l_M*np.sqrt(3)/2
@@ -256,25 +256,27 @@ def find_HSO(SO_pars):
     Meo_ud[1,1] = 1j*l_M/2
     Meo_ud[2,0] = -1j*l_M/2
     Meo_ud[2,1] = l_M/2
+    #
     Meo_ud[3,4] = l_X/2
     Meo_ud[4,4] = -1j*l_X/2
     Meo_ud[5,2] = -l_X/2
     Meo_ud[5,3] = 1j*l_X/2
     Moe_du = np.conjugate(Meo_ud.T)
-    #
+    ###
     Meo_du = np.zeros((6,5),dtype=complex)
     Meo_du[0,0] = l_M*np.sqrt(3)/2
     Meo_du[0,1] = 1j*np.sqrt(3)*l_M/2
     Meo_du[1,0] = -l_M/2
-    Meo_du[1,1] = -1j*l_M/2
+    Meo_du[1,1] = 1j*l_M/2
     Meo_du[2,0] = -1j*l_M/2
     Meo_du[2,1] = -l_M/2
+    #
     Meo_du[3,4] = -l_X/2
     Meo_du[4,4] = -1j*l_X/2
     Meo_du[5,2] = l_X/2
     Meo_du[5,3] = 1j*l_X/2
     Moe_ud = np.conjugate(Meo_du.T)
-    #
+    ###
     Muu = np.zeros((11,11),dtype=complex)
     Muu[:6,:6] = Mee_uu
     Muu[6:,6:] = Moo_uu
@@ -294,13 +296,33 @@ def find_HSO(SO_pars):
     HSO[:11,11:] = Mud
     HSO[11:,:11] = Mdu
     #### Now we do the basis transformation
-    P = np.zeros((11,11))
-    P[0,5] = P[1,7] = P[2,6] = P[3,9] = P[4,10] = P[5,8] = 1
-    P[6,0] = P[7,1] = P[8,3] = P[9,4] = P[10,2] = 1
-    Pf = np.zeros((22,22))
-    Pf[:11,:11] = P
-    Pf[11:,11:] = P
-    HSOf = np.linalg.inv(Pf) @ HSO @ Pf
+    #Basis now: (d_z2,d_x2-y2,d_xy,px_s,py_s,pz_a,d_xz,d_yz,px_a,py_a,pz_s)
+    #           (a,b,c,d,e,f,g,h,i,j,k)
+    #Basis after: (d_xz,d_yz,pz_s,px_a,py_a,d_z2,d_xy,d_x2-y2,pz_a,px_s,py_s)
+    #           (6,7,10,8,9,0,2,1,5,3,4)
+    #Matrix transformation: P
+    #   |0 0 0 0 0 1 0 0 0 0 0|
+    #   |0 0 0 0 0 0 0 1 0 0 0|
+    #   |0 0 0 0 0 0 1 0 0 0 0|
+    #   |0 0 0 0 0 0 0 0 0 1 0|
+    #   |0 0 0 0 0 0 0 0 0 0 1|
+    #   |0 0 0 0 0 0 0 0 1 0 0|
+    #   |1 0 0 0 0 0 0 0 0 0 0|
+    #   |0 1 0 0 0 0 0 0 0 0 0|
+    #   |0 0 0 1 0 0 0 0 0 0 0|
+    #   |0 0 0 0 1 0 0 0 0 0 0|
+    #   |0 0 1 0 0 0 0 0 0 0 0|
+    if 0:
+        P = np.zeros((11,11))
+        P[0,5] = P[1,7] = P[2,6] = P[3,9] = P[4,10] = P[5,8] = 1
+        P[6,0] = P[7,1] = P[8,3] = P[9,4] = P[10,2] = 1
+        Pf = np.zeros((22,22))
+        Pf[:11,:11] = P
+        Pf[11:,11:] = P
+        HSOf = np.linalg.inv(Pf) @ HSO @ Pf
+    #Just swap the columns and rows
+    HSOf = HSO[[6,7,10,8,9,0,2,1,5,3,4,17,18,21,19,20,11,13,12,16,14,15],:]
+    HSOf = HSOf[:,[6,7,10,8,9,0,2,1,5,3,4,17,18,21,19,20,11,13,12,16,14,15]]
     return HSOf
 
 #######################################################################################
