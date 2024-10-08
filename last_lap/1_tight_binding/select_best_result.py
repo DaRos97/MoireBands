@@ -10,8 +10,8 @@ elif cwd[:13] == '/users/rossid':
 sys.path.insert(1, master_folder)
 import CORE_functions as cfs
 import functions as fs
-import parameters as ps
 import matplotlib.pyplot as plt
+from pathlib import Path
 
 plots = 1
 plots_pts = 0
@@ -29,7 +29,7 @@ if 0:
     P = 4
     rp = 3
     rl = 0
-spec_args = (TMD,P,rp,rl)
+spec_args = (TMD,P,rp,rl,ind_reduced)
 SOC_pars = np.load(fs.get_SOC_fn(TMD,machine))
 H_SO = cfs.find_HSO(SOC_pars[1:])
 
@@ -40,7 +40,7 @@ exp_data = fs.get_exp_data(TMD,machine)
 symm_data = fs.get_symm_data(exp_data)
 reduced_data = fs.get_reduced_data(symm_data,ind_reduced)
 args_chi2 = (reduced_data,H_SO,SOC_pars,machine,spec_args,-1)
-DFT_values = np.array(ps.initial_pt[TMD])  #DFT values
+DFT_values = np.array(cfs.initial_pt[TMD])  #DFT values
 arr_sol = []
 
 #
@@ -48,25 +48,23 @@ best_i0 = -1
 best = [1e5,1e5,1e5]
 for file in os.listdir(fs.get_temp_dn(machine,spec_args)):
     terms = file.split('_')
-    if terms[1] == TMD:
-        ind = int(terms[2])
-        try:
-            pars = np.load(fs.get_temp_dn(machine,spec_args)+file)
-        except:
-            print("error in ind: ",ind)
-            arr_sol.append(np.array([ind,np.nan,np.nan,np.nan]))
-            continue
-        chi2 = float(terms[-1][:-4])    #remove the .npy
-        chi2_1 = fs.compute_parameter_distance(pars,TMD)
-        chi2_0 = chi2-P*chi2_1
-        arr_sol.append(np.array([ind,chi2,chi2_0,chi2_1]))
-        #
-        temp = [chi2, chi2_0, chi2_1]
-        if temp[selection]<best[selection]:
-            best_i0 = len(arr_sol)-1
-            best[selection] = temp[selection]
-            best_pars = pars
-
+    ind = int(terms[1])
+    try:
+        pars = np.load(fs.get_temp_dn(machine,spec_args)+file)
+    except:
+        print("error in ind: ",ind)
+        arr_sol.append(np.array([ind,np.nan,np.nan,np.nan]))
+        continue
+    chi2 = float(terms[-1][:-4])    #remove the .npy
+    chi2_1 = fs.compute_parameter_distance(pars,TMD)
+    chi2_0 = chi2-P*chi2_1
+    arr_sol.append(np.array([ind,chi2,chi2_0,chi2_1]))
+    #
+    temp = [chi2, chi2_0, chi2_1]
+    if temp[selection]<best[selection]:
+        best_i0 = len(arr_sol)-1
+        best[selection] = temp[selection]
+        best_pars = pars
 arr_sol = np.array(arr_sol)
 
 if plots_pts:   #plot par_distances
@@ -90,7 +88,7 @@ if not best_i0==-1:
     if Path(best_fn).is_file():
         os.system('rm '+best_fn)
     np.save(best_fn,best_pars)
-    if 1:
+    if 0:
         fs.get_orbital_content(spec_args,machine,best_fn)
         fs.get_table(spec_args,machine,best_fn)
     #
@@ -121,7 +119,7 @@ if not best_i0==-1:
         plt.ylabel("E(eV)",size=s_)
         plt.suptitle(title,size=s_+10)
         plt.savefig(fs.get_fig_fn(spec_args,machine))
-        if 1:
+        if 0:
             plt.show()
 
 else:

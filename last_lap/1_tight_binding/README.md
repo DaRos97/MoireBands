@@ -29,44 +29,13 @@ We should also discriminate the solutions based on the orbital content at G and 
 - `select_best_result.py`
 
 
-# Computed three pars
-## Baobab
-    - 1-500 bound 10.0 1.0 0.3
+# Computed
 ## Yggdrasil
-## Mafalda
-    - 1-50 bound 10.0 1.0 0.2
-    - 1-50 bound 1.0 1.0 0.1
-    - 1-50 bound 1.0 1.0 0.2
-    - 1-50 bound 1.0 1.0 0.3
-## Bamboo
-    - 1-500 bound 10.0 1.0 0.2
-
-
-# Computed four pars
-## Yggdrasil
-    - 1-100 bound 10.0 1.0 0.2 0.01
-    - 1-100 bound 10.0 1.0 0.3 0.01
-    - 1-100 bound 5.0 1.0 0.2 0.01
-    - 1-100 bound 5.0 1.0 0.3 0.01
-    - 1-20 bound [10.0,7.5,5,2.5] [0.5,1.0,1.5] [0.1,0.3,0.5] [0,0.01,0.1]
-    - 1-50 bound 0 1 1 0
-    - 1-50 bound 0 2 1 0
-## Bamboo
-    - 1-50 bound 10 0.5 0.1 0
-    - 1-50 bound [10,0] [0.5,3] [0.01,2] 0
-## Baobab
-    - 1-20 bound [0-3,4] [0.5-3,11] [0.1-0.5,5] 0
-    - 1-20 bound [0.1-0.9,5] [1-3,3] [0.1-0.5,3] 0
-    # New name from here with 3 digits in spec args
-    - 1-20 bound [0.05-0.15,6] [1-3,3] [0.1-0.5,3] 0
-
-
+    - 1-20 with P:(0.05,0.14,4) and rp:(0.5,2,4) -> best are 12 and 29
 
 # Computing
-
 ## Baobab
 ## Yggdrasil
-    - 1-20 with P:(0.05,0.14,4) and rp:(0.5,2,4) 
 ## Mafalda
 ## Bamboo
 

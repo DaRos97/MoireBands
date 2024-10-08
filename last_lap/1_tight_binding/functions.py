@@ -354,7 +354,7 @@ def get_table(spec_args,machine,fn=''):
     full_pars = np.load(fn)
     pars_dft = cfs.initial_pt[spec_args[0]]
     list_names = cfs.list_names_all
-    for i in range(len(pars_dft)):
+    for i in range(len(full_pars)):
         percentage = np.abs((full_pars[i]-pars_dft[i])/pars_dft[i]*100)
         l = 10 - len(list_names[i])
         sp1 = '' if percentage>10 else ' '
