@@ -17,28 +17,29 @@ plots = 1
 plots_pts = 0
 
 selection = 0 if len(sys.argv)==1 else int(sys.argv[1])  #0->chi2, 1->chi2_0, 2->chi2_1
-ind_0 = 0 if len(sys.argv) in [1,2] else int(sys.argv[2])
+ind_0 = 0 if len(sys.argv) in [1,2] else int(sys.argv[2])   #index of spec_args
 ind_reduced = 7 #Take 1 every .. pts in the exp data -> faster
 txt_b = ['chi2','chi2_0','chi2_1']
 
 machine = 'loc'
-TMD = cfs.TMDs[0]
 
-P,rp,rl,cv = fs.get_spec_args(ind_0)
+TMD,P,rp,rl = fs.get_spec_args(ind_0)
 if 0:
+    TMD = 'WSe2'
     P = 4
     rp = 3
-    rl = 0.5
-    cv = 0
-spec_args = (P,rp,rl,cv)
+    rl = 0
+spec_args = (TMD,P,rp,rl)
+SOC_pars = np.load(fs.get_SOC_fn(TMD,machine))
+H_SO = cfs.find_HSO(SOC_pars[1:])
 
-print("Computing TMD: ",TMD," with parameters: ",spec_args)
+print("Computing parameters: ",spec_args)
 print("Considering solution with best ",txt_b[selection])
 
 exp_data = fs.get_exp_data(TMD,machine)
 symm_data = fs.get_symm_data(exp_data)
-symm_data = fs.get_reduced_data(symm_data,ind_reduced)
-args_chi2 = (symm_data,TMD,machine,spec_args,-1)
+reduced_data = fs.get_reduced_data(symm_data,ind_reduced)
+args_chi2 = (reduced_data,H_SO,SOC_pars,machine,spec_args,-1)
 DFT_values = np.array(ps.initial_pt[TMD])  #DFT values
 arr_sol = []
 
@@ -55,8 +56,8 @@ for file in os.listdir(fs.get_temp_dn(machine,spec_args)):
             print("error in ind: ",ind)
             arr_sol.append(np.array([ind,np.nan,np.nan,np.nan]))
             continue
-        chi2 = float(terms[-1][:-4])
-        chi2_1 = fs.compute_parameter_distance(pars,DFT_values)
+        chi2 = float(terms[-1][:-4])    #remove the .npy
+        chi2_1 = fs.compute_parameter_distance(pars,TMD)
         chi2_0 = chi2-P*chi2_1
         arr_sol.append(np.array([ind,chi2,chi2_0,chi2_1]))
         #
@@ -85,37 +86,41 @@ if not best_i0==-1:
     print("__________________________________________________________")
     print("__________________________________________________________")
     #Save best result
-    np.save(fs.get_res_fn(TMD,spec_args,machine),best_pars)
+    best_fn = fs.get_res_fn(spec_args,machine)
+    if Path(best_fn).is_file():
+        os.system('rm '+best_fn)
+    np.save(best_fn,best_pars)
     if 1:
-        fs.get_orbital_content(TMD,spec_args,machine)
-        fs.get_table(TMD,spec_args,machine)
+        fs.get_orbital_content(spec_args,machine,best_fn)
+        fs.get_table(spec_args,machine,best_fn)
     #
     if plots:
-        tb_en = cfs.energy(best_pars,cfs.find_HSO(best_pars[-2:]),symm_data,TMD)
-        DFT_en = cfs.energy(DFT_values,cfs.find_HSO(DFT_values[-2:]),symm_data,TMD)
+        full_pars = np.append(best_pars,SOC_pars)
+        tb_en = cfs.energy(full_pars,H_SO,reduced_data,TMD)
+        DFT_en = cfs.energy(DFT_values,cfs.find_HSO(DFT_values[-2:]),reduced_data,TMD)
         #
         plt.figure(figsize=(40,20))
-        title = "TMD: "+TMD+", spec_ind = "+str(ind_0)+" -> ("+fs.get_spec_args_txt(spec_args)+")"+", chi2="+"{:.3f}".format(arr_sol[best_i0,1])
+        title = "Spec_arg_ind = "+str(ind_0)+" -> ("+fs.get_spec_args_txt(spec_args)+")"+", chi2="+"{:.3f}".format(arr_sol[best_i0,1])
         s_ = 20
         for b in range(2):
             #exp
-            plt.plot(symm_data[b][:,0],symm_data[b][:,1],color='b',marker='*',label='experiment' if b == 0 else '')
-#            plt.plot(-(symm_data[b][ikl:,0]-k_lim)+k_lim,symm_data[b][ikl:,1],color='b',marker='*')
+            plt.plot(reduced_data[b][:,0],reduced_data[b][:,1],color='b',marker='*',label='experiment' if b == 0 else '')
+#            plt.plot(-(reduced_data[b][ikl:,0]-k_lim)+k_lim,reduced_data[b][ikl:,1],color='b',marker='*')
             #DFT
-            plt.plot(symm_data[b][:,0],DFT_en[b],color='g',marker='^',label='DFT' if b == 0 else '')
-#            plt.scatter(-(symm_data[b][ikl:,0]-k_lim)+k_lim,DFT_en[b][ikl:],color='g',marker='^',s=1)
+            plt.plot(reduced_data[b][:,0],DFT_en[b],color='g',marker='^',label='DFT' if b == 0 else '')
+#            plt.scatter(-(reduced_data[b][ikl:,0]-k_lim)+k_lim,DFT_en[b][ikl:],color='g',marker='^',s=1)
             #solution
-            plt.plot(symm_data[b][:,0],tb_en[b],color='r',marker='o',label='solution' if b == 0 else '')
-#            plt.scatter(-(symm_data[b][ikl:,0]-k_lim)+k_lim,tb_en[b][ikl:],color='r',marker='o',s=3)
+            plt.plot(reduced_data[b][:,0],tb_en[b],color='r',marker='o',label='solution' if b == 0 else '')
+#            plt.scatter(-(reduced_data[b][ikl:,0]-k_lim)+k_lim,tb_en[b][ikl:],color='r',marker='o',s=3)
         plt.legend(fontsize=s_,markerscale=2)
         ikl = exp_data[0][0].shape[0]//2//ind_reduced+1
-#        plt.xticks([symm_data[b][0,0],symm_data[b][ikl,0],symm_data[b][-1,0]],['$\Gamma$','$K$','$M$'],size=s_)
-        plt.axvline(symm_data[b][0,0],color='k',alpha = 0.2)
-        plt.axvline(symm_data[b][ikl,0],color='k',alpha = 0.2)
-        plt.axvline(symm_data[b][-1,0],color='k',alpha = 0.2)
+#        plt.xticks([reduced_data[b][0,0],reduced_data[b][ikl,0],reduced_data[b][-1,0]],['$\Gamma$','$K$','$M$'],size=s_)
+        plt.axvline(reduced_data[b][0,0],color='k',alpha = 0.2)
+        plt.axvline(reduced_data[b][ikl,0],color='k',alpha = 0.2)
+        plt.axvline(reduced_data[b][-1,0],color='k',alpha = 0.2)
         plt.ylabel("E(eV)",size=s_)
         plt.suptitle(title,size=s_+10)
-        plt.savefig(fs.get_fig_fn(TMD,spec_args,machine))
+        plt.savefig(fs.get_fig_fn(spec_args,machine))
         if 1:
             plt.show()
 

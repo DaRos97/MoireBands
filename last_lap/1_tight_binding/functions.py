@@ -193,11 +193,14 @@ def get_exp_fn(TMD,cut,band,machine):
 def get_temp_fit_fn(chi,spec_args,ind_random,machine):
     return get_temp_dn(machine,spec_args)+'temp_'+str(ind_random)+"_"+"{:.8f}".format(chi)+'.npy'
 
-def get_res_fn(TMD,spec_args,machine):
-    return get_res_dn(machine)+'res_'+TMD+'_'+get_spec_args_txt(spec_args)+'.npy'
+def get_res_fn(spec_args,machine):
+    return get_res_dn(machine)+'res_'+get_spec_args_txt(spec_args)+'.npy'
 
-def get_fig_fn(TMD,spec_args,machine):
-    return get_fig_dn(machine)+'fig_'+TMD+'_'+get_spec_args_txt(spec_args)+'.png'
+def get_fig_fn(spec_args,machine):
+    return get_fig_dn(machine)+'fig_'+get_spec_args_txt(spec_args)+'.png'
+
+def get_SOC_fn(TMD,machine):
+    return get_res_dn(machine)+TMD+'_SOC.npy'
 
 def get_fig_dn(machine):
     return get_res_dn(machine)+'figures/'

@@ -72,7 +72,7 @@ DFT_values = np.array(cfs.initial_pt[TMD])  #DFT values
 """
 We start by computing offset and SOC parameters by fitting the energy of the 2 top bands at Gamma and K.
 """
-SOC_fn = fs.get_home_dn(machine)+'results/'+TMD+'_SOC.npy'
+SOC_fn = fs.get_SOC_fn(TMD,machine)
 if not Path(SOC_fn).is_file():
     print("Computing SOC")
     args_chi2_SOC = (reduced_data, DFT_values[:-3], spec_args[0],machine)
