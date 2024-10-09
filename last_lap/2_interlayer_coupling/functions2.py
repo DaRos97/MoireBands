@@ -14,10 +14,41 @@ def energy(list_K,hopping,epsilon,HSO,offset,pars_interlayer,interlayer_type):
     for k in range(list_K.shape[0]):
         big_H = np.zeros((44,44),dtype=complex)
         big_H[:22,:22] = cfs.H_monolayer(list_K[k],*args_WSe2)
-        big_H[22:,22:] = cfs.H_monolayer(list_K[k],*args_WS2) 
+        big_H[22:,22:] = cfs.H_monolayer(list_K[k],*args_WS2)
         big_H += get_interlayer_H(list_K[k],pars_interlayer,interlayer_type)
         en_list[k] = np.linalg.eigvalsh(big_H)
     return en_list
+
+def get_interlayer_H(k,pars,interlayer_type):
+    H = np.zeros((44,44),dtype=complex)
+    if interlayer_type=='U1':
+        t_k = -pars[0] + pars[1]*np.linalg.norm(k)**2
+    elif interlayer_type=='C6':
+        aa = cfs.dic_params_a_mono['WSe2']
+        arr0 = aa*np.array([0,-1])
+        t_k = -pars[0]
+        for i in range(6):
+            t_k += pars[1]*np.exp(1j*np.dot(k,np.dot(cfs.R_z(np.pi/3*i),arr0)))
+#        t_k = -pars[0] + pars[1]*2*(np.cos(k[0]*aa)+np.cos(k[0]/2*aa)*np.cos(np.sqrt(3)/2*k[1]*aa))
+    elif interlayer_type=='C3':
+        aa = cfs.dic_params_a_mono['WSe2']
+        delta = aa*np.array([np.array([0,-1]),np.array([1/2,np.sqrt(3)/2]),np.array([-1/2,np.sqrt(3)/2])])
+        t_k = 0
+        for i in range(3):
+            t_k += pars[1]*np.exp(1j*np.dot(k,delta[i]))
+    elif interlayer_type=='no':
+        t_k = 0
+    #a and b
+    ind_pze = 8
+    for i in range(2):
+        H[ind_pze+11*i,ind_pze+11*i+22] = t_k
+    H += np.conjugate(H.T)
+    #c
+    for i in range(2):
+        H[ind_pze+11*i+22,ind_pze+11*i+22] = pars[2]
+    #Offset
+    H += np.identity(44)*pars[-1]
+    return H
 
 def get_K(cut,n_pts):
     res = np.zeros((n_pts,2))
@@ -35,33 +66,6 @@ def get_K(cut,n_pts):
         for i in range(n_pts//2,n_pts):
             res[i] = M + (Kp-M)*i/(n_pts//2)
     return res
-
-def get_interlayer_H(k,pars,interlayer_type):
-    H = np.zeros((44,44),dtype=complex)
-    if interlayer_type=='U1':
-        t_k = -pars[0] + pars[1]*np.linalg.norm(k)**2
-    elif interlayer_type=='C6':
-        aa = cfs.dic_params_a_mono['WSe2']
-        t_k = -pars[0] + pars[1]*2*(np.cos(k[0]*aa)+np.cos(k[0]/2*aa)*np.cos(np.sqrt(3)/2*k[1]*aa))
-    elif interlayer_type=='C3':
-        aa = cfs.dic_params_a_mono['WSe2']
-        delta = aa*np.array([np.array([1,0]),np.array([1/2,np.sqrt(3)/2]),np.array([-1/2,np.sqrt(3)/2])])
-        t_k = 0
-        for i in range(3):
-            t_k += pars[1]*np.exp(1j*np.dot(k,delta[i]))
-    elif interlayer_type=='no':
-        t_k = 0
-    #a and b
-    ind_pze = 8
-    for i in range(2):
-        H[ind_pze+11*i,ind_pze+11*i+22] = t_k 
-    H += np.conjugate(H.T)
-    #c
-    for i in range(2):
-        H[ind_pze+11*i+22,ind_pze+11*i+22] = pars[2]
-    #Offset
-    H += np.identity(44)*pars[-1]       
-    return H
 
 def extract_png(fig_fn,cut_bounds,sample):
     pic_0 = np.array(np.asarray(Image.open(fig_fn)))
@@ -113,6 +117,9 @@ def get_pars_fn(TMD,machine,dft=False):
 def get_sample_fn(sample,machine):
     v = 'v2' if sample == 'S3' else 'v1'
     return get_home_dn(machine)+'inputs/'+sample+'_KGK_WSe2onWS2_'+v+'.png'
+
+def get_res_fn(title,int_type,machine):
+    return get_home_dn(machine)+'results/'+title+'_'+int_type+'_pars_interlayer.npy'
 
 def get_home_dn(machine):
     if machine == 'loc':

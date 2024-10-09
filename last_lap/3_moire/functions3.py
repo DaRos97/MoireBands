@@ -5,7 +5,7 @@ import itertools
 
 
 def get_pars(ind):
-    DFT = [True,False]
+    lDFT = [True,False]
     samples = ['S11','S3']
     int_types = ['U1','C6','C3',]
     pars_Vgs = [0.005,0.01,0.02,0.03]
@@ -13,7 +13,7 @@ def get_pars(ind):
     phi_G = [np.pi,]
     phi_K = [-106*2*np.pi/360,]
     #
-    ll = [samples,int_types,pars_Vgs,pars_Vks,phi_G,phi_K]
+    ll = [lDFT,samples,pars_Vgs,pars_Vks,phi_G,phi_K]
     combs = list(itertools.product(*ll))
     #
     return combs[ind]
@@ -72,10 +72,14 @@ def H_interlayer(k_,pars_interlayer):
         t_k = -pars_interlayer[1][0] + pars_interlayer[1][1]*np.linalg.norm(k_)**2
     elif pars_interlayer[0]=='C6':
         aa = cfs.dic_params_a_mono['WSe2']
-        t_k = -pars_interlayer[1][0] + pars_interlayer[1][1]*2*(np.cos(k_[0]*aa)+np.cos(k_[0]/2*aa)*np.cos(np.sqrt(3)/2*k_[1]*aa))
+        arr0 = aa*np.array([0,-1])
+        t_k = -pars_interlayer[1][0]
+        for i in range(6):
+            t_k += pars_interlayer[1][1]*np.exp(1j*np.dot(k_,np.dot(cfs.R_z(np.pi/3*i),arr0)))
+#        t_k = -pars[0] + pars[1]*2*(np.cos(k[0]*aa)+np.cos(k[0]/2*aa)*np.cos(np.sqrt(3)/2*k[1]*aa))
     elif pars_interlayer[0]=='C3':
         aa = cfs.dic_params_a_mono['WSe2']
-        delta = aa*np.array([np.array([1,0]),np.array([1/2,np.sqrt(3)/2]),np.array([-1/2,np.sqrt(3)/2])])
+        delta = aa*np.array([np.array([0,-1]),np.array([1/2,np.sqrt(3)/2]),np.array([-1/2,np.sqrt(3)/2])])
         t_k = 0
         for i in range(3):
             t_k += pars_interlayer[1][1]*np.exp(1j*np.dot(k_,delta[i]))
@@ -94,8 +98,8 @@ def H_moire(g,pars_V):          #g is a integer from 0 to 5
     Id = np.zeros((22,22),dtype = complex)
     out_of_plane = V_G*np.exp(1j*(-1)**(g%2)*psi_G)
     in_plane = V_K*np.exp(1j*(-1)**(g%2)*psi_K)
-    list_out = (0,1,2,5,8)
-    list_in = (3,4,6,7,9,10)
+    list_out = (0,1,2,5,8)      #out-of-plane orbitals (all ones containing a z)
+    list_in = (3,4,6,7,9,10)    #in-plane orbitals 
     for i in list_out:
         Id[i,i] = out_of_plane
         Id[i+11,i+11] = out_of_plane
@@ -213,7 +217,6 @@ def normalize_spread(spread,k_pts,e_pts):
 def get_reciprocal_moire(theta):
     """Compute moire reciprocal lattice vectors.
     They depend on the moire length for the size and on the orientation of the mini-BZ for the direction.
-
     """
     G_M = [0,np.matmul(cfs.R_z(cfs.miniBZ_rotation(theta)),4*np.pi/np.sqrt(3)/cfs.moire_length(theta)*np.array([0,1]))]
     G_M[0] = np.matmul(cfs.R_z(-np.pi/3),G_M[1])
@@ -262,6 +265,9 @@ def get_sample_fn(sample,machine,zoom=False):
 def get_pars_mono_fn(TMD,machine,dft=False):
     get_dft = '_DFT' if dft else '_fit'
     return get_home_dn(machine)+'inputs/pars_'+TMD+get_dft+'.npy'
+
+def get_SOC_fn(TMD,machine):
+    return get_home_dn(machine)+'inputs/'+TMD+'_SOC.npy'
 
 def get_pars_interlayer_fn(sample,interlayer_type,DFT,machine):
     txt = 'DFT' if DFT else 'fit'

@@ -7,23 +7,25 @@ Hi =    (E(pz) WSe2     t(k)             )
 t(k) can be:
     - U1 symmetric -> -a+b|k|^2
     - C6 symmetric   -> -a+b\sum_{j=1}^6\exp{i k\cdot aj} = -a + 2(cos(kx a)+cos(kx/2 a)cos(sqrt(3)/2 ky a))    #the 'a' in cosines is the lattice constant of WSe2 or WS2
-    - C3 symmetric   -> b'\sum_{j=1}^3\exp{i k\cdot deltaj} which now is complex and the delta are vectors connecting S and Se
+    - C3 symmetric   -> b'\sum_{j=1}^3\exp{i k\cdot deltaj} #which now is complex and the delta are vectors connecting S and Se
 
 We consider the interlayer parameters as (a,b,c,offset). 
 In C3, a=0. 
 
-Hi couples pz^e with pz^e. 
+Hi couples pz^e with pz^e, equally in the two spin sectors. 
 
 Best parameters by eye are in coupling_interlayer.py for DFT/fit and all types of interlayer.
 
 Parameters of fit might change for different fit parameters because of different orbital content.
 
+Parameters might also differ for S11 and S3.
+
 #Code
-- get_res_1.py      Imports the results from 1_tight_binding/. Imports both DFT and chosen minimizatipon result.
-- coupling_interlayr.py & functions.py         Compute the best interlayer -> by eye.
+- `get_res_1.py`      #Imports the results from 1_tight_binding/. Imports both DFT and chosen minimizatipon result.
+- `coupling_interlayer.py` & `functions.py`         #Compute the best interlayer -> by eye.
 
 # Results
-The best parameters for fit and interlayer types are stored in the coupling.py script. 
+The best parameters for fit and interlayer types are stored in the coupling_interlayer.py script. 
 temp/ is used for storing the temporary images of when loking for best parameters.
 figures/ has the final images.
 

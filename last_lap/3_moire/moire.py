@@ -9,7 +9,7 @@ elif cwd[:13] == '/users/rossid':
     master_folder = cwd[:13] + '/git/MoireBands/last_lap'
 sys.path.insert(1, master_folder)
 import CORE_functions as cfs
-import functions as fs
+import functions3 as fs
 from pathlib import Path
 from scipy.linalg import eigh
 import matplotlib.pyplot as plt
@@ -21,28 +21,28 @@ if machine=='loc':
 else:
     tqdm = cfs.tqdm
     save = True
+
 """
 Here we compute the full KGK image with Moire replicas.
 """
-
 #Moire parameters
-ind = 0 if len(sys.argv)==1 else int(sys.argv[1])
+ind_pars = 0 if len(sys.argv)==1 else int(sys.argv[1])  #index of parameters
 if machine == 'maf':
-    ind -= 1
-DFT = True
-sample, interlayer_type, Vg, Vk, phiG, phiK = fs.get_pars(ind)
-N = 1 if len(sys.argv)<3 else int(sys.argv[2])
-pixel_factor = 5
+    ind_pars -= 1
+DFT, sample, Vg, Vk, phiG, phiK = fs.get_pars(ind_pars)
+interlayer_type = 'C3' if sample=='S3' else 'C6'
+N = 1 if len(sys.argv)<3 else int(sys.argv[2])      #number of circles of mBZ
 n_cells = int(1+3*N*(N+1))
-zoom = True if sample=='S11' else False
+zoom = True if sample=='S11' else False     #Use zoomed image of S11 which has higher contrast
+label = sample+'zoom' if zoom else sample
 """
 Moirè potential of bilayer
-Different at Gamma (d_z^2 orbital) -> first two parameters, and K (d_xy orbitals) -> last two parameters
-Gamma point values from paper "G valley TMD moirè bands" (first in eV, second in radiants)
-K point values from Louk's paper (first in eV, second in radiants)
+Different at Gamma (d_z^2 orbital) and K (d_xy orbitals)
+Gamma point values from paper: M.Angeli et al., Proceedings of the National Academy of Sciences 118.10 (2021): e2021826118.
+K point values from Louk's paper: L.Rademaker, Phys. Rev. B 105, 195428 (2022)
 """
 pars_V = (Vg,Vk,phiG,phiK)
-t_twist = cfs.dic_params_twist[sample][1]*np.pi/180
+t_twist = cfs.dic_params_twist[sample][1]*np.pi/180     #use best estimate of twist angle, depending on the sample
 a_Moire = cfs.moire_length(t_twist)
 #
 txt_dft = 'DFT' if DFT else 'fit'
@@ -62,7 +62,10 @@ epsilon = {}
 HSO = {}
 offset = {}
 for TMD in cfs.TMDs:
-    temp = np.load(fs.get_pars_mono_fn(TMD,machine,DFT))
+    DFT_1 = DFT if TMD=='WSe2' else True    #Use DFT for WS2 in order to avoid the conduction band to touch the valence band of WSe2
+    temp = np.load(fs.get_pars_mono_fn(TMD,machine,DFT_1))
+    if not DFT_1:
+        temp = np.append(temp,np.load(fs.get_SOC_fn(TMD,machine)))
     hopping[TMD] = cfs.find_t(temp)
     epsilon[TMD] = cfs.find_e(temp)
     HSO[TMD] = cfs.find_HSO(temp[-2:])
@@ -70,20 +73,19 @@ for TMD in cfs.TMDs:
 pars_monolayer = (hopping,epsilon,HSO,offset)
 #Interlayer parameters
 pars_interlayer = [interlayer_type,np.load(fs.get_pars_interlayer_fn(sample,interlayer_type,DFT,machine))]
-
+#Image properties
 K0 = 4/3*np.pi/cfs.dic_params_a_mono['WSe2']
 sample_fn = fs.get_sample_fn(sample,machine,zoom)
 energy_bounds = {'S11': (-0.5,-2.5), 'S3': (-0.2,-1.8), 'S11zoom':(-0.7,-1.8)}
-label = sample+'zoom' if zoom else sample
 EM, Em = energy_bounds[label]
 exp_pic = fs.extract_png(sample_fn,[-K0,K0,EM,Em],label)
 
 #BZ cut parameters
 cut = 'KGK'
-k_pts = exp_pic.shape[1]//pixel_factor
+k_pts = 400#exp_pic.shape[1]//pixel_factor
 K_list = fs.get_K(cut,k_pts)
 
-if 1:# and machine=='loc':    #Compute (no-)moire image superimposed to experiment
+if 1:# and machine=='loc':    #Compute moire image superimposed to experiment
     ens_temp_fn = 'results/E_data/E_'+title+'.npy'
     wei_temp_fn = 'results/E_data/W_'+title+'.npy'
     ind_TVB = n_cells*30    #top valence band
@@ -119,12 +121,16 @@ if 1:# and machine=='loc':    #Compute (no-)moire image superimposed to experime
         color = 'b'
         ax.scatter((K_list[:,0]+K0)/2/K0*pk,
                 (EM-energies[:,e])/(EM-Em)*pe,
-                s=weights[:,e]*100,
+                s=weights[:,e]**(1/2)*100,
                 lw=0,
                 color=color,
                 zorder=3
                 )
     ax.imshow(exp_pic,zorder=1)
+    ax.set_xticks([0,exp_pic.shape[1]//2,exp_pic.shape[1]],[r"$K'$",r'$\Gamma$',r'$K$'],size=20)
+    ax.set_yticks([0,exp_pic.shape[0]//2,exp_pic.shape[0]],["{:.2f}".format(EM),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(Em)])
+    ax.set_ylabel("$E\;(eV)$",size=20)
+    ax.set_ylim(exp_pic.shape[0],0)
     ax.set_title(title)
     if machine=='loc':
         plt.show()
@@ -132,8 +138,8 @@ if 1:# and machine=='loc':    #Compute (no-)moire image superimposed to experime
     exit()
 
 #Compute energies and weights along KGK
-en_fn = fs.get_energies_fn(DFT,N,pars_V,pixel_factor,a_Moire,interlayer_type,machine)
-wg_fn = fs.get_weights_fn(DFT,N,pars_V,pixel_factor,a_Moire,interlayer_type,machine)
+en_fn = fs.get_energies_fn(DFT,N,pars_V,a_Moire,interlayer_type,machine)
+wg_fn = fs.get_weights_fn(DFT,N,pars_V,a_Moire,interlayer_type,machine)
 ind_TVB = n_cells*28    #top valence band
 ind_LVB = n_cells*24    #lowest considered VB
 if not Path(en_fn).is_file() or not Path(wg_fn).is_file():
@@ -170,7 +176,7 @@ plt.ylabel("$E\;(eV)$",size=15)
 if machine == 'loc':
     plt.show()
 else:
-    fig1_fn = fs.get_fig1_fn(DFT,N,pars_V,pixel_factor,a_Moire,interlayer_type,machine)
+    fig1_fn = fs.get_fig1_fn(DFT,N,pars_V,a_Moire,interlayer_type,machine)
     plt.savefig(fig1_fn)
     plt.close()
 
@@ -180,11 +186,11 @@ spread_E = 0.01
 type_spread = 'Gauss'
 pars_spread = (spread_k,spread_E,type_spread)
 #
-e_pts = exp_pic.shape[0]//pixel_factor
+e_pts = 200#exp_pic.shape[0]//pixel_factor
 E_list = np.linspace(Em,EM,e_pts)
 kkk = K_list[:,0]
 
-spread_fn = fs.get_spread_fn(DFT,N,pars_V,pixel_factor,a_Moire,interlayer_type,pars_spread,machine)
+spread_fn = fs.get_spread_fn(DFT,N,pars_V,a_Moire,interlayer_type,pars_spread,machine)
 if not Path(spread_fn).is_file():
     print("Computing spreading...")
     spread = np.zeros((k_pts,e_pts))
@@ -213,7 +219,7 @@ ax.set_title(title)
 if machine == 'loc':
     plt.show()
 else:
-    plt.savefig(fs.get_fig_fn(DFT,N,pars_V,pixel_factor,a_Moire,interlayer_type,pars_spread,machine))
+    plt.savefig(fs.get_fig_fn(DFT,N,pars_V,a_Moire,interlayer_type,pars_spread,machine))
 
 
 

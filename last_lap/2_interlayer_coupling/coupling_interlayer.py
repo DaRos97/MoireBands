@@ -25,7 +25,7 @@ We need to compute the interlayer coupling to modify the shape of the band mostl
 
 machine = cfs.get_machine(cwd)
 sample = 'S11' if len(sys.argv) == 1 else sys.argv[1]
-DFT = True
+DFT = False
 #BZ cut parameters
 cut = 'KGK'
 n_pts = 301
@@ -48,7 +48,7 @@ epsilon = {}
 HSO = {}
 par_offset = {}
 for TMD in cfs.TMDs:
-    DFT_1 = DFT if TMD=='WSe2' else True
+    DFT_1 = DFT #if TMD=='WSe2' else True
     pars_mono[TMD] = np.load(fs.get_pars_fn(TMD,machine,DFT_1))
     if not DFT_1:
         pars_mono[TMD] = np.append(pars_mono[TMD],np.load(fs.get_SOC_fn(TMD,machine)))
@@ -63,13 +63,15 @@ best_interlayer_pars = {
         'DFT':{
             'no': (0,0,0,offset[0]),
             'U1': (1,0.7,0.7,offset[0]),
-            'C6': (0.1,0.29,0.65,offset[0]),
+            #'C6': (0.1,0.29,0.65,offset[0]),
+            'C6': (0,0.165,0.75,offset[0]),
             'C3': (0,0.33,0.75,offset[0]),
             },
         'fit':{
             'no': (0,0,0,offset[1]),
             'U1': (1,0.9,0.88,offset[1]),
-            'C6': (0.15,0.32,0.75,offset[1]),
+            #'C6': (0.15,0.32,0.75,offset[1]),
+            'C6': (0,0.175,0.8,offset[1]),
             'C3': (0,0.35,0.8,offset[1]),
             }
         }
@@ -101,7 +103,8 @@ if input("Save?[y/N]")=='y':
     title = sample+'_'+txt
     fig.savefig('results/figures/'+title+'.png')
     for int_type in best_interlayer_pars[txt].keys():
-        np.save('results/'+title+'_'+int_type+'_pars_interlayer.npy',np.array(best_interlayer_pars[txt][int_type]))
+        res_fn = fs.get_res_fn(title,int_type,machine)
+        np.save(res_fn,np.array(best_interlayer_pars[txt][int_type]))
 
 
 
