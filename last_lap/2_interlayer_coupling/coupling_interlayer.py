@@ -48,7 +48,7 @@ epsilon = {}
 HSO = {}
 par_offset = {}
 for TMD in cfs.TMDs:
-    DFT_1 = DFT #if TMD=='WSe2' else True
+    DFT_1 = DFT if TMD=='WSe2' else True
     pars_mono[TMD] = np.load(fs.get_pars_fn(TMD,machine,DFT_1))
     if not DFT_1:
         pars_mono[TMD] = np.append(pars_mono[TMD],np.load(fs.get_SOC_fn(TMD,machine)))
@@ -69,10 +69,10 @@ best_interlayer_pars = {
             },
         'fit':{
             'no': (0,0,0,offset[1]),
-            'U1': (1,0.9,0.88,offset[1]),
+            'U1': (1,0.7,0.7,offset[1]),
             #'C6': (0.15,0.32,0.75,offset[1]),
-            'C6': (0,0.175,0.8,offset[1]),
-            'C3': (0,0.35,0.8,offset[1]),
+            'C6': (0,0.165,0.75,offset[1]),
+            'C3': (0,0.33,0.75,offset[1]),
             }
         }
 #plot

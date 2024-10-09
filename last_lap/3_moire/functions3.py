@@ -8,13 +8,15 @@ def get_pars(ind):
     lDFT = [True,False]
     samples = ['S11','S3']
     int_types = ['U1','C6','C3',]
+    indices_theta = [0,1,2] #best estimate is 1, while 0 and 2 are error bounds
     pars_Vgs = [0.005,0.01,0.02,0.03]
     pars_Vks = [0.001,0.005,0.01]
     phi_G = [np.pi,]
     phi_K = [-106*2*np.pi/360,]
     #
-    ll = [lDFT,samples,pars_Vgs,pars_Vks,phi_G,phi_K]
+    ll = [lDFT,samples,pars_Vgs,pars_Vks,phi_G,phi_K,indices_theta]
     combs = list(itertools.product(*ll))
+    print("Computing pars of index ",ind,"/",len(combs))
     #
     return combs[ind]
 

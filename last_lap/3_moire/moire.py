@@ -29,7 +29,7 @@ Here we compute the full KGK image with Moire replicas.
 ind_pars = 0 if len(sys.argv)==1 else int(sys.argv[1])  #index of parameters
 if machine == 'maf':
     ind_pars -= 1
-DFT, sample, Vg, Vk, phiG, phiK = fs.get_pars(ind_pars)
+DFT, sample, Vg, Vk, phiG, phiK, ind_theta = fs.get_pars(ind_pars)
 interlayer_type = 'C3' if sample=='S3' else 'C6'
 N = 1 if len(sys.argv)<3 else int(sys.argv[2])      #number of circles of mBZ
 n_cells = int(1+3*N*(N+1))
@@ -42,11 +42,11 @@ Gamma point values from paper: M.Angeli et al., Proceedings of the National Acad
 K point values from Louk's paper: L.Rademaker, Phys. Rev. B 105, 195428 (2022)
 """
 pars_V = (Vg,Vk,phiG,phiK)
-t_twist = cfs.dic_params_twist[sample][1]*np.pi/180     #use best estimate of twist angle, depending on the sample
+t_twist = cfs.dic_params_twist[sample][ind_theta]*np.pi/180     #use best estimate of twist angle, depending on the sample
 a_Moire = cfs.moire_length(t_twist)
 #
 txt_dft = 'DFT' if DFT else 'fit'
-title = "sample_"+sample+",N_"+str(N)+",tb_pars_"+txt_dft+',interlayer_'+interlayer_type+",_pars_V_"+fs.get_list_fn(pars_V)+",a_Moire_"+"{:.4f}".format(a_Moire)
+title = "sample_"+sample+",N_"+str(N)+",tb_pars_"+txt_dft+',interlayer_'+interlayer_type+",_pars_V_"+fs.get_list_fn(pars_V)+",twist_"+"{:.4f}".format(t_twist*180/np.pi)
 print(title)
 #
 """
@@ -131,11 +131,17 @@ if 1:# and machine=='loc':    #Compute moire image superimposed to experiment
     ax.set_yticks([0,exp_pic.shape[0]//2,exp_pic.shape[0]],["{:.2f}".format(EM),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(Em)])
     ax.set_ylabel("$E\;(eV)$",size=20)
     ax.set_ylim(exp_pic.shape[0],0)
-    ax.set_title(title)
+    ax.set_title(title,size=25)
+    fig.tight_layout()
     if machine=='loc':
         plt.show()
     plt.savefig('results/figures/moire_twisted/'+title+'.png')
     exit()
+
+
+##########################################################################
+##########################################################################
+##########################################################################
 
 #Compute energies and weights along KGK
 en_fn = fs.get_energies_fn(DFT,N,pars_V,a_Moire,interlayer_type,machine)
