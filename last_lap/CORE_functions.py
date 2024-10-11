@@ -375,7 +375,7 @@ params_V = [0.0335,np.pi, 7.7*1e-3, -106*2*np.pi/360]
 
 """Twist angle of samples 3 and 11. Central value and error bars."""
 dic_params_twist = {
-        'S3': [1.5,1.8,2.1], 
+        'S3': [1.5,1.8,2.1],
         'S11': [2.6,2.8,3.0],
         }
 
@@ -385,7 +385,7 @@ def moire_length(theta):
 def miniBZ_rotation(theta):
     return np.arctan(-np.tan(theta/2)*(dic_params_a_mono['WSe2']+dic_params_a_mono['WS2'])/(dic_params_a_mono['WSe2']-dic_params_a_mono['WS2']))
 
-initial_pt = {    
+initial_pt = {
         'WS2': [
             #'e1':   
             1.3754,
@@ -631,7 +631,7 @@ list_names_all = [
 
 """Parameters of experimental image
 
-In order, are: 
+In order, are:
     K_initial, K_final, E_initial, E_final,
     pixel of k=-1, pixel of k=1, pixel of e=E_i, pixel of e=E_F
 

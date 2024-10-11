@@ -5,18 +5,18 @@ import itertools
 
 
 def get_pars(ind):
-    lDFT = [True,False]
-    samples = ['S11','S3']
+    lDFT = [True]
+    samples = ['S11']
     int_types = ['U1','C6','C3',]
-    indices_theta = [0,1,2] #best estimate is 1, while 0 and 2 are error bounds
-    pars_Vgs = [0.005,0.01,0.02,0.03]
-    pars_Vks = [0.001,0.005,0.01]
+    indices_theta = [0,1,2,3,4] #best estimate is 1, while 0 and 2 are error bounds
+    pars_Vgs = [0.01,0.013,0.016,0.019]
+    pars_Vks = [0.008]
     phi_G = [np.pi,]
     phi_K = [-106*2*np.pi/360,]
     #
     ll = [lDFT,samples,pars_Vgs,pars_Vks,phi_G,phi_K,indices_theta]
     combs = list(itertools.product(*ll))
-    print("Computing pars of index ",ind,"/",len(combs))
+    print("Computing pars of index ",ind,"/",len(combs)-1)
     #
     return combs[ind]
 
@@ -35,6 +35,8 @@ def big_H(K_,lu,pars_monolayer,pars_interlayer,pars_moire):
     args_WSe2 = (hopping['WSe2'],epsilon['WSe2'],HSO['WSe2'],cfs.dic_params_a_mono['WSe2'],offset['WSe2'])
     args_WS2 = (hopping['WS2'],epsilon['WS2'],HSO['WS2'],cfs.dic_params_a_mono['WS2'],offset['WS2'])
     for n in range(n_cells):
+        if n_cells in [2,4,6]:          ########################################
+            continue                    ########################################
         Kn = K_ + G_M[0]*lu[n][0] + G_M[1]*lu[n][1]
         H_up[n*22:(n+1)*22,n*22:(n+1)*22] = cfs.H_monolayer(Kn,*args_WSe2)
         H_down[n*22:(n+1)*22,n*22:(n+1)*22] = cfs.H_monolayer(Kn,*args_WS2)+ H_interlayer_c(pars_interlayer) #interlayer c just on WS2
@@ -51,6 +53,8 @@ def big_H(K_,lu,pars_monolayer,pars_interlayer,pars_moire):
                 except:
                     continue
                 g = m.index(i)
+                if g%2==0:      ####################################
+                    continue    ####################################
                 H_up[s*22:(s+1)*22,nn*22:(nn+1)*22] = Ham_moire[g%2]    #H_moire(g,pars_moire[1])
                 H_down[s*22:(s+1)*22,nn*22:(nn+1)*22] = Ham_moire[g%2]  #H_moire(g,pars_moire[1])
     #All together
@@ -232,11 +236,11 @@ def get_list_fn(l):
             fn += '_'
     return fn
 
-def get_spread_fn(DFT,N,pars_V,p_f,a_M,interlayer_type,pars_spread,machine):
+def get_spread_fn(DFT,N,pars_V,pixel_factor,a_M,interlayer_type,pars_spread,weight_exponent,machine):
     name_v = get_list_fn(pars_V)
     name_sp = get_list_fn(pars_spread[:2])
     txt_dft = 'DFT' if DFT else 'fit'
-    return get_home_dn(machine)+'results/data/spread_'+txt_dft+'_'+pars_spread[-1]+'_'+name_sp+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'_'+interlayer_type+'.npy'
+    return get_home_dn(machine)+'results/E_data/spread_'+txt_dft+"{:.1f}".format(weight_exponent)+'_'+pars_spread[-1]+'_'+name_sp+'_'+str(N)+'_'+name_v+'_'+str(pixel_factor)+'_'+"{:.1f}".format(a_M)+'_'+interlayer_type+'.npy'
 
 def get_energies_fn(DFT,N,pars_V,p_f,a_M,interlayer_type,machine):
     name_v = get_list_fn(pars_V)

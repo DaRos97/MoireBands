@@ -42,7 +42,7 @@ Gamma point values from paper: M.Angeli et al., Proceedings of the National Acad
 K point values from Louk's paper: L.Rademaker, Phys. Rev. B 105, 195428 (2022)
 """
 pars_V = (Vg,Vk,phiG,phiK)
-t_twist = cfs.dic_params_twist[sample][ind_theta]*np.pi/180     #use best estimate of twist angle, depending on the sample
+t_twist = np.linspace(cfs.dic_params_twist[sample][0],cfs.dic_params_twist[sample][-1],5)[ind_theta]*np.pi/180#cfs.dic_params_twist[sample][ind_theta]*np.pi/180     #use best estimate of twist angle, depending on the sample
 a_Moire = cfs.moire_length(t_twist)
 #
 txt_dft = 'DFT' if DFT else 'fit'
@@ -85,144 +85,101 @@ cut = 'KGK'
 k_pts = 400#exp_pic.shape[1]//pixel_factor
 K_list = fs.get_K(cut,k_pts)
 
-if 1:# and machine=='loc':    #Compute moire image superimposed to experiment
-    ens_temp_fn = 'results/E_data/E_'+title+'.npy'
-    wei_temp_fn = 'results/E_data/W_'+title+'.npy'
-    ind_TVB = n_cells*30    #top valence band
-    ind_LVB = n_cells*22    #lowest considered VB
-    if not Path(ens_temp_fn).is_file():
-        energies = np.zeros((k_pts,ind_TVB-ind_LVB))
-        weights = np.zeros((k_pts,ind_TVB-ind_LVB))
-        look_up = fs.lu_table(N)
-        pars_moire = (N,pars_V,G_M,H_moire)
-        for i in tqdm(range(k_pts)):
-            K_i = K_list[i]
-            H_tot = fs.big_H(K_i,look_up,pars_monolayer,pars_interlayer,pars_moire)
-            energies[i,:],evecs = eigh(H_tot,subset_by_index=[ind_LVB,ind_TVB-1])           #Diagonalize to get eigenvalues and eigenvectors
-            ab = np.absolute(evecs)**2
-            weights[i,:] = np.sum(ab[:22,:ind_TVB-ind_LVB],axis=0) + np.sum(ab[22*n_cells:22*n_cells+22,:ind_TVB-ind_LVB],axis=0)
-        np.save(ens_temp_fn,energies)
-        np.save(wei_temp_fn,weights)
-    else:
-        energies = np.load(ens_temp_fn)
-        weights = np.load(wei_temp_fn)
-    #
-    fig = plt.figure(figsize=(20,15))
-    ax = fig.add_subplot()
-    pe,pk,z = exp_pic.shape
-    for e in range(ind_TVB-ind_LVB):
-        color = 'r'
-        ax.plot((K_list[:,0]+K0)/2/K0*pk,
-                (EM-energies[:,e])/(EM-Em)*pe,
-                color=color,
-                lw=0.05,
-                zorder=2
-                )
-        color = 'b'
-        ax.scatter((K_list[:,0]+K0)/2/K0*pk,
-                (EM-energies[:,e])/(EM-Em)*pe,
-                s=weights[:,e]**(1/2)*100,
-                lw=0,
-                color=color,
-                zorder=3
-                )
-    ax.imshow(exp_pic,zorder=1)
-    ax.set_xticks([0,exp_pic.shape[1]//2,exp_pic.shape[1]],[r"$K'$",r'$\Gamma$',r'$K$'],size=20)
-    ax.set_yticks([0,exp_pic.shape[0]//2,exp_pic.shape[0]],["{:.2f}".format(EM),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(Em)])
-    ax.set_ylabel("$E\;(eV)$",size=20)
-    ax.set_ylim(exp_pic.shape[0],0)
-    ax.set_title(title,size=25)
-    fig.tight_layout()
-    if machine=='loc':
-        plt.show()
-    plt.savefig('results/figures/moire_twisted/'+title+'.png')
-    exit()
-
-
-##########################################################################
-##########################################################################
-##########################################################################
-
-#Compute energies and weights along KGK
-en_fn = fs.get_energies_fn(DFT,N,pars_V,a_Moire,interlayer_type,machine)
-wg_fn = fs.get_weights_fn(DFT,N,pars_V,a_Moire,interlayer_type,machine)
-ind_TVB = n_cells*28    #top valence band
-ind_LVB = n_cells*24    #lowest considered VB
-if not Path(en_fn).is_file() or not Path(wg_fn).is_file():
-    print("Computing en,wg...")
+#Compute energy and weights
+ens_temp_fn = 'results/E_data/E_'+title+'.npy'
+wei_temp_fn = 'results/E_data/W_'+title+'.npy'
+ind_TVB = n_cells*30    #top valence band
+ind_LVB = n_cells*22    #lowest considered VB
+if not Path(ens_temp_fn).is_file():
     energies = np.zeros((k_pts,ind_TVB-ind_LVB))
     weights = np.zeros((k_pts,ind_TVB-ind_LVB))
     look_up = fs.lu_table(N)
+    pars_moire = (N,pars_V,G_M,H_moire)
     for i in tqdm(range(k_pts)):
         K_i = K_list[i]
         H_tot = fs.big_H(K_i,look_up,pars_monolayer,pars_interlayer,pars_moire)
         energies[i,:],evecs = eigh(H_tot,subset_by_index=[ind_LVB,ind_TVB-1])           #Diagonalize to get eigenvalues and eigenvectors
         ab = np.absolute(evecs)**2
         weights[i,:] = np.sum(ab[:22,:ind_TVB-ind_LVB],axis=0) + np.sum(ab[22*n_cells:22*n_cells+22,:ind_TVB-ind_LVB],axis=0)
-    if save:
-        np.save(en_fn,energies)
-        np.save(wg_fn,weights)
+    np.save(ens_temp_fn,energies)
+    np.save(wei_temp_fn,weights)
 else:
-    energies = np.load(en_fn)
-    weights = np.load(wg_fn)
-
-#Compute image of band weigths superimposed to experiment
-plt.figure(figsize=(20,15))
-px,py,z = exp_pic.shape
-x_line = (K_list[:,0]-K_list[0,0])/(K_list[-1,0]-K_list[0,0])*py
+    energies = np.load(ens_temp_fn)
+    weights = np.load(wei_temp_fn)
+#Plot bands and weights superimposed to exp picture
+fig = plt.figure(figsize=(20,15))
+ax = fig.add_subplot()
+pe,pk,z = exp_pic.shape
 for e in range(ind_TVB-ind_LVB):
-    e_line = (energies[:,e]-Em)/(EM-Em)*px
-#        plt.plot(x_line,e_line,color='r',zorder=1,linewidth=0.1)
-    plt.scatter(x_line,e_line,s=weights[:,e]*200,lw=0,color='r',marker='o',zorder=3)
-plt.ylim(0,px)
-plt.imshow(exp_pic[::-1,:,:],zorder=-1)
-plt.xticks([0,exp_pic.shape[1]//2,exp_pic.shape[1]],[r"$K'$",r'$\Gamma$',r'$K$'],size=20)
-plt.yticks([0,exp_pic.shape[0]//2,exp_pic.shape[0]],["{:.2f}".format(Em),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(EM)])
-plt.ylabel("$E\;(eV)$",size=15)
-if machine == 'loc':
+    color = 'r'
+    ax.plot((K_list[:,0]+K0)/2/K0*pk,
+            (EM-energies[:,e])/(EM-Em)*pe,
+            color=color,
+            lw=0.05,
+            zorder=2
+            )
+    color = 'b'
+    ax.scatter((K_list[:,0]+K0)/2/K0*pk,
+            (EM-energies[:,e])/(EM-Em)*pe,
+            s=weights[:,e]**(1/2)*100,
+            lw=0,
+            color=color,
+            zorder=3
+            )
+ax.imshow(exp_pic,zorder=1)
+ax.set_xticks([0,exp_pic.shape[1]//2,exp_pic.shape[1]],[r"$K'$",r'$\Gamma$',r'$K$'],size=20)
+ax.set_yticks([0,exp_pic.shape[0]//2,exp_pic.shape[0]],["{:.2f}".format(EM),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(Em)])
+ax.set_ylabel("$E\;(eV)$",size=20)
+ax.set_ylim(exp_pic.shape[0],0)
+ax.set_title(title,size=25)
+fig.tight_layout()
+if 0:#machine=='loc':
     plt.show()
 else:
-    fig1_fn = fs.get_fig1_fn(DFT,N,pars_V,a_Moire,interlayer_type,machine)
-    plt.savefig(fig1_fn)
+    plt.savefig('results/figures/moire_twisted/'+title+'.png')
     plt.close()
 
+##########################################################################
+##########################################################################
+##########################################################################
+
 #Compute spread and final picture
+weight_exponent = 1/3
 spread_k = 0.01
-spread_E = 0.01
+spread_E = 0.03
 type_spread = 'Gauss'
 pars_spread = (spread_k,spread_E,type_spread)
 #
-e_pts = 200#exp_pic.shape[0]//pixel_factor
+pixel_factor = 5
+e_pts = exp_pic.shape[0]//pixel_factor
 E_list = np.linspace(Em,EM,e_pts)
 kkk = K_list[:,0]
 
-spread_fn = fs.get_spread_fn(DFT,N,pars_V,a_Moire,interlayer_type,pars_spread,machine)
+spread_fn = fs.get_spread_fn(DFT,N,pars_V,pixel_factor,a_Moire,interlayer_type,pars_spread,weight_exponent,machine)
 if not Path(spread_fn).is_file():
     print("Computing spreading...")
     spread = np.zeros((k_pts,e_pts))
     for i in tqdm(range(k_pts)):
         for n in range(ind_TVB-ind_LVB):
-            spread += fs.weight_spreading(weights[i,n],K_list[i,0],energies[i,n],kkk[:,None],E_list[None,:],pars_spread)
+            spread += fs.weight_spreading(weights[i,n]**(weight_exponent),K_list[i,0],energies[i,n],kkk[:,None],E_list[None,:],pars_spread)
     #Normalize in color scale
     norm_spread = fs.normalize_spread(spread,k_pts,e_pts)
-    if save:
+    if 1:
         np.save(spread_fn,norm_spread)
 else:
     norm_spread = np.load(spread_fn)
 
-#Figure
-import matplotlib.pyplot as plt
 fig,ax = plt.subplots(figsize=(14,9))
 #cmaps: gray, viridis,
 norm_spread /= np.max(norm_spread)
 
-map_ = 'gray' if len(sys.argv)<4 else sys.argv[3]
+map_ = 'gray' #if len(sys.argv)<4 else sys.argv[3]
 ax.imshow(norm_spread,cmap=map_)
 ax.set_xticks([0,norm_spread.shape[1]//2,norm_spread.shape[1]],[r"$K'$",r'$\Gamma$',r'$K$'],size=20)
 ax.set_yticks([0,norm_spread.shape[0]//2,norm_spread.shape[0]],["{:.2f}".format(Em),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(EM)])
 ax.set_ylabel("$E\;(eV)$",size=15)
 ax.set_title(title)
-if machine == 'loc':
+if 1:#machine == 'loc':
     plt.show()
 else:
     plt.savefig(fs.get_fig_fn(DFT,N,pars_V,a_Moire,interlayer_type,pars_spread,machine))
