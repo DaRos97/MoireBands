@@ -29,7 +29,7 @@ Here we compute the full KGK image with Moire replicas.
 ind_pars = 0 if len(sys.argv)==1 else int(sys.argv[1])  #index of parameters
 if machine == 'maf':
     ind_pars -= 1
-DFT, sample, Vg, Vk, phiG, phiK, ind_theta = fs.get_pars(ind_pars)
+DFT, C3, sample, Vg, Vk, phiG, phiK, ind_theta = fs.get_pars(ind_pars)
 interlayer_type = 'C3' if sample=='S3' else 'C6'
 N = 1 if len(sys.argv)<3 else int(sys.argv[2])      #number of circles of mBZ
 n_cells = int(1+3*N*(N+1))
@@ -42,12 +42,16 @@ Gamma point values from paper: M.Angeli et al., Proceedings of the National Acad
 K point values from Louk's paper: L.Rademaker, Phys. Rev. B 105, 195428 (2022)
 """
 pars_V = (Vg,Vk,phiG,phiK)
-t_twist = np.linspace(cfs.dic_params_twist[sample][0],cfs.dic_params_twist[sample][-1],5)[ind_theta]*np.pi/180#cfs.dic_params_twist[sample][ind_theta]*np.pi/180     #use best estimate of twist angle, depending on the sample
+t_twist = np.linspace(cfs.dic_params_twist[sample][0],cfs.dic_params_twist[sample][-1],3)[ind_theta]*np.pi/180#cfs.dic_params_twist[sample][ind_theta]*np.pi/180     #use best estimate of twist angle, depending on the sample
 a_Moire = cfs.moire_length(t_twist)
+weight_exponent = 1/2
+#C3 = False
+txt_C3 = 'C3_symm' if C3 else 'C6_symm'
 #
 txt_dft = 'DFT' if DFT else 'fit'
-title = "sample_"+sample+",N_"+str(N)+",tb_pars_"+txt_dft+',interlayer_'+interlayer_type+",_pars_V_"+fs.get_list_fn(pars_V)+",twist_"+"{:.4f}".format(t_twist*180/np.pi)
-print(title)
+title_E = "sample_"+sample+",N_"+str(N)+",tb_pars_"+txt_dft+',interlayer_'+interlayer_type+",_pars_V_"+fs.get_list_fn(pars_V)+",twist_"+"{:.4f}".format(t_twist*180/np.pi)+'_'+txt_C3
+title_fig = title_E +"_weight_"+"{:.3f}".format(weight_exponent)
+print(title_fig)
 #
 """
 Hamiltonian of Moire interlayer (diagonal with correct signs of phase)
@@ -55,7 +59,7 @@ Compute it here because is k-independent.
 """
 G_M = fs.get_reciprocal_moire(t_twist)
 H_moire = [fs.H_moire(0,pars_V),fs.H_moire(1,pars_V)]
-pars_moire = (N,pars_V,G_M,H_moire)
+pars_moire = (N,pars_V,G_M,H_moire,C3)
 #Monolayer parameters
 hopping = {}
 epsilon = {}
@@ -86,15 +90,15 @@ k_pts = 400#exp_pic.shape[1]//pixel_factor
 K_list = fs.get_K(cut,k_pts)
 
 #Compute energy and weights
-ens_temp_fn = 'results/E_data/E_'+title+'.npy'
-wei_temp_fn = 'results/E_data/W_'+title+'.npy'
-ind_TVB = n_cells*30    #top valence band
-ind_LVB = n_cells*22    #lowest considered VB
+ens_temp_fn = 'results/E_data/E_'+title_E+'.npy'
+wei_temp_fn = 'results/E_data/W_'+title_E+'.npy'
+ind_TVB = n_cells*28    #top valence band
+ind_LVB = n_cells*24    #lowest considered VB
 if not Path(ens_temp_fn).is_file():
     energies = np.zeros((k_pts,ind_TVB-ind_LVB))
     weights = np.zeros((k_pts,ind_TVB-ind_LVB))
     look_up = fs.lu_table(N)
-    pars_moire = (N,pars_V,G_M,H_moire)
+    pars_moire = (N,pars_V,G_M,H_moire,C3)
     for i in tqdm(range(k_pts)):
         K_i = K_list[i]
         H_tot = fs.big_H(K_i,look_up,pars_monolayer,pars_interlayer,pars_moire)
@@ -106,6 +110,9 @@ if not Path(ens_temp_fn).is_file():
 else:
     energies = np.load(ens_temp_fn)
     weights = np.load(wei_temp_fn)
+#Relative weight of side band
+if 1:
+    pass
 #Plot bands and weights superimposed to exp picture
 fig = plt.figure(figsize=(20,15))
 ax = fig.add_subplot()
@@ -121,30 +128,46 @@ for e in range(ind_TVB-ind_LVB):
     color = 'b'
     ax.scatter((K_list[:,0]+K0)/2/K0*pk,
             (EM-energies[:,e])/(EM-Em)*pe,
-            s=weights[:,e]**(1/2)*100,
+            s=weights[:,e]**(weight_exponent)*100,
             lw=0,
             color=color,
             zorder=3
             )
+if 0:
+    color = 'r'
+    nks = [145,160]
+    es = [ind_TVB-ind_LVB-4+np.argmax(weights[nks[0],-4:-2]),np.argmax(weights[nks[1],:])]
+    for i in range(2):
+        e = es[i]
+        nk = nks[i]
+    #    print(weights[nk,:])
+        ax.scatter((K_list[nk,0]+K0)/2/K0*pk,
+                   (EM-energies[nk,e])/(EM-Em)*pe,
+                   s=weights[nk,e]**(weight_exponent)*100,
+                lw=0,
+                color=color,
+                zorder=4
+                )
+    print("relative_weight: ",(np.max(weights[nks[0],-4:-2])/np.max(weights[nks[1],:]))**weight_exponent)
 ax.imshow(exp_pic,zorder=1)
 ax.set_xticks([0,exp_pic.shape[1]//2,exp_pic.shape[1]],[r"$K'$",r'$\Gamma$',r'$K$'],size=20)
 ax.set_yticks([0,exp_pic.shape[0]//2,exp_pic.shape[0]],["{:.2f}".format(EM),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(Em)])
 ax.set_ylabel("$E\;(eV)$",size=20)
 ax.set_ylim(exp_pic.shape[0],0)
-ax.set_title(title,size=25)
+ax.set_title(title_fig,size=25)
 fig.tight_layout()
+plt.savefig('results/figures/moire_twisted/'+title_fig+'.png')
 if 0:#machine=='loc':
     plt.show()
-else:
-    plt.savefig('results/figures/moire_twisted/'+title+'.png')
-    plt.close()
+plt.close()
 
 ##########################################################################
 ##########################################################################
 ##########################################################################
+if 1:
+    exit()
 
 #Compute spread and final picture
-weight_exponent = 1/3
 spread_k = 0.01
 spread_E = 0.03
 type_spread = 'Gauss'
@@ -178,7 +201,7 @@ ax.imshow(norm_spread,cmap=map_)
 ax.set_xticks([0,norm_spread.shape[1]//2,norm_spread.shape[1]],[r"$K'$",r'$\Gamma$',r'$K$'],size=20)
 ax.set_yticks([0,norm_spread.shape[0]//2,norm_spread.shape[0]],["{:.2f}".format(Em),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(EM)])
 ax.set_ylabel("$E\;(eV)$",size=15)
-ax.set_title(title)
+ax.set_title(title_fig)
 if 1:#machine == 'loc':
     plt.show()
 else:
