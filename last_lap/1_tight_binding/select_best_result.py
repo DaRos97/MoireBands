@@ -15,6 +15,7 @@ from pathlib import Path
 
 plots = 1
 plots_pts = 0
+savefig = 0
 
 selection = 0 if len(sys.argv)==1 else int(sys.argv[1])  #0->chi2, 1->chi2_0, 2->chi2_1
 ind_0 = 0 if len(sys.argv) in [1,2] else int(sys.argv[2])   #index of spec_args
@@ -24,10 +25,10 @@ txt_b = ['chi2','chi2_0','chi2_1']
 machine = 'loc'
 
 TMD,P,rp,rl = fs.get_spec_args(ind_0)
-if 0:
-    TMD = 'WSe2'
-    P = 4
-    rp = 3
+if 1:
+    TMD = 'WS2'
+    P = 0.05
+    rp = 2
     rl = 0
 spec_args = (TMD,P,rp,rl,ind_reduced)
 SOC_pars = np.load(fs.get_SOC_fn(TMD,machine))
@@ -100,7 +101,7 @@ if not best_i0==-1:
         #
         plt.figure(figsize=(40,20))
         title = "Spec_arg_ind = "+str(ind_0)+" -> ("+fs.get_spec_args_txt(spec_args)+")"+", chi2="+"{:.3f}".format(arr_sol[best_i0,1])
-        s_ = 20
+        s_ = 30
         for b in range(2):
             #exp
             plt.plot(reduced_data[b][:,0],reduced_data[b][:,1],color='b',marker='*',label='experiment' if b == 0 else '')
@@ -113,13 +114,16 @@ if not best_i0==-1:
 #            plt.scatter(-(reduced_data[b][ikl:,0]-k_lim)+k_lim,tb_en[b][ikl:],color='r',marker='o',s=3)
         plt.legend(fontsize=s_,markerscale=2)
         ikl = exp_data[0][0].shape[0]//2//ind_reduced+1
-#        plt.xticks([reduced_data[b][0,0],reduced_data[b][ikl,0],reduced_data[b][-1,0]],['$\Gamma$','$K$','$M$'],size=s_)
+        plt.xticks([reduced_data[b][0,0],reduced_data[b][ikl,0],reduced_data[b][-1,0]],['$\Gamma$','$K$','$M$'],size=s_)
+        plt.yticks(size=s_)
         plt.axvline(reduced_data[b][0,0],color='k',alpha = 0.2)
         plt.axvline(reduced_data[b][ikl,0],color='k',alpha = 0.2)
         plt.axvline(reduced_data[b][-1,0],color='k',alpha = 0.2)
-        plt.ylabel("E(eV)",size=s_)
-        plt.suptitle(title,size=s_+10)
-        plt.savefig(fs.get_fig_fn(spec_args,machine))
+        plt.ylabel("Energy(eV)",size=s_)
+#        plt.xlabel("Momentum",size=s_)
+#        plt.suptitle(title,size=s_+10)
+        if savefig:
+            plt.savefig(fs.get_fig_fn(spec_args,machine))
         if 1:
             plt.show()
 

@@ -29,8 +29,8 @@ for i in range(-nx,nx):
 fig= plt.figure(figsize=(20,10))
 shapes = [['o','^'],['^','o']]
 titles = ['Parallel','Anti-parallel']
-for i in range(2):
-    ax = fig.add_subplot(2,2,2*i+1)
+for i in range(1):
+    ax = fig.add_subplot(1,1,2*i+1)
     ax.set_aspect('equal')
     #
     shape1 = ['o','^']

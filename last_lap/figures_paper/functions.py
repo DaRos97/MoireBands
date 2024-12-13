@@ -157,11 +157,11 @@ def plot_single_parameter_set(e_,energies,weights,pars,list_momenta,title):
     #Figure
     fig,ax = plt.subplots()
     fig.set_size_inches(18,12)
-    LW = 0.1
+    LW = 0.05
     abs_k = np.array([np.linalg.norm(list_momenta[i])*np.sign(list_momenta[i,0]) for i in range(list_momenta.shape[0])])
     for t in range(energies.shape[1]):
         ax.plot(abs_k,energies[:,t],'k-',lw=LW)
-        ax.scatter(abs_k,energies[:,t],s=weights[:,t]*50,c='b',lw=0)
+        ax.scatter(abs_k,energies[:,t],s=weights[:,t]*100,c='b',lw=0)
     if not V==0:
         #Gap
         k_pt = np.array([-mrl/np.sqrt(3),0]) if cut == 'KGK' else -G_M[0]/2
@@ -209,7 +209,13 @@ def plot_single_parameter_set(e_,energies,weights,pars,list_momenta,title):
     #Limits
     rg = np.max(energies[:,-1])-np.min(energies[:,N])
     ax.set_ylim(e_*2,abs(e_/2))
-    ax.set_xlim(-3*mrl,3*mrl)
+    ax.set_xlim(-2.8*mrl,2.8*mrl)
+    ax.set_xticks([-mrl/2*np.sqrt(3),0,mrl/2*np.sqrt(3)],[r'$-\tilde{M}$',r'$\Gamma$',r'$\tilde{M}$'],size=30)
+    ax.plot([0,0],[-10,10],color='k',lw=0.5,zorder=0)
+    ax.plot([-mrl/2*np.sqrt(3),-mrl/2*np.sqrt(3)],[-10,10],color='k',lw=0.5,zorder=0)
+    ax.plot([mrl/2*np.sqrt(3),mrl/2*np.sqrt(3)],[-10,10],color='k',lw=0.5,zorder=0)
+    ax.set_yticks([])
+    ax.set_ylabel('Energy',size=30)
 #    ax.set_xticks([])
 #    ax.set_yticks([])
     plt.show()

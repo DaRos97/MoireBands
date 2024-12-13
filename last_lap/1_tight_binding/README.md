@@ -69,21 +69,3 @@ Problem is the SOC which saturates the bound every time
 
 
 
-
-
-# OLD RESULTS -> range of parameters and slow computation
-# Computed
-##Maf
-    - Range 0.1 to 1, WSe2 and WS2, SO fixed and not.
-    - Range 0.1 to 1, WSe2 and WS2, SO fixed and not with offset not constrained
-
-##Bao
-    - fixed range 0.1, gamma=logrange(2,4,20)
-# Computing
-##Maf
-    - fixed range 0.1, gamma=logrange(1,4,20), SOmin
-
-
-# Best fitting
-    WSe2 -> 0.4, fixed_SO, constrained offset
-    WS2 -> 0.2, fixed_SO , constrained offset

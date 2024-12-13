@@ -6,16 +6,16 @@ import matplotlib as mpl
 from tqdm import tqdm
 from pathlib import Path
 
-cut = 'MGM'
+cut = 'KGK'
 k_pts = 1001
 mass = 1
-N = 3
+N = 2
 n_cells = int(1+3*N*(N+1))
 save = False
 
-V_list = np.linspace(0.05,0.05,2)
-aM_list = np.linspace(4,6,1)
-phi_list = np.linspace(0,np.pi,101)
+V_list = [0.1,]#np.linspace(0.05,0.05,2)
+aM_list = [4,]#np.linspace(4,6,1)
+phi_list = [0,]#np.linspace(0,np.pi,101)
 
 fn_g1 = 'data_'+cut+'/gap1_V('+"{:.3f}".format(V_list[0])+'_'+"{:.3f}".format(V_list[-1])+'_'+str(len(V_list))+')_aM('+str(aM_list[0])+'_'+str(aM_list[-1])+'_'+str(len(aM_list))+')_phi('+"{:.3f}".format(phi_list[0])+'_'+"{:.3f}".format(phi_list[-1])+'_'+str(len(phi_list))+').npy'
 fn_g2 = 'data_'+cut+'/gap2_V('+"{:.3f}".format(V_list[0])+'_'+"{:.3f}".format(V_list[-1])+'_'+str(len(V_list))+')_aM('+str(aM_list[0])+'_'+str(aM_list[-1])+'_'+str(len(aM_list))+')_phi('+"{:.3f}".format(phi_list[0])+'_'+"{:.3f}".format(phi_list[-1])+'_'+str(len(phi_list))+').npy'
@@ -101,6 +101,8 @@ else:
     h_disp2 = np.load(fn_h2)
     v_disp1 = np.load(fn_v1)
     v_disp2 = np.load(fn_v2)
+
+exit()
 
 #Plot
 s_ = 20

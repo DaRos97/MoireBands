@@ -71,7 +71,7 @@ def plot_single_parameter_set(e_,energies,weights,mrl,list_momenta,title):
     fig.set_size_inches(18,12)
     for t in range(2*side_bands+1):
         ax.plot(list_momenta,energies[t],color='k',lw=LW)
-        ax.scatter(list_momenta,energies[t],s=weights[t]*70,c='b',lw=0)
+        ax.scatter(list_momenta,energies[t],s=weights[t]**(1/2)*100,c='b',lw=0)
     #Gap arrows
     ax.arrow(-mrl/2,energies[-1][ind_k(-mrl/2,list_momenta)],
             0,-gap(energies,-mrl/2,0,list_momenta),
@@ -112,13 +112,17 @@ def plot_single_parameter_set(e_,energies,weights,mrl,list_momenta,title):
     #Limits
     rg = np.max(energies[-1])-np.min(energies[side_bands])
     ax.set_ylim(e_*3,np.max(energies[-1])*2+0.1)
-    ax.set_xticks([])
+    ax.set_xlim(-3*mrl,3*mrl)
+    ax.set_xticks([-2*mrl,-mrl,0,mrl,2*mrl],[r'$-2G$',r'$-G$',r'$\Gamma$',r'$G$',r'$2G$'],size=30)
+    for i in range(5):
+        ax.plot([-2*mrl+i*mrl,-2*mrl+i*mrl],[-10,10],color='k',lw=0.5)
     ax.set_yticks([])
+    ax.set_ylabel("Energy",size=30)
     plt.show()
 
 #Parameters
 
-side_bands = 4
+side_bands = 5
 momentum_points = 1001
 c = ['k','g','r','r','y','m','c']
 LW = 0.1    #line width
@@ -169,6 +173,8 @@ for v in range(len(V_list)):
         v_disp2[v,aM,1] = wp[i_sb2,i_k]/wp[i_mb,i_k]
         if 1:
             plot_single_parameter_set(e_,en,wp,G,list_momenta,"aM="+"{:.1f}".format(aM_list[aM])+", V="+"{:.3f}".format(V_list[v]))
+
+exit()
 
 s_ = 20
 if 1:

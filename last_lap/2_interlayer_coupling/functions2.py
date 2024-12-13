@@ -32,7 +32,8 @@ def get_interlayer_H(k,pars,interlayer_type):
 #        t_k = -pars[0] + pars[1]*2*(np.cos(k[0]*aa)+np.cos(k[0]/2*aa)*np.cos(np.sqrt(3)/2*k[1]*aa))
     elif interlayer_type=='C3':
         aa = cfs.dic_params_a_mono['WSe2']
-        delta = aa*np.array([np.array([0,-1]),np.array([1/2,np.sqrt(3)/2]),np.array([-1/2,np.sqrt(3)/2])])
+        ang = np.pi/3
+        delta = aa*np.array([cfs.R_z(ang)@np.array([0,-1]),cfs.R_z(ang)@np.array([1/2,np.sqrt(3)/2]),cfs.R_z(ang)@np.array([-1/2,np.sqrt(3)/2])])
         t_k = 0
         for i in range(3):
             t_k += pars[1]*np.exp(1j*np.dot(k,delta[i]))

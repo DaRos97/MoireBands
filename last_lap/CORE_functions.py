@@ -325,6 +325,22 @@ def find_HSO(SO_pars):
     HSOf = HSOf[:,[6,7,10,8,9,0,2,1,5,3,4,17,18,21,19,20,11,13,12,16,14,15]]
     return HSOf
 
+def get_K(cut,n_pts):
+    """Get cut in BZ to compute. The cut is composed of a list of high symmetry points separated by '-'."""
+    K0 = 4/3*np.pi/dic_params_a_mono['WSe2']
+    K = np.array([K0,0])
+#    Kp = -K
+    Kp = R_z(np.pi/3)@K
+    G = np.array([0,0])
+    M = np.array([K0/4*3,K0/4*np.sqrt(3)])
+    dic_Kpts = {'K':K,'Kp':Kp,'G':G,'M':M}
+    res = np.zeros((n_pts,2))
+    terms = cut.split('-')
+    for t in range(1,len(terms)):
+        for i in range(n_pts//(len(terms)-1)):
+            res[i+(t-1)*n_pts//(len(terms)-1)] = dic_Kpts[terms[t-1]] + (dic_Kpts[terms[t]]-dic_Kpts[terms[t-1]])/(n_pts//(len(terms)-1))*i
+    return res
+
 #######################################################################################
 #######################################################################################
 #######################################################################################

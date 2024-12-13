@@ -3,32 +3,29 @@ import CORE_functions as cfs
 from PIL import Image
 import itertools
 
-
 def get_pars(ind):
-    lDFT = [True]
-    lCsymm = [True,False]
-    samples = ['S3','S11']
-#    int_types = ['U1','C6','C3',]
-    indices_theta = [0,1,2] #best estimate is 1, while 0 and 2 are error bounds
-    pars_Vgs = [0.01,0.013,0.016,0.019]
-    pars_Vks = [0.008]
+    lMonolayer_type = ['DFT',]  #['DFT','fit']
+    lInterlayer_symm = ['C6',]      #['C3','C6']
+    pars_Vgs = [0.01,]  #[0.013,0.016,0.019]
+    pars_Vks = [0.0075]
     phi_G = [np.pi,]
-    phi_K = [-106*2*np.pi/360,]
+    phi_K = [-106*np.pi/180,]
+    lTheta = [2.8,] #best estimate is 1, while 0 and 2 are error bounds
+    lSample = ['S11',]  #this and theta are related! Sample needed also for interlayer choice
+    lN = [1,]   #number of BZ circles
+    lCuts = ['Kp-G-K-Kp',]
+    lKpts = [300,]
     #
-    ll = [lDFT,lCsymm,samples,pars_Vgs,pars_Vks,phi_G,phi_K,indices_theta]
-    combs = list(itertools.product(*ll))
-    print("Computing pars of index ",ind,"/",len(combs)-1)
-    #
-    return combs[ind]
+    ll = [lMonolayer_type,lInterlayer_symm,pars_Vgs,pars_Vks,phi_G,phi_K,lTheta,lSample,lN,lCuts,lKpts]
+    return list(itertools.product(*ll))[ind]
 
 def big_H(K_,lu,pars_monolayer,pars_interlayer,pars_moire):
     """Computes the large Hamiltonian containing all the moire replicas.
 
     """
     hopping,epsilon,HSO,offset = pars_monolayer
-    N,pars_V,G_M,Ham_moire,C3 = pars_moire
+    N,n_cells,pars_V,G_M,H_moires = pars_moire
     #
-    n_cells = int(1+3*N*(N+1))          #Number of mBZ copies
     H_up = np.zeros((n_cells*22,n_cells*22),dtype=complex)
     H_down = np.zeros((n_cells*22,n_cells*22),dtype=complex)
     H_int = np.zeros((n_cells*22,n_cells*22),dtype=complex)
@@ -36,13 +33,11 @@ def big_H(K_,lu,pars_monolayer,pars_interlayer,pars_moire):
     args_WSe2 = (hopping['WSe2'],epsilon['WSe2'],HSO['WSe2'],cfs.dic_params_a_mono['WSe2'],offset['WSe2'])
     args_WS2 = (hopping['WS2'],epsilon['WS2'],HSO['WS2'],cfs.dic_params_a_mono['WS2'],offset['WS2'])
     for n in range(n_cells):
-        if n_cells in [2,4,6] and C3:          ########################################
-            continue                    ########################################
         Kn = K_ + G_M[0]*lu[n][0] + G_M[1]*lu[n][1]
         H_up[n*22:(n+1)*22,n*22:(n+1)*22] = cfs.H_monolayer(Kn,*args_WSe2)
         H_down[n*22:(n+1)*22,n*22:(n+1)*22] = cfs.H_monolayer(Kn,*args_WS2)+ H_interlayer_c(pars_interlayer) #interlayer c just on WS2
         H_int[n*22:(n+1)*22,n*22:(n+1)*22] = H_interlayer(Kn,pars_interlayer)   #interlayer -> a and b
-    #Moirè
+    #Moirè replicas
     m = [[-1,1],[-1,0],[0,-1],[1,-1],[1,0],[0,1]]
     for n in range(0,N+1):      #Circles
         for s in range(np.sign(n)*(1+(n-1)*n*3),n*(n+1)*3+1):       #Indices inside the circle
@@ -54,27 +49,26 @@ def big_H(K_,lu,pars_monolayer,pars_interlayer,pars_moire):
                 except:
                     continue
                 g = m.index(i)
-                if g%2==0 and C3:      ####################################
-                    continue    ####################################
-                H_up[s*22:(s+1)*22,nn*22:(nn+1)*22] = Ham_moire[g%2]    #H_moire(g,pars_moire[1])
-                H_down[s*22:(s+1)*22,nn*22:(nn+1)*22] = Ham_moire[g%2]  #H_moire(g,pars_moire[1])
+                H_up[s*22:(s+1)*22,nn*22:(nn+1)*22] = H_moires[g%2]    #H_moire(g,pars_moire[1])
+                H_down[s*22:(s+1)*22,nn*22:(nn+1)*22] = H_moires[g%2]  #H_moire(g,pars_moire[1])
     #All together
     final_H = np.zeros((2*n_cells*22,2*n_cells*22),dtype=complex)
     final_H[:n_cells*22,:n_cells*22] = H_up
     final_H[n_cells*22:,n_cells*22:] = H_down
     final_H[n_cells*22:,:n_cells*22] = H_int
-    final_H[:n_cells*22,n_cells*22:] = np.conjugate(H_int.T)
+    final_H[:n_cells*22,n_cells*22:] = H_int.T.conj()
     #Global offset due to interlayer
     final_H += np.identity(2*n_cells*22)*pars_interlayer[1][-1]
     return final_H
 
 def H_interlayer_c(pars_interlayer):
-    H = np.zeros((22,22))
-    H[8,8] = H[8+11,8+11] = pars_interlayer[1][2]
-    return H
+    H_int_c = np.zeros((22,22))
+    H_int_c[8,8] = pars_interlayer[1][2]
+    H_int_c[8+11,8+11] = pars_interlayer[1][2]
+    return H_int_c
 
 def H_interlayer(k_,pars_interlayer):
-    H = np.zeros((22,22),dtype=complex)
+    H_int_res = np.zeros((22,22),dtype=complex)
     if pars_interlayer[0]=='U1':
         t_k = -pars_interlayer[1][0] + pars_interlayer[1][1]*np.linalg.norm(k_)**2
     elif pars_interlayer[0]=='C6':
@@ -82,8 +76,7 @@ def H_interlayer(k_,pars_interlayer):
         arr0 = aa*np.array([0,-1])
         t_k = -pars_interlayer[1][0]
         for i in range(6):
-            t_k += pars_interlayer[1][1]*np.exp(1j*np.dot(k_,np.dot(cfs.R_z(np.pi/3*i),arr0)))
-#        t_k = -pars[0] + pars[1]*2*(np.cos(k[0]*aa)+np.cos(k[0]/2*aa)*np.cos(np.sqrt(3)/2*k[1]*aa))
+            t_k += pars_interlayer[1][1]*np.exp(1j*np.dot(k_,cfs.R_z(np.pi/3*i)@arr0))
     elif pars_interlayer[0]=='C3':
         aa = cfs.dic_params_a_mono['WSe2']
         delta = aa*np.array([np.array([0,-1]),np.array([1/2,np.sqrt(3)/2]),np.array([-1/2,np.sqrt(3)/2])])
@@ -92,10 +85,10 @@ def H_interlayer(k_,pars_interlayer):
             t_k += pars_interlayer[1][1]*np.exp(1j*np.dot(k_,delta[i]))
     elif pars_interlayer[0]=='no':
         t_k = 0
-    ind_pze = 8
+    ind_pze = 8     #index of p_z(even) orbital
     for i in range(2):
-        H[ind_pze+11*i,ind_pze+11*i] = t_k
-    return H
+        H_int_res[ind_pze+11*i,ind_pze+11*i] = t_k
+    return H_int_res
 
 def H_moire(g,pars_V):          #g is a integer from 0 to 5
     """Compute moire interlayer potential. 
@@ -114,23 +107,6 @@ def H_moire(g,pars_V):          #g is a integer from 0 to 5
         Id[i,i] = in_plane
         Id[i+11,i+11] = in_plane
     return Id
-
-def get_K(cut,n_pts):
-    res = np.zeros((n_pts,2))
-    a_mono = cfs.dic_params_a_mono['WSe2']
-    if cut == 'KGK':
-        K = np.array([4*np.pi/3,0])/a_mono
-        for i in range(n_pts):
-            res[i,0] = K[0]/(n_pts//2)*(i-n_pts//2)
-    if cut == 'KMKp':
-        M = np.array([np.pi,np.pi/np.sqrt(3)])/a_mono
-        K = np.array([4*np.pi/3,0])/a_mono
-        Kp = np.array([2*np.pi/3,2*np.pi/np.sqrt(3)])/a_mono
-        for i in range(n_pts//2):
-            res[i] = K + (M-K)*i/(n_pts//2)
-        for i in range(n_pts//2,n_pts):
-            res[i] = M + (Kp-M)*i/(n_pts//2)
-    return res
 
 def extract_png(fig_fn,cut_bounds,sample):
     pic_0 = np.array(np.asarray(Image.open(fig_fn)))
@@ -243,16 +219,6 @@ def get_spread_fn(DFT,N,pars_V,pixel_factor,a_M,interlayer_type,pars_spread,weig
     txt_dft = 'DFT' if DFT else 'fit'
     return get_home_dn(machine)+'results/E_data/spread_'+txt_dft+"{:.1f}".format(weight_exponent)+'_'+pars_spread[-1]+'_'+name_sp+'_'+str(N)+'_'+name_v+'_'+str(pixel_factor)+'_'+"{:.1f}".format(a_M)+'_'+interlayer_type+'.npy'
 
-def get_energies_fn(DFT,N,pars_V,p_f,a_M,interlayer_type,machine):
-    name_v = get_list_fn(pars_V)
-    txt_dft = 'DFT' if DFT else 'fit'
-    return get_home_dn(machine)+'results/data/energies_'+txt_dft+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'_'+interlayer_type+'.npy'
-
-def get_weights_fn(DFT,N,pars_V,p_f,a_M,interlayer_type,machine):
-    name_v = get_list_fn(pars_V)
-    txt_dft = 'DFT' if DFT else 'fit'
-    return get_home_dn(machine)+'results/data/weights_'+txt_dft+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'_'+interlayer_type+'.npy'
-
 def get_fig1_fn(DFT,N,pars_V,p_f,a_M,interlayer_type,machine):
     name_v = get_list_fn(pars_V)
     txt_dft = 'DFT' if DFT else 'fit'
@@ -264,22 +230,37 @@ def get_fig_fn(DFT,N,pars_V,p_f,a_M,interlayer_type,pars_spread,machine):
     txt_dft = 'DFT' if DFT else 'fit'
     return get_home_dn(machine)+'results/figures/spread/'+txt_dft+'_'+pars_spread[-1]+'_'+name_sp+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'_'+interlayer_type+'.png'
 
+def get_data_fns(pars,weig,machine):
+    """Filename of data: energy, weights and spreading.
+    Spread needs additional parameters."""
+    monolayer_type, interlayer_symmetry, Vg, Vk, phiG, phiK, theta, sample, N, cut, k_pts = pars
+    common_name = '_'+monolayer_type+'_'+interlayer_symmetry+"{:.5f}".format(Vg)+"{:.5f}".format(Vk)+"{:.5f}".format(phiG)+"{:.5f}".format(phiK)+'_'+"{:.2f}".format(theta)+'_'+str(N)+'_'+cut+'_'+str(k_pts)
+    data_dn = get_results_dn(machine)+'data/'
+    result = []
+    for t in ['energy','weight','spread']:
+        result.append(data_dn+t+common_name+'.npy')
+    return result
+
 def get_sample_fn(sample,machine,zoom=False):
     v = 'v2' if sample == 'S3' else 'v1'
     v = 'zoom1' if zoom else v
-    return get_home_dn(machine)+'inputs/'+sample+'_KGK_WSe2onWS2_'+v+'.png'
+    return get_inputs_dn(machine)+sample+'_KGK_WSe2onWS2_'+v+'.png'
 
-def get_pars_mono_fn(TMD,machine,dft=False):
-    get_dft = '_DFT' if dft else '_fit'
-    return get_home_dn(machine)+'inputs/pars_'+TMD+get_dft+'.npy'
+def get_pars_mono_fn(TMD,machine,monolayer_type='DFT'):
+    return get_inputs_dn(machine)+'pars_'+TMD+'_'+monolayer_type+'.npy'
 
 def get_SOC_fn(TMD,machine):
-    return get_home_dn(machine)+'inputs/'+TMD+'_SOC.npy'
+    return get_inputs_dn(machine)+TMD+'_SOC.npy'
 
-def get_pars_interlayer_fn(sample,interlayer_type,DFT,machine):
-    txt = 'DFT' if DFT else 'fit'
-    int_fn = sample+'_'+txt+'_'+interlayer_type+'_pars_interlayer.npy'
-    return get_home_dn(machine)+'inputs/'+int_fn
+def get_pars_interlayer_fn(sample,interlayer_type,monolayer_type,machine):
+    int_fn = sample+'_'+monolayer_type+'_'+interlayer_type+'_pars_interlayer.npy'
+    return get_inputs_dn(machine)+int_fn
+
+def get_inputs_dn(machine):
+    return get_home_dn(machine)+'inputs/'
+
+def get_results_dn(machine):
+    return get_home_dn(machine)+'results/'
 
 def get_home_dn(machine):
     if machine == 'loc':
@@ -288,4 +269,46 @@ def get_home_dn(machine):
         return '/home/users/r/rossid/3_moire/'
     elif machine == 'maf':
         return '/users/rossid/3_moire/'
+
+def import_monolayer_parameters(monolayer_type,machine):
+    """Import monolayer parameters, either DFT or fit ones."""
+    hopping = {}
+    epsilon = {}
+    HSO = {}
+    offset = {}
+    for TMD in cfs.TMDs:
+        temp = np.load(get_pars_mono_fn(TMD,machine,monolayer_type))
+        if monolayer_type=='fit':   #SOC pars are in separate file
+            temp = np.append(temp,np.load(get_SOC_fn(TMD,machine)))
+        hopping[TMD] = cfs.find_t(temp)
+        epsilon[TMD] = cfs.find_e(temp)
+        HSO[TMD] = cfs.find_HSO(temp[-2:])
+        offset[TMD] = temp[-3]
+    return (hopping,epsilon,HSO,offset)
+
+def import_moire_parameters(N,pars_V,theta):
+    """ Import moire parameters.
+    Moirè potential of bilayer is different at Gamma (d_z^2 orbital) and K (d_xy orbitals).
+    Gamma point does not have a DFT estimate. K point value from Louk's paper: L.Rademaker, Phys. Rev. B 105, 195428 (2022)
+    Hamiltonian of Moire interlayer (diagonal with correct signs of phase). Compute it here because is k-independent.
+    """
+    n_cells = int(1+3*N*(N+1))
+    G_M = get_reciprocal_moire(theta/180*np.pi)
+    H_moires = [H_moire(0,pars_V),H_moire(1,pars_V)]
+    return (N,n_cells,pars_V,G_M,H_moires)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
