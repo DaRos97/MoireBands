@@ -4,19 +4,20 @@ from PIL import Image
 import itertools
 
 def get_pars(ind):
-    lMonolayer_type = ['DFT',]  #['DFT','fit']
+    lMonolayer_type = ['fit',]  #['DFT','fit',]
     lInterlayer_symm = ['C6',]      #['C3','C6']
-    pars_Vgs = [0.01,]  #[0.013,0.016,0.019]
-    pars_Vks = [0.0075]
+    pars_Vgs = [0.005+0.015/15*i for i in range(15)]
+    pars_Vks = [0.0077]
     phi_G = [np.pi,]
     phi_K = [-106*np.pi/180,]
-    lTheta = [2.8,] #best estimate is 1, while 0 and 2 are error bounds
+    lTheta = [2.8,]
     lSample = ['S11',]  #this and theta are related! Sample needed also for interlayer choice
     lN = [1,]   #number of BZ circles
     lCuts = ['Kp-G-K-Kp',]
-    lKpts = [300,]
+    lKpts = [1002,]
+    lWeights = [1,0.5]
     #
-    ll = [lMonolayer_type,lInterlayer_symm,pars_Vgs,pars_Vks,phi_G,phi_K,lTheta,lSample,lN,lCuts,lKpts]
+    ll = [lMonolayer_type,lInterlayer_symm,pars_Vgs,pars_Vks,phi_G,phi_K,lTheta,lSample,lN,lCuts,lKpts,lWeights]
     return list(itertools.product(*ll))[ind]
 
 def big_H(K_,lu,pars_monolayer,pars_interlayer,pars_moire):
@@ -73,16 +74,16 @@ def H_interlayer(k_,pars_interlayer):
         t_k = -pars_interlayer[1][0] + pars_interlayer[1][1]*np.linalg.norm(k_)**2
     elif pars_interlayer[0]=='C6':
         aa = cfs.dic_params_a_mono['WSe2']
-        arr0 = aa*np.array([0,-1])
+        arr0 = aa*np.array([1,0])
         t_k = -pars_interlayer[1][0]
         for i in range(6):
-            t_k += pars_interlayer[1][1]*np.exp(1j*np.dot(k_,cfs.R_z(np.pi/3*i)@arr0))
+            t_k += pars_interlayer[1][1]*np.exp(1j*k_@cfs.R_z(np.pi/3*i)@arr0)
     elif pars_interlayer[0]=='C3':
         aa = cfs.dic_params_a_mono['WSe2']
-        delta = aa*np.array([np.array([0,-1]),np.array([1/2,np.sqrt(3)/2]),np.array([-1/2,np.sqrt(3)/2])])
+        arr0 = aa*np.array([1,0])/np.sqrt(3)
         t_k = 0
         for i in range(3):
-            t_k += pars_interlayer[1][1]*np.exp(1j*np.dot(k_,delta[i]))
+            t_k += pars_interlayer[1][1]*np.exp(1j*k_@cfs.R_z(2*np.pi/3*i)@arr0)
     elif pars_interlayer[0]=='no':
         t_k = 0
     ind_pze = 8     #index of p_z(even) orbital
@@ -153,7 +154,7 @@ def lu_table(N):
                     j += 1
     return lu
 
-def weight_spreading(weight,K,E,k_grid,e_grid,pars_spread):
+def weight_spreading(weight,K_temp,E_temp,K_list,e_grid,pars_spread):
     """Compute the weight spreading in k and e.
 
     Parameters
@@ -176,26 +177,14 @@ def weight_spreading(weight,K,E,k_grid,e_grid,pars_spread):
     np.ndarray
         Grid of energy and momentum values over which the weight located at K,E has been spread using the type_of_spread function by values spread_K and spread_E.
     """
-    spread_K,spread_E,type_of_spread = pars_spread
+    spread_k,spread_E,type_of_spread = pars_spread
+    k_grid = np.linalg.norm(K_list-K_temp,axis=1)[:,None]
     if type_of_spread == 'Lorentz':
         E2 = spread_E**2
-        K2 = spread_K**2
-        return weight/((k_grid-K)**2+K2)/((e_grid-E)**2+E2)
+        K2 = spread_k**2
+        return weight/(k_grid**2+K2)/((e_grid-E_temp)**2+E2)
     elif type_of_spread == 'Gauss':
-        return weight*np.exp(-((k_grid-K)/spread_K)**2)*np.exp(-((e_grid-E)/spread_E)**2)
-
-def normalize_spread(spread,k_pts,e_pts):
-    #Transform lor to a png formati. in the range of white/black of the original picture
-    max_lor = np.max(np.ravel(spread))
-    min_lor = np.min(np.ravel(np.nonzero(spread)))
-    whitest = 255
-    blackest = 0
-    normalized_lor = np.zeros((k_pts,e_pts))
-    for i in range(k_pts):
-        for j in range(e_pts):
-            normalized_lor[i,j] = int((whitest-blackest)*(1-spread[i,j]/(max_lor-min_lor))+blackest)
-    picture = np.flip(normalized_lor.T,axis=0)   #invert e-axis to have the same structure
-    return picture
+        return weight*np.exp(-(k_grid/spread_k)**2)*np.exp(-((e_grid-E_temp)/spread_E)**2)
 
 def get_reciprocal_moire(theta):
     """Compute moire reciprocal lattice vectors.
@@ -230,15 +219,21 @@ def get_fig_fn(DFT,N,pars_V,p_f,a_M,interlayer_type,pars_spread,machine):
     txt_dft = 'DFT' if DFT else 'fit'
     return get_home_dn(machine)+'results/figures/spread/'+txt_dft+'_'+pars_spread[-1]+'_'+name_sp+'_'+str(N)+'_'+name_v+'_'+str(p_f)+'_'+"{:.1f}".format(a_M)+'_'+interlayer_type+'.png'
 
-def get_data_fns(pars,weig,machine):
+def get_data_fns(pars_data,pars_spread,machine):
     """Filename of data: energy, weights and spreading.
     Spread needs additional parameters."""
-    monolayer_type, interlayer_symmetry, Vg, Vk, phiG, phiK, theta, sample, N, cut, k_pts = pars
-    common_name = '_'+monolayer_type+'_'+interlayer_symmetry+"{:.5f}".format(Vg)+"{:.5f}".format(Vk)+"{:.5f}".format(phiG)+"{:.5f}".format(phiK)+'_'+"{:.2f}".format(theta)+'_'+str(N)+'_'+cut+'_'+str(k_pts)
+    monolayer_type, interlayer_symmetry, Vg, Vk, phiG, phiK, theta, sample, N, cut, k_pts, weight_exponent = pars_data
+    spread_k,spread_E,type_spread,deltaE,E_min,E_max = pars_spread
+    common_name = '_'+monolayer_type+'_'+interlayer_symmetry+"{:.5f}".format(Vg)+'-'+"{:.5f}".format(Vk)+'-'+"{:.5f}".format(phiG)+'-'+"{:.5f}".format(phiK)+'_'+"{:.2f}".format(theta)+'_'+str(N)+'_'+cut+'_'+str(k_pts)
+    spread_name = '_'+"{:.5f}".format(spread_k)+'_'+"{:.5f}".format(spread_E)+'_'+type_spread+'_'+"{:3f}".format(deltaE)+'_'+"{:.2f}".format(E_min)+'_'+"{:.2f}".format(E_max)
     data_dn = get_results_dn(machine)+'data/'
     result = []
-    for t in ['energy','weight','spread']:
-        result.append(data_dn+t+common_name+'.npy')
+    for t in ['en_wh','spread']:
+        result.append(data_dn+t+common_name)
+        if t=='spread':
+            result[-1] += spread_name
+        result[-1] += '.npy'
+    result.append(get_results_dn(machine)+'figures/spread'+common_name+spread_name+'_'+"{:.3f}".format(weight_exponent)+'.png')
     return result
 
 def get_sample_fn(sample,machine,zoom=False):
@@ -277,7 +272,8 @@ def import_monolayer_parameters(monolayer_type,machine):
     HSO = {}
     offset = {}
     for TMD in cfs.TMDs:
-        temp = np.load(get_pars_mono_fn(TMD,machine,monolayer_type))
+        mono_type = 'DFT' if TMD=='WS2' else monolayer_type
+        temp = np.load(get_pars_mono_fn(TMD,machine,mono_type))
         if monolayer_type=='fit':   #SOC pars are in separate file
             temp = np.append(temp,np.load(get_SOC_fn(TMD,machine)))
         hopping[TMD] = cfs.find_t(temp)

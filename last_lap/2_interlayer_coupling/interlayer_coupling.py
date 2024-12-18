@@ -28,7 +28,7 @@ sample = 'S11' if len(sys.argv) == 1 else sys.argv[1]
 DFT = True
 #BZ cut parameters
 cut = 'Kp-G-K'
-k_pts = 301
+k_pts = 300
 K_list = cfs.get_K(cut,k_pts)
 K0 = np.linalg.norm(K_list[0])
 

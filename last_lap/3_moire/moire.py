@@ -7,7 +7,6 @@ We consider different twist angles between the layers.
 We can compare the result with sample S3 or S11 (this influences the choice of twist angle).
 We take N circles of mini-BZs around the central one.
 """
-
 import sys,os
 import numpy as np
 import scipy
@@ -24,23 +23,26 @@ import functions3 as fs3
 from pathlib import Path
 import matplotlib.pyplot as plt
 from time import time
+from matplotlib.colors import Normalize
 
 machine = cfs.get_machine(cwd)
 if machine=='loc':
     from tqdm import tqdm
 else:
     tqdm = cfs.tqdm
-save_data = True
-save_fig = False
 disp = True
-disp_plot = False
-plot_superimposed = False
+plot_BZ_path = 0
+save_data = 1
+plot_superimposed = 1
+save_spread = 1
+plot_spread = 1
+save_fig_spread = 1
+save_spread_txt = 1
 #
 ind_pars = 0 if len(sys.argv)==1 else int(sys.argv[1])  #index of parameters
 if machine == 'maf':
     ind_pars -= 1
-monolayer_type, interlayer_symmetry, Vg, Vk, phiG, phiK, theta, sample, N, cut, k_pts = fs3.get_pars(ind_pars)
-#
+monolayer_type, interlayer_symmetry, Vg, Vk, phiG, phiK, theta, sample, N, cut, k_pts, weight_exponent = fs3.get_pars(ind_pars)
 #Monolayer parameters
 pars_monolayer = fs3.import_monolayer_parameters(monolayer_type,machine)
 #Interlayer parameters
@@ -49,14 +51,11 @@ pars_interlayer = [interlayer_symmetry,np.load(fs3.get_pars_interlayer_fn(sample
 pars_moire = fs3.import_moire_parameters(N,(Vg,Vk,phiG,phiK),theta)
 #Cut parameters
 K_list = cfs.get_K(cut,k_pts)
-#Final image parameters
-weight_exponent = 1/2       #exponent of weight -> should be 1 to be coherent
+#Spread image parameters
+spread_k,spread_E,type_spread,deltaE,E_min,E_max = (1e-3,5e-2,'Gauss',0.01,-3,-0.5)
+pars_spread = (spread_k,spread_E,type_spread,deltaE,E_min,E_max)
 #Filenames
-energies_fn,weights_fn,spread_fn = fs3.get_data_fns(fs3.get_pars(ind_pars),weight_exponent,machine)
-#Compute spread and final picture
-pars_spread = (0.01,0.03,'Gauss',0.01)   #spread_k,spread_E,type_spread,deltaE
-
-spread_fn = fs3.get_spread_fn(DFT,N,pars_V,pixel_factor,a_Moire,txt_interlayer_symmetry[:2],pars_spread,weight_exponent,machine)
+data_fn,spread_fn,spread_fig_fn = fs3.get_data_fns(fs3.get_pars(ind_pars),pars_spread,machine)
 
 if disp:    #print what parameters we're using
     print("-----------PARAMETRS CHOSEN-----------")
@@ -68,7 +67,7 @@ if disp:    #print what parameters we're using
     print("Number of mini-BZs circles: ",N)
     print("Exponent of bands' weights: "+"{:.3f}".format(weight_exponent))
     print("Computing over BZ cut: ",cut," with ",k_pts," points")
-    if disp_plot:
+    if plot_BZ_path:
         fig = plt.figure()
         ax = fig.add_subplot()
         terms = cut.split('-')
@@ -77,9 +76,12 @@ if disp:    #print what parameters we're using
             ax.scatter(K_list[pt*t:pt*(t+1),0],K_list[pt*t:pt*(t+1),1])
         ax.set_title(cut,size=20)
         plt.show()
+        if not plot_superimposed and not plot_spread:
+            exit()
+
 ###################################################################################
 ###################################################################################
-if not Path(energies_fn).is_file():
+if not Path(data_fn).is_file():
     energies = np.zeros((k_pts,pars_moire[1]*44))
     weights = np.zeros((k_pts,pars_moire[1]*44))
     look_up = fs3.lu_table(pars_moire[0])
@@ -88,13 +90,17 @@ if not Path(energies_fn).is_file():
         H_tot = fs3.big_H(K_i,look_up,pars_monolayer,pars_interlayer,pars_moire)
         energies[i,:],evecs = scipy.linalg.eigh(H_tot,check_finite=False,overwrite_a=True)           #Diagonalize to get eigenvalues and eigenvectors
         ab = np.absolute(evecs)**2
-        weights[i,:] = np.sum(ab[:22,:],axis=0) + np.sum(ab[22*pars_moire[1]:22*pars_moire[1]+22,:],axis=0)
+        ind_MB = 22 #index of main band of the layer
+        weights[i,:] = np.sum(ab[:ind_MB,:],axis=0) + np.sum(ab[ind_MB*pars_moire[1]:ind_MB*pars_moire[1]+ind_MB,:],axis=0)
     if save_data:
-        np.save(energies_fn,energies)
-        np.save(weights_fn,weights)
+        en_wh = np.zeros((2,k_pts,pars_moire[1]*44))
+        en_wh[0] = energies
+        en_wh[1] = weights
+        np.save(data_fn,en_wh)
 else:
-    energies = np.load(energies_fn)
-    weights = np.load(weights_fn)
+    en_wh = np.load(data_fn)
+    energies = en_wh[0]
+    weights = en_wh[1]
 #
 if plot_superimposed:   #Plot bands and weights superimposed to exp picture
     fig = plt.figure(figsize=(20,15))
@@ -116,51 +122,66 @@ if plot_superimposed:   #Plot bands and weights superimposed to exp picture
                 zorder=3
                 )
     ax.set_ylabel("$E\;(eV)$",size=20)
+    ax.set_ylim(E_min,E_max)
+    if 1:   #plot distace main band to X
+        indG = np.argwhere(np.linalg.norm(K_list,axis=1)<1e-7)[0]
+        ax.plot([indG,indG],[energies[indG,26*pars_moire[1]],energies[indG,28*pars_moire[1]-1]],color='r',marker='o')
     fig.tight_layout()
-    if save_fig:
-        plt.savefig('results/figures/moire_twisted/'+title_fig+'.png')
     plt.show()
+    if not plot_spread:
+        exit()
 
 ##########################################################################
 ##########################################################################
 ##########################################################################
-if 0:
-    exit()
 
-E_list = np.linspace(-3,-0.5,e_pts)
-kkk = K_list[:,0]
+if disp:
+    print("Computing spreading image with paramaters:")
+    print("Spread function: ",type_spread)
+    print("Spread in K: ","{:.5f}".format(spread_k)," 1/a")
+    print("Spread in E: ","{:.5f}".format(spread_E)," eV")
+
+E_list = np.linspace(E_min,E_max,int((E_max-E_min)/deltaE))
 if not Path(spread_fn).is_file():
     print("Computing spreading...")
-    spread = np.zeros((k_pts,e_pts))
+    spread = np.zeros((k_pts,len(E_list)))
     for i in tqdm(range(k_pts)):
-        for n in range(ind_TVB-ind_LVB):
-            spread += fs3.weight_spreading(weights[i,n]**(weight_exponent),K_list[i,0],energies[i,n],kkk[:,None],E_list[None,:],pars_spread)
-    #Normalize in color scale
-    norm_spread = fs3.normalize_spread(spread,k_pts,e_pts)
-    if 1:
-        np.save(spread_fn,norm_spread)
+        for n in range(pars_moire[1]*15,pars_moire[1]*28):
+            spread += fs3.weight_spreading(weights[i,n],K_list[i],energies[i,n],K_list,E_list[None,:],pars_spread[:3])
+    if save_spread:
+        np.save(spread_fn,spread)
 else:
-    norm_spread = np.load(spread_fn)
+    spread = np.load(spread_fn)
 
-fig,ax = plt.subplots(figsize=(14,9))
-#cmaps: gray, viridis,
-norm_spread /= np.max(norm_spread)
+if plot_spread:
+    fig = plt.figure(figsize=(14,9))
+    ax = fig.add_subplot()
+    spread /= np.max(spread)        #0 to 1
+    map_ = 'gray_r'
+    #
+    ax.imshow(spread.T[::-1,:]**weight_exponent,cmap=map_,aspect=k_pts/len(E_list),interpolation='none')
+    #
+    xticks = []
+    xtitcks_labels = cut.split('-')
+    for i in range(len(cut.split('-'))):
+        xticks.append(k_pts//(len(cut.split('-'))-1)*i)
+    ax.set_xticks(xticks,xtitcks_labels,size=25)
+    ax.set_ylabel("Energy",size=25)
+    fig.tight_layout()
+    if save_fig_spread:
+        fig.savefig(spread_fig_fn)
+    else:
+        plt.show()
+    plt.close()
 
-map_ = 'gray' #if len(sys.argv)<4 else sys.argv[3]
-ax.imshow(norm_spread,cmap=map_)
-ax.set_xticks([0,norm_spread.shape[1]//2,norm_spread.shape[1]],[r"$K'$",r'$\Gamma$',r'$K$'],size=25)
-#ax.set_yticks([0,norm_spread.shape[0]//2,norm_spread.shape[0]],["{:.2f}".format(Em),"{:.2f}".format((EM+Em)/2),"{:.2f}".format(EM)],size=25)
-ax.set_yticks([])
-ax.set_ylabel("Energy",size=25)
-#ax.plot([0,0],[-10,10],color='r',lw=0.5,zorder=-1)
-#ax.set_title(title_fig)
-fig.tight_layout()
-if save_fig:
-    plt.savefig('results/figures/spread/'+title_fig+'.png')
-if 1:#machine == 'loc':
-    plt.show()
-
-
+if save_spread_txt:
+    print("Saving in txt format")
+    fn = spread_fn[:-4]+'.txt'
+    if not Path(fn).is_file():
+        with open(fn,'w') as f:
+            for k in range(k_pts):
+                for e in range(len(E_list)):
+                    f.write("{:.4f}".format(K_list[k,0])+','+"{:.4f}".format(K_list[k,1])+','+"{:.4f}".format(E_list[e])+","+"{:.7f}".format(spread[k,e])+'\n')
 
 
 

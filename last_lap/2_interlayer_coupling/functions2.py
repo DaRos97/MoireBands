@@ -15,7 +15,10 @@ def energy(list_K,hopping,epsilon,HSO,offset,pars_interlayer,interlayer_type):
         big_H = np.zeros((44,44),dtype=complex)
         big_H[:22,:22] = cfs.H_monolayer(list_K[k],*args_WSe2)
         big_H[22:,22:] = cfs.H_monolayer(list_K[k],*args_WS2)
-        big_H += get_interlayer_H(list_K[k],pars_interlayer,interlayer_type)
+        H_int = get_interlayer_H(list_K[k],pars_interlayer,interlayer_type)
+        if np.max(np.abs(H_int-H_int.T.conj()))>1e-5:
+            print("errrrrr ",interlayer_type)
+        big_H += H_int
         en_list[k] = np.linalg.eigvalsh(big_H)
     return en_list
 
@@ -25,18 +28,16 @@ def get_interlayer_H(k,pars,interlayer_type):
         t_k = -pars[0] + pars[1]*np.linalg.norm(k)**2
     elif interlayer_type=='C6':
         aa = cfs.dic_params_a_mono['WSe2']
-        arr0 = aa*np.array([0,-1])
+        arr0 = aa*np.array([1,0])
         t_k = -pars[0]
         for i in range(6):
-            t_k += pars[1]*np.exp(1j*np.dot(k,np.dot(cfs.R_z(np.pi/3*i),arr0)))
-#        t_k = -pars[0] + pars[1]*2*(np.cos(k[0]*aa)+np.cos(k[0]/2*aa)*np.cos(np.sqrt(3)/2*k[1]*aa))
+            t_k += pars[1]*np.exp(1j*k@cfs.R_z(np.pi/3*i)@arr0)
     elif interlayer_type=='C3':
         aa = cfs.dic_params_a_mono['WSe2']
-        ang = np.pi/3
-        delta = aa*np.array([cfs.R_z(ang)@np.array([0,-1]),cfs.R_z(ang)@np.array([1/2,np.sqrt(3)/2]),cfs.R_z(ang)@np.array([-1/2,np.sqrt(3)/2])])
+        arr0 = aa*np.array([1,0])/np.sqrt(3)
         t_k = 0
         for i in range(3):
-            t_k += pars[1]*np.exp(1j*np.dot(k,delta[i]))
+            t_k += pars[1]*np.exp(1j*k@cfs.R_z(2*np.pi/3*i)@arr0)
     elif interlayer_type=='no':
         t_k = 0
     #a and b
