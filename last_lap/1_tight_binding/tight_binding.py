@@ -30,25 +30,33 @@ import matplotlib.pyplot as plt
 from time import time as ttt
 from datetime import timedelta
 
+disp = True
+plot_exp = False
+fit_SOC = False
+plot_SOC_fit = True if fit_SOC else False
+save_SOC = True
+plot_final_fit = False
+
 t_initial = ttt()
 machine = cfs.get_machine(os.getcwd())
 
 ind_spec_args = 0 if len(sys.argv)==1 else int(sys.argv[1])
-ind_random = 0 if len(sys.argv) in [1,2] else int(sys.argv[2])
-ind_reduced = 7
+ind_random = 0 if len(sys.argv)<3 else int(sys.argv[2])
 
-spec_args = fs.get_spec_args(ind_spec_args) + (ind_reduced,)
+spec_args = fs.get_spec_args(ind_spec_args)
 TMD = spec_args[0]
-
-print("Computing parameters: ",spec_args," and ind_random: ",ind_random)
+ind_reduced = spec_args[-1]
 
 #Experimental data of monolayer 
 #For each material, 2 TVB (because of SO) on the 2 cuts
 exp_data = fs.get_exp_data(TMD,machine)
 symm_data = fs.get_symm_data(exp_data)
 reduced_data = fs.get_reduced_data(symm_data,ind_reduced)
-if 0 and machine == 'loc':
-    #plot exp to see if they are aligned
+if disp:
+    print("------------CHOSEN PARAMETERS------------")
+    print(" TMD: ",spec_args[0],"\n chi2_1 parameter: ","{:.4f}".format(spec_args[1]),"\n Bound parameters: ","{:.2f}".format(spec_args[2]*100)+"%","\n Bounds SOC: ","{:.2f}".format(spec_args[3]*100)+"%","\n Index random evaluation: ",ind_random)
+    print(" Using 1 every ",ind_reduced," points, for a total of ",len(reduced_data[0])," points")
+if plot_exp: #plot experimental data to see if they are aligned
     plt.figure(figsize=(14,7))
     plt.title(TMD)
     KGK_end = exp_data[0][0][-1,0]
@@ -67,51 +75,62 @@ if 0 and machine == 'loc':
     exit()
 
 #DFT values of tb parameters
-DFT_values = np.array(cfs.initial_pt[TMD])  #DFT values
+DFT_values = np.array(cfs.initial_pt[TMD])  #DFT values of tb parameters. Order is: e, t, offset, SOC
 
-"""
-We start by computing offset and SOC parameters by fitting the energy of the 2 top bands at Gamma and K.
-"""
 SOC_fn = fs.get_SOC_fn(TMD,machine)
-if not Path(SOC_fn).is_file():
-    print("Computing SOC")
-    args_chi2_SOC = (reduced_data, DFT_values[:-3], spec_args[0],machine)
-    initial_point_SOC = DFT_values[-3:]
-    lb = 0
-    ub = 2
-    Bounds_SOC = ((DFT_values[-3]*ub,DFT_values[-3]*lb),(DFT_values[-2]*lb,DFT_values[-2]*ub),(-DFT_values[-1]*ub,DFT_values[-1]*ub))
-    result_SOC = minimize(fs.chi2_SOC,
-            args = args_chi2_SOC,
-            x0 = initial_point_SOC,
-            bounds = Bounds_SOC,
-            method = 'Nelder-Mead',
-            options = {
-                'disp': False,
-                'adaptive' : False,
-                'fatol': 1e-6,
-                'xatol': 1e-8,
-                'maxiter': 1e6,
-                },
-            )
-    SOC_pars = result_SOC.x
-    np.save(SOC_fn,result_SOC.x)
-    if machine == 'loc':    #Plot result
+if fit_SOC:
+    print("Fitting SOC and offset at Gamma and K.")
+    """
+    We start by computing offset and SOC parameters by fitting the energy of the 2 top bands at Gamma and K.
+    """
+    args_chi2_SOC = (reduced_data, DFT_values[:-3], spec_args[0], machine)
+    if not Path(SOC_fn).is_file():
+        print("Computing fit of SOC")
+        initial_point_SOC = DFT_values[-3:]
+        lb = -1  #lower bound (%)
+        ub = 2  #upper bound (%)
+        Bounds_SOC = ((DFT_values[-3]*ub,DFT_values[-3]*lb),
+                      (DFT_values[-2]*lb,DFT_values[-2]*ub),
+                      (DFT_values[-1]*lb,DFT_values[-1]*ub))
+        result_SOC = minimize(fs.chi2_SOC,
+                args = args_chi2_SOC,
+                x0 = initial_point_SOC,
+                bounds = Bounds_SOC,
+                method = 'Nelder-Mead',
+                options = {
+                    'disp': False,
+                    'adaptive' : False,
+                    'fatol': 1e-6,
+                    'xatol': 1e-8,
+                    'maxiter': 1e6,
+                    },
+                )
+        SOC_pars = result_SOC.x
+        if save_SOC:
+            np.save(SOC_fn,SOC_pars[-3:])
+    else:
+        SOC_pars = np.load(SOC_fn)
+    #
+    if plot_SOC_fit:    #Plot result
         fig = plt.figure(figsize=(20,20))
         ax = fig.add_subplot(1,1,1)
-        print(initial_point_SOC)
+        print("Computed SOC (offset, L_WSe2, L_WS2):")
+        print(DFT_values[-3:])
         print("-->")
-        print(result_SOC.x)
-        ax.set_title("{:.7f}".format(result_SOC.fun))
+        print(SOC_pars)
+        print("Chi^2 distance: ",fs.chi2_SOC(SOC_pars,*args_chi2_SOC))
+    #    ax.set_title("{:.7f}".format(result_SOC.fun))
         KGK_end = exp_data[0][0][-1,0]
         KMKp_beg = exp_data[1][0][0,0]
         ikl = exp_data[0][0].shape[0]//2+1
-        H_SO = cfs.find_HSO(result_SOC.x[1:])
-        full_pars = np.append(DFT_values[:-3],result_SOC.x)
-        tb_en = cfs.energy(full_pars,H_SO,reduced_data,spec_args[0])
+        HSO = cfs.find_HSO(SOC_pars[1:])
+        full_pars = np.append(DFT_values[:-3],SOC_pars)
+        tb_en = cfs.energy(full_pars,HSO,reduced_data,spec_args[0])
         tb_en2 = cfs.energy(DFT_values,cfs.find_HSO(DFT_values[-2:]),reduced_data,spec_args[0])
         for b in range(2):
-            ax.plot(exp_data[0][b][:,0],exp_data[0][b][:,1],color='b',marker='*',label='experiment' if b == 0 else '')
-            ax.plot(exp_data[1][b][:,0]+KGK_end-KMKp_beg,exp_data[1][b][:,1],color='b',marker='*')
+            if 0:
+                ax.plot(exp_data[0][b][:,0],exp_data[0][b][:,1],color='b',marker='*',label='experiment' if b == 0 else '')
+                ax.plot(exp_data[1][b][:,0]+KGK_end-KMKp_beg,exp_data[1][b][:,1],color='b',marker='*')
             #
             ax.plot(reduced_data[b][:,0],reduced_data[b][:,1],color='r',marker='*',label='new symm' if b == 0 else '')
             targ = np.argwhere(np.isfinite(reduced_data[b][:,1]))    #select only non-nan values
@@ -123,7 +142,10 @@ if not Path(SOC_fn).is_file():
         plt.legend()
         plt.show()
 else:
-    SOC_pars = np.load(SOC_fn)
+    print("Using SOC parameters of DFT")
+    if not Path(SOC_fn).is_file() and save_SOC:
+        np.save(SOC_fn,DFT_values[-3:])
+    SOC_pars = DFT_values[-3:]
 
 print("Using SOC parameters: ",SOC_pars)
 
@@ -138,13 +160,13 @@ if not Path(temp_dn).is_dir():
 #
 rand_vals = np.random.rand(DFT_values.shape[0]-3)*0.1+0.95 #random value between 0.95 and 1.05
 rand_vals = np.append(rand_vals,np.ones(3))
-initial_point_full = DFT_values*rand_vals    #t,eps,lam,off
+initial_point_full = DFT_values*rand_vals    #eps,t,off,lam
 #
 Bounds_full = fs.get_bounds(DFT_values,spec_args)
-H_SO = cfs.find_HSO(SOC_pars[1:])
-args_chi2 = (reduced_data,H_SO,SOC_pars,machine,spec_args,ind_random)
-Bounds = Bounds_full[:-3]
-initial_point = initial_point_full[:-3]
+HSO = cfs.find_HSO(SOC_pars[-2:])
+args_chi2 = (reduced_data,HSO,SOC_pars,machine,spec_args,ind_random)
+Bounds = Bounds_full[:-2]
+initial_point = initial_point_full[:-2]
 #
 result = minimize(fs.chi2,
         args = args_chi2,
@@ -164,6 +186,30 @@ min_chi2 = result.fun
 print("Minimum chi2: ",min_chi2)
 t_final = timedelta(seconds=ttt()-t_initial)
 print("Total time: ",str(t_final))
+
+if plot_final_result:    #Plot result
+    """Too see if the result is good we want to see: bands superimposed with experiment, orbital content, tb parameters change from DFT."""
+    fig = plt.figure(figsize=(20,20))
+    ax = fig.add_subplot(1,1,1)
+    ax.set_title("{:.7f}".format(result_SOC.fun))
+    KGK_end = exp_data[0][0][-1,0]
+    KMKp_beg = exp_data[1][0][0,0]
+    ikl = exp_data[0][0].shape[0]//2+1
+    HSO = cfs.find_HSO(SOC_pars[-2:])
+    full_pars = np.append(DFT_values[:-2],SOC_pars[-2:])
+    tb_en = cfs.energy(full_pars,HSO,reduced_data,spec_args[0])
+    tb_en2 = cfs.energy(DFT_values,cfs.find_HSO(DFT_values[-2:]),reduced_data,spec_args[0])
+    for b in range(2):
+#        ax.plot(exp_data[0][b][:,0],exp_data[0][b][:,1],color='b',marker='*',label='experiment' if b == 0 else '')
+#        ax.plot(exp_data[1][b][:,0]+KGK_end-KMKp_beg,exp_data[1][b][:,1],color='b',marker='*')
+        ax.plot(reduced_data[b][:,0],reduced_data[b][:,1],color='r',marker='*',label='new symm' if b == 0 else '')
+        ax.plot(reduced_data[b][targ,0],tb_en[b],color='g',marker='^',ls='-',label='fit' if b == 0 else '')
+        ax.plot(reduced_data[b][targ,0],tb_en2[b],color='k',marker='s',ls='-',label='DFT' if b == 0 else '')
+    #
+    ax.set_xlabel(r'$A^{-1}$')
+    ax.set_ylabel('E(eV)')
+    plt.legend()
+    plt.show()
 
 
 
