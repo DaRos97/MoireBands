@@ -21,8 +21,7 @@ def energy(parameters,HSO,data,TMD):
     a_TMD = dic_params_a_mono[TMD]
     offset = parameters[-3]
     #
-    args_H = (hopping,epsilon,HSO,a_TMD,offset)
-    #
+    args_H = (hopping,epsilon,HSO,a_TMD,offset) #
     kpts = data[0].shape[0]
     all_H = H_monolayer(np.array(data[0][:,2:]),*args_H)
     ens = np.zeros((2,kpts))
