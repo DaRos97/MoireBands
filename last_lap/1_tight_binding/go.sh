@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for i in {0..31}
+for i in {0..43}
 do
-    python3 select_best_result.py 0 $i
+    python3 compute_image_result.py $i
 done

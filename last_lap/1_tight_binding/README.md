@@ -37,6 +37,7 @@ We should also discriminate the solutions based on the orbital content at G and 
 ## Baobab
 ## Yggdrasil
 ## Mafalda
+    0.00 to 0.1, 11 for P, 0.5 to 2, 4 for rp. Pbc=10, Pdk=100. SOC DFT
 ## Bamboo
 
 

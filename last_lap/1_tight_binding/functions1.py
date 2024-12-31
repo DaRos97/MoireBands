@@ -13,8 +13,8 @@ min_chi2 = 1e5
 evaluation_step = 0
 
 def get_spec_args(ind):
-    lP = np.linspace(0.00,0.1,11)
-    lrp = np.linspace(0.5,2,4)
+    lP = np.linspace(0.00,0.1,11)   #0.1
+    lrp = np.linspace(0.5,2,4)  #0.5
     lrl = [0,]#np.linspace(0.1,0.5,3)
     lReduced = [14,]
     ll = [cfs.TMDs,lP,lrp,lrl,lReduced]
@@ -63,8 +63,8 @@ def chi2(pars_tb,*args):
     """Compute square difference of bands with exp data.
 
     """
-    reduced_data, HSO, pars_SOC, machine, spec_args, ind_random = args
-    full_pars = np.append(pars_tb,pars_SOC[-2:])
+    reduced_data, HSO, SOC_pars, machine, spec_args, ind_random = args
+    full_pars = np.append(pars_tb,SOC_pars[-2:])
     #Compute energy of new pars
     tb_en = cfs.energy(full_pars,HSO,reduced_data,spec_args[0])
     #

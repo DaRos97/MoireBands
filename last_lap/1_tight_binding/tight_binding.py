@@ -187,29 +187,6 @@ print("Minimum chi2: ",min_chi2)
 t_final = timedelta(seconds=ttt()-t_initial)
 print("Total time: ",str(t_final))
 
-if plot_final_result:    #Plot result
-    """Too see if the result is good we want to see: bands superimposed with experiment, orbital content, tb parameters change from DFT."""
-    fig = plt.figure(figsize=(20,20))
-    ax = fig.add_subplot(1,1,1)
-    ax.set_title("{:.7f}".format(result_SOC.fun))
-    KGK_end = exp_data[0][0][-1,0]
-    KMKp_beg = exp_data[1][0][0,0]
-    ikl = exp_data[0][0].shape[0]//2+1
-    HSO = cfs.find_HSO(SOC_pars[-2:])
-    full_pars = np.append(DFT_values[:-2],SOC_pars[-2:])
-    tb_en = cfs.energy(full_pars,HSO,reduced_data,spec_args[0])
-    tb_en2 = cfs.energy(DFT_values,cfs.find_HSO(DFT_values[-2:]),reduced_data,spec_args[0])
-    for b in range(2):
-#        ax.plot(exp_data[0][b][:,0],exp_data[0][b][:,1],color='b',marker='*',label='experiment' if b == 0 else '')
-#        ax.plot(exp_data[1][b][:,0]+KGK_end-KMKp_beg,exp_data[1][b][:,1],color='b',marker='*')
-        ax.plot(reduced_data[b][:,0],reduced_data[b][:,1],color='r',marker='*',label='new symm' if b == 0 else '')
-        ax.plot(reduced_data[b][targ,0],tb_en[b],color='g',marker='^',ls='-',label='fit' if b == 0 else '')
-        ax.plot(reduced_data[b][targ,0],tb_en2[b],color='k',marker='s',ls='-',label='DFT' if b == 0 else '')
-    #
-    ax.set_xlabel(r'$A^{-1}$')
-    ax.set_ylabel('E(eV)')
-    plt.legend()
-    plt.show()
 
 
 
