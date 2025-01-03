@@ -13,11 +13,13 @@ min_chi2 = 1e5
 evaluation_step = 0
 
 def get_spec_args(ind):
-    lP = np.linspace(0.00,0.1,11)   #0.1
-    lrp = np.linspace(0.5,2,4)  #0.5
+    lP = [0,0.5,1,5]#np.linspace(0.00,0.1,11)   #0.1
+    lrp = [0.5,1,2]#np.linspace(0.5,2,4)  #0.5
     lrl = [0,]#np.linspace(0.1,0.5,3)
     lReduced = [14,]
-    ll = [cfs.TMDs,lP,lrp,lrl,lReduced]
+    lPbc = [10,]
+    lPdk = [20,]
+    ll = [cfs.TMDs,lP,lrp,lrl,lReduced,lPbc,lPdk]
     combs = list(itertools.product(*ll))
     return combs[ind]
 
@@ -77,10 +79,10 @@ def chi2(pars_tb,*args):
     result += spec_args[1]*par_dis
     #chi2 of bands' content
     band_content = np.array(compute_band_content(full_pars,HSO,spec_args[0]))
-    Pbc = 10
+    Pbc = spec_args[5]
     result += Pbc*(2-np.sum(np.absolute(band_content)**2))
     #chi2 of distance at Gamma and K
-    Pdk = 100
+    Pdk = spec_args[6]
     indexes = [0,27]    #indexes of Gamma and K for ind_reduced=14
     for i in range(2):  #2 bands
         for j in range(2):  #Gamma and K
@@ -113,7 +115,7 @@ def chi2(pars_tb,*args):
             plt.legend()
             plt.savefig('results/figures/temp.png')
             plt.close(fig)
-            print("New fig ",evaluation_step//nnnn)
+            print("New fig ",evaluation_step//nnnn,", chi2: ","{:.8f}".format(result))
 
             #fig of distance from DFT values
             fig = plt.figure(figsize=(15,20))
@@ -138,7 +140,7 @@ def compute_band_content(parameters,HSO,TMD):
     """
     functions_kpt = [[d0,p0e],[dp2,ppe]]
     args_H = (cfs.find_t(parameters),cfs.find_e(parameters),HSO,cfs.dic_params_a_mono[TMD],parameters[-3])
-    k_pts = np.array([np.zeros(2),np.array([4/3*np.pi/cfs.dic_params_a_mono[TMD],0])])
+    k_pts = np.array([np.zeros(2),cfs.R_z(np.pi/3)@np.array([4/3*np.pi/cfs.dic_params_a_mono[TMD],0])])
     H = cfs.H_monolayer(k_pts,*args_H)
     result = []
     for i in range(k_pts.shape[0]): #kpt
@@ -180,7 +182,7 @@ def get_symm_data(exp_data):
     """
     symm_data = []
     for i in range(2):  #two bands
-        new_KGK = symmetrize(exp_data[0][i])
+        new_KGK = symmetrize(exp_data[0][i][::-1])
         new_KGK[:,2] *= -1
         new_KMK = symmetrize(exp_data[1][i])
         new_KMK[:,0] = exp_data[0][0][-1,0] - exp_data[1][0][0,0] - new_KMK[:,0]
@@ -221,12 +223,13 @@ def symmetrize(dataset):
         elif np.isnan(dataset[-1-i,1]):
             temp[1] = dataset[i,1]
         else:
-            temp[1] = (dataset[i,1]+dataset[-1-i,1])/2
+#            temp[1] = (dataset[i,1]+dataset[-1-i,1])/2
+            temp[1] = dataset[i,1]
         new_ds.append(temp)
     return np.array(new_ds)
 
 def get_bounds(in_pt,spec_args):
-    TMD, P, rp, rl, ind_reduced = spec_args
+    TMD, P, rp, rl, ind_reduced, Pbc, Pdk = spec_args
     Bounds = []
     for i in range(in_pt.shape[0]):     #tb parameters
         #
@@ -261,7 +264,7 @@ def find_vec_k(k_scalar,cut,TMD):
     return k_pts
 
 def get_spec_args_txt(spec_args):
-    return spec_args[0]+'_'+"{:.3f}".format(spec_args[1]).replace('.',',')+'_'+"{:.3f}".format(spec_args[2]).replace('.',',')+'_'+"{:.3f}".format(spec_args[3]).replace('.',',')+'_'+str(spec_args[4])
+    return spec_args[0]+'_'+"{:.3f}".format(spec_args[1]).replace('.',',')+'_'+"{:.3f}".format(spec_args[2]).replace('.',',')+'_'+"{:.3f}".format(spec_args[3]).replace('.',',')+'_'+str(spec_args[4])+'_'+str(spec_args[5])+'_'+str(spec_args[6])
 
 def get_exp_data_fn(TMD,cut,band,machine):
     return get_exp_dn(machine)+'extracted_data_'+cut+'_'+TMD+'_band'+str(band)+'.npy'

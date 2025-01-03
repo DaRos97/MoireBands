@@ -8,7 +8,7 @@ arg1: index of specification arguments, which includes
 arg2: index of random realization within '5%' of DFT values
 
 Description of the code:
-We extract the experimental data, adjust it with an offset and symmetrize it, finally we take 1 every ind_reduced points to speed up the computation.
+We extract the experimental data, adjust it with an offset (and symmetrize it), finally we take 1 every ind_reduced points to speed up the computation.
 We extract the DFT parameters and compute initial point and the bounds.
 Compute the chi squared function by evaluating the bands an minimizing it within the bounds.
 """
@@ -35,7 +35,6 @@ plot_exp = False
 fit_SOC = False
 plot_SOC_fit = True if fit_SOC else False
 save_SOC = True
-plot_final_fit = False
 
 t_initial = ttt()
 machine = cfs.get_machine(os.getcwd())
@@ -45,7 +44,7 @@ ind_random = 0 if len(sys.argv)<3 else int(sys.argv[2])
 
 spec_args = fs.get_spec_args(ind_spec_args)
 TMD = spec_args[0]
-ind_reduced = spec_args[-1]
+ind_reduced = spec_args[4]
 
 #Experimental data of monolayer 
 #For each material, 2 TVB (because of SO) on the 2 cuts
@@ -142,12 +141,11 @@ if fit_SOC:
         plt.legend()
         plt.show()
 else:
-    print("Using SOC parameters of DFT")
     if not Path(SOC_fn).is_file() and save_SOC:
         np.save(SOC_fn,DFT_values[-3:])
     SOC_pars = DFT_values[-3:]
+    print("Using SOC parameters of DFT: ",SOC_pars)
 
-print("Using SOC parameters: ",SOC_pars)
 
 """
 We want a minimization of tb bands vs experiment which penalizes going away from DFT initial values.
@@ -166,7 +164,7 @@ Bounds_full = fs.get_bounds(DFT_values,spec_args)
 HSO = cfs.find_HSO(SOC_pars[-2:])
 args_chi2 = (reduced_data,HSO,SOC_pars,machine,spec_args,ind_random)
 Bounds = Bounds_full[:-2]
-initial_point = initial_point_full[:-2]
+initial_point = DFT_values[:-2]#initial_point_full[:-2]
 #
 result = minimize(fs.chi2,
         args = args_chi2,
