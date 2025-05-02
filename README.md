@@ -2,9 +2,19 @@
 
 Folders 0,1,... have the actual code in the order intended to be executed.
 
-# Old code
+## Models
 
-Folders eleven/three band model are the middle steps.
+Eleven and three band models. Could be usefull for comparison of SOC role.
+
+## Step1
+
+Code up to may 2024. Mot much use of it.
+All steps from monolayer to moire fit and CEMs.
+
+## Step2
+
+Code up to may 2025. Build above this for final results.
+All steps from monolayer to moire fit and CEMs.
 
 # What has been done
 

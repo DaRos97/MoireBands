@@ -1,28 +1,29 @@
-#ignoring files
-Data_Experiments/
-Figures/
+#Experiments
+Experiments/
+
+#__pycache__
 */__pycache__/
 */*/__pycache__/
 */*/*/__pycache__/
 
-0_simple_model/*temp*
-1_monolayer_fit/Data/
-2_final_model/Data/
-2_final_model/temp*
-3_new_simple_model/temp*
-4_CEM_K/results/
-4_CEM_K/figures/
-4_CEM_K/temp/
+#Simulation Data
+*/Data/
+*/*/Data/
+*/*/*/Data/
 
-/*/eleven_band_model/Figs_p/
-/*/eleven_band_model/Figs_g/
-/*/eleven_band_model/Figs_3fold/
-/*/eleven_band_model/Figs_6fold/
-/*/eleven_band_model/Data/
-/*/eleven_band_model/old_Data/
 
-/*/three_band_model/Data/
+#Simulation Figures
+*/Figures/
+*/*/Figures/
+*/*/*/Figures/
 
-last_lap/*/results/
-last_lap/Figures/
+#temp files
+*/*temp*/
+*/*/*temp*/
+*/*/*/*temp*/
 
+#paper Figures
+Paper_Figures/*.npy
+Paper_Figures/*/*.npy
+Paper_Figures/*/*/*.npy
+Paper_Figures/*/*/*/*.npy
