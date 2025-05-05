@@ -39,7 +39,7 @@ if len(sys.argv) > 2:
 disp = True                                     #Display messages during computation
 plot_exp = False                                #Plot experimental data for fit
 fit_SOC = False                                 #Fit SOC separately from tb parameters
-save_SOC = False
+save_SOC = True
 plot_SOC_fit = False
 time_profile = False                            #Profiling of different fitting steps
 
@@ -49,7 +49,7 @@ if time_profile:
 argc = int(sys.argv[1])
 if machine == 'maf':
     argc -= 1
-Number_random = 10      #number of random initializations
+Number_random = 1      #number of random initializations
 
 ind_spec_args = 0 if len(sys.argv)==1 else argc//Number_random
 ind_random = argc%Number_random

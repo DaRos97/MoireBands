@@ -4,6 +4,7 @@ import scipy.linalg as la
 from pathlib import Path
 import sys,os
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import itertools
 
 """temp value of chi 2"""
@@ -14,8 +15,8 @@ evaluation_step = 0
 
 def get_spec_args(ind):
     lTMDs = cfs.TMDs    #TMDs
-    lP = [0.1,0.2,0.3]         #coefficient of parameters distance from DFT chi2
-    lrp = [0.2,0.5,1,2]         #tb bounds
+    lP = [0.01,0.05,0.1,0.5,1]         #coefficient of parameters distance from DFT chi2
+    lrp = [0.2,0.5,1,1.5,2]         #tb bounds
     lrl = [0,]          #SOC bounds
     lReduced = [13,]
     lPbc = [10,]        #coefficient of band content chi2
@@ -102,35 +103,216 @@ def chi2(pars_tb,*args):
     if machine=='loc':    #Plot each nnnn steps
         nnnn = 1000
         if evaluation_step%nnnn==0:
-            fig = plt.figure(figsize=(20,20))
-            ax = fig.add_subplot(1,1,1)
-            for b in range(2):
-                ax.plot(reduced_data[b][:,0],reduced_data[b][:,1],color='r',marker='*',label='new symm' if b == 0 else '')
-                targ = np.argwhere(np.isfinite(reduced_data[b][:,1]))    #select only non-nan values
-                ax.plot(reduced_data[b][targ,0],tb_en[b,targ],color='g',marker='^',ls='-',label='fit' if b == 0 else '')
-            #
-            ax.set_xlabel(r'$A^{-1}$')
-            ax.set_ylabel('E(eV)')
-            ax.set_title("chi2: "+"{:.4f}".format(result))
-            plt.legend()
-            plt.savefig('Figures/temp.png')
-            plt.close(fig)
+            plot_bands(tb_en,reduced_data,title="chi2: "+"{:.4f}".format(result),figname='Figures/temp.png',show=False)
             print("New fig ",evaluation_step//nnnn,", chi2: ","{:.8f}".format(result))
-
-            #fig of distance from DFT values
-            fig = plt.figure(figsize=(15,20))
-            ax1 = fig.add_subplot(2,1,1)
-            ax1.bar(np.arange(len(pars_tb)),pars_tb-cfs.initial_pt[spec_args[0]][:-2],color='r')
-            ax1.set_ylabel("Absolute")
-            ax2 = fig.add_subplot(2,1,2)
-            ax2.bar(np.arange(len(pars_tb)),(pars_tb-cfs.initial_pt[spec_args[0]][:-2])/abs(np.array(cfs.initial_pt[spec_args[0]][:-2]))*100,color='b')
-            ax2.set_ylabel("Percentage")
-            ax.set_title("chi2: "+"{:.4f}".format(result))
-            fig.tight_layout()
-            plt.savefig('Figures/memp.png')
-            plt.close(fig)
+            if 0:#fig of distance from DFT values
+                fig = plt.figure(figsize=(15,20))
+                ax1 = fig.add_subplot(2,1,1)
+                ax1.bar(np.arange(len(pars_tb)),pars_tb-cfs.initial_pt[spec_args[0]][:-2],color='r')
+                ax1.set_ylabel("Absolute")
+                ax2 = fig.add_subplot(2,1,2)
+                ax2.bar(np.arange(len(pars_tb)),(pars_tb-cfs.initial_pt[spec_args[0]][:-2])/abs(np.array(cfs.initial_pt[spec_args[0]][:-2]))*100,color='b')
+                ax2.set_ylabel("Percentage")
+                ax1.set_title("chi2: "+"{:.4f}".format(result))
+                fig.tight_layout()
+                plt.savefig('Figures/memp.png')
+                plt.close(fig)
     #print("chi2: ","{:.7f}".format(result))
     return result
+
+def plot_bands(tb_en,reduced_data,dft_en=np.zeros(0),title='',figname='',show=False,TMD='WSe2'):
+    fig = plt.figure(figsize=(20,20))
+    ax = fig.add_subplot()
+    for b in range(2):
+        targ = np.argwhere(np.isfinite(reduced_data[b][:,1]))    #select only non-nan values
+        xline = reduced_data[b][targ,0]
+        ax.plot(xline,reduced_data[b][targ,1],color='r',marker='o',label='ARPES' if b == 0 else '',zorder=1,
+                markersize=10,mew=1,mec='k',mfc='firebrick')
+#        ax.plot(reduced_data[b][:,0],reduced_data[b][:,1],color='r',marker='*',label='new symm' if b == 0 else '')
+        ax.plot(xline,tb_en[b,targ],color='skyblue',marker='s',ls='-',label='Fit' if b == 0 else '',zorder=3,
+                markersize=10,mew=1,mec='k',mfc='deepskyblue')
+#        ax.plot(reduced_data[b][targ,0],tb_en[b,targ],color='g',marker='^',ls='-',label='fit' if b == 0 else '')
+        if not dft_en.shape[0]==0:
+            ax.plot(xline,dft_en[b,targ],color='g',marker='^',ls='-',label='DFT' if b == 0 else '',zorder=2,
+                    markersize=10,mew=1,mec='k',mfc='darkgreen')
+    #
+    ks = [xline[0][0],4/3*np.pi/cfs.dic_params_a_mono[TMD],xline[-1][0]]
+    ax.set_xticks(ks,[r"$\Gamma$",r"$K$",r"$M$"],size=20)
+    for i in range(3):
+        ax.axvline(ks[i],color='k',lw=0.5)
+    ax.set_xlim(ks[0],ks[-1])
+    ax.set_ylabel('energy (eV)',size=30)
+    label_y = []
+    ticks_y = np.linspace(np.max(tb_en)+0.2,np.min(tb_en)-0.2,5)
+    for i in ticks_y:
+        label_y.append("{:.1f}".format(i))
+    ax.set_yticks(ticks_y,label_y,size=20)
+    plt.legend(fontsize=20)
+    #
+    if not title=='':
+        ax.set_title(title)
+    if not figname=='':
+        plt.savefig(figname)
+        plt.close(fig)
+    if show:
+        plt.show()
+
+def plot_parameters(full_pars,spec_args,title='',figname='',show=False):
+    TMD = spec_args[0]
+    DFT_values = cfs.initial_pt[TMD]
+    fig = plt.figure(figsize=(20,14))
+    ax1 = fig.add_subplot()
+    ax1.bar(np.arange(len(full_pars[:-3])),full_pars[:-3]-DFT_values[:-3],
+            color='r',width=0.4,align='edge')
+    ax2 = ax1.twinx()
+    ax2.bar(np.arange(len(full_pars[:-3])),(full_pars[:-3]-DFT_values[:-3])/abs(np.array(DFT_values[:-3]))*100,
+            color='b',
+            align='edge',width=-0.4
+           )
+    #ax1 
+    ax1.set_ylim(-max(abs(full_pars[:-3]-DFT_values[:-3])),max(abs(full_pars[:-3]-DFT_values[:-3])))
+    ax1.set_xticks(np.arange(len(full_pars[:-3])),cfs.list_formatted_names_all[:-3],size=15)
+    ax1.tick_params(axis='y', labelsize=20,labelcolor='r')
+    ax1.set_xlim(-0.5,len(full_pars[:-3])-0.5)
+    #ax2
+    ticks_y = np.linspace(-spec_args[2]*100,spec_args[2]*100,5)
+    label_y = ["{:.1f}".format(i)+r"%" for i in ticks_y]
+    ax2.set_yticks(ticks_y,label_y,size=20,color='b')
+    ax2.set_ylim(-spec_args[2]*100,spec_args[2]*100)
+    box_dic = dict(boxstyle='round',facecolor='none',alpha=0.5)
+    ax2.fill_between([-0.5,6.5],[-spec_args[2]*100,-spec_args[2]*100],[spec_args[2]*100,spec_args[2]*100],alpha=.1,color='g',zorder=-1)
+    ax2.text(0,-20,"Orbitals' on-site energy",size=20,color='g',bbox=box_dic)
+    ax2.fill_between([6.5,35.5],[-spec_args[2]*100,-spec_args[2]*100],[spec_args[2]*100,spec_args[2]*100],alpha=.1,color='r',zorder=-1)
+    if spec_args[0]=='WSe2':
+        ax2.text(12,-20,"Hopping parameters",size=20,color='salmon',bbox=box_dic)
+    else:
+        ax2.text(15,-20,"Hopping parameters",size=20,color='salmon',bbox=box_dic)
+    ax2.fill_between([35.5,40.5],[-spec_args[2]*100,-spec_args[2]*100],[spec_args[2]*100,spec_args[2]*100],alpha=.1,color='y',zorder=-1)
+    ax2.text(36,-20,"Further\nneighbor\nhoppings",size=20,color='y',bbox=box_dic)
+    #Legend
+    handles = [
+        Line2D([0,1], [0,1], color='r', linewidth=10, label="Parameter \'absolute\' difference"),
+        Line2D([0,1], [0,1], color='b', linewidth=10, label="Parameter relative difference"),  ]
+    ax2.legend(handles=handles,loc='upper left',fontsize=20,facecolor='w',framealpha=1)
+    fig.tight_layout()
+    if not title=='':
+        ax1.set_title(title)
+    if not figname=='':
+        plt.savefig(figname)
+        plt.close(fig)
+    if show:
+        plt.show()
+
+def plot_orbitals(full_pars,title='',figname='',show=False,TMD='WSe2'):
+    Ngk = 16
+    Nkm = Ngk//2#int(Nmg*1/np.sqrt(3))
+    Nk = Ngk+Nkm+1  #+1 so we compute G twice
+    N2 = 2
+    #
+    a_TMD = cfs.dic_params_a_mono[TMD]
+    K = np.array([4*np.pi/3/a_TMD,0])
+    M = np.array([np.pi/a_TMD,np.pi/np.sqrt(3)/a_TMD])
+    data_k = np.zeros((Nk,2))
+    list_k = np.linspace(0,K[0],Ngk,endpoint=False)
+    data_k[:Ngk,0] = list_k
+    for ik in range(Nkm+1):
+        data_k[Ngk+ik] = K + (M-K)/Nkm*ik
+    data_evals = np.zeros((2,Nk,22))
+    data_evecs = np.zeros((2,Nk,22,22),dtype=complex)
+    for p in range(2):
+        par_values = np.array(cfs.initial_pt[TMD])  if p == 0 else full_pars
+        #
+        hopping = cfs.find_t(par_values)
+        epsilon = cfs.find_e(par_values)
+        offset = par_values[-3]
+        #
+        HSO = cfs.find_HSO(par_values[-2:])
+        args_H = (hopping,epsilon,HSO,a_TMD,offset)
+        #
+        all_H = cfs.H_monolayer(data_k,*args_H)
+        ens = np.zeros((Nk,22))
+        evs = np.zeros((Nk,22,22),dtype=complex)
+        for i in range(Nk):
+            #index of TVB is 13, the other is 12 (out of 22: 11 bands times 2 for SOC. 7/11 are valence -> 14 is the TVB)
+            ens[i],evs[i] = np.linalg.eigh(all_H[i])
+        data_evals[p] = ens
+        data_evecs[p] = evs
+    #Actual plot
+    fig,axs = plt.subplots(nrows=2,ncols=1,figsize=(15,10),gridspec_kw={'hspace':0,'right':0.877,'left':0.05,'top':0.98,'bottom':0.05})
+    for subp in range(2):   #DFT and fit orbitals
+        ax = axs[subp]
+        color = ['g','','pink','m','','r','b','','pink','m','']
+        marker = ['s','','o','s','','o','^','','o','s','']
+        #d orbitals
+        xvals = np.linspace(0,Nk-1,Nk)
+        for i in range(22):
+            ax.plot(xvals,data_evals[subp,:,i],'k-',lw=0.3,zorder=0)
+            for orb in [5,6,0]:    #3 different d orbitals
+                for ko in range(0,Nk,N2):   #kpts
+                    orb_content = np.linalg.norm(data_evecs[subp,ko,orb,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+11,i])**2
+                    if orb in [6,0]:
+                        orb_content += np.linalg.norm(data_evecs[subp,ko,orb+1,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+1+11,i])**2
+                    ax.scatter(xvals[ko],data_evals[subp,ko,i],s=orb_content*100,edgecolor=color[orb],marker=marker[orb],facecolor='none',lw=2,zorder=1)
+        #p orbitals
+        xvals = np.linspace(Nk-1,2*Nk-2,Nk)
+        for i in range(22):
+            ax.plot(xvals,data_evals[subp,::-1,i],'k-',lw=0.3,zorder=0)
+            for orb in [2,3]:    #3 different d orbitals
+                for ko in range(Nk-1,-1,-N2):   #kpts
+                    orb_content = np.linalg.norm(data_evecs[subp,ko,orb,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+11,i])**2
+                    orb_content += np.linalg.norm(data_evecs[subp,ko,orb+6,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+6+11,i])**2
+                    if orb in [3,]:
+                        orb_content += np.linalg.norm(data_evecs[subp,ko,orb+1,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+1+11,i])**2
+                        orb_content += np.linalg.norm(data_evecs[subp,ko,orb+6+1,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+1+6+11,i])**2
+                    ax.scatter(xvals[ko],data_evals[subp,Nk-1-ko,i],s=orb_content*100,edgecolor=color[orb],marker=marker[orb],facecolor='none',lw=2,zorder=1)
+        l_N = [0,Ngk,Ngk+Nkm,Ngk+Nkm+Nkm,2*Nk-2]
+        for l in range(len(l_N)):
+            ax.axvline(l_N[l],lw=0.5,color='k',zorder=0)
+            mm = np.min(data_evals[subp]) -0.2
+            MM = np.max(data_evals[subp]) +0.2
+            continue
+            for i in range(3):
+                if l==2 and i==1:
+                    break
+                ax.plot([l_N[i]+Nk*l,l_N[i]+Nk*l],[mm,MM],lw=0.5,color='k',zorder=0)
+        #
+        ax.set_xlim(0,2*Nk-2)
+        ax.set_ylim(mm,MM)
+        ax.yaxis.set_tick_params(labelsize=15)
+    #        ax.set_ylabel("Energy (eV)",fontsize=20)
+        if subp==0:
+            ax.set_xticks([])
+            #Legend 1
+            leg1 = []
+            name = [r'$d_{xz}+d_{yz}$','',r'$p_z$',r'$p_x+p_y$','',r'$d_{z^2}$',r'$d_{xy}+d_{x^2-y^2}$']
+            for i in [5,6,0]:
+                leg1.append( Line2D([0], [0], marker=marker[i], markeredgecolor=color[i], markeredgewidth=2, label=name[i],
+                                      markerfacecolor='none', markersize=10, lw=0)
+                                      )
+            legend1 = ax.legend(handles=leg1,loc=(1.003,0.01),
+                                fontsize=20,handletextpad=0.35,handlelength=0.5)
+            ax.add_artist(legend1)
+            #Legend2
+            leg2 = []
+            for i in [2,3]:
+                leg2.append( Line2D([0], [0], marker=marker[i], markeredgecolor=color[i], markeredgewidth=2, label=name[i],
+                                      markerfacecolor='none', markersize=10, lw=0)
+                                      )
+            legend2 = ax.legend(handles=leg2,loc=(1.003,-0.2),
+                                fontsize=20,handletextpad=0.35,handlelength=0.5)
+            ax.add_artist(legend2)
+        else:
+            ax.set_xticks(l_N,[r'$\Gamma$',r'$K$',r'$M$',r'$K$',r'$\Gamma$'],size=20)
+    box_dic = dict(boxstyle='round',facecolor='wheat',alpha=0.5)
+    axs[0].text(1.04,0.5,"DFT",size=30,bbox=box_dic,transform=axs[0].transAxes)
+    axs[1].text(1.04,0.5,"Fit",size=30,bbox=box_dic,transform=axs[1].transAxes)
+    if not title=='':
+        axs[0].set_title(title)
+    if not figname=='':
+        plt.savefig(figname)
+        plt.close(fig)
+    if show:
+        plt.show()
 
 def compute_band_content(parameters,HSO,TMD):
     """
@@ -290,8 +472,8 @@ def get_exp_fn(TMD,cut,band,machine):
 def get_temp_fit_fn(chi,spec_args,ind_random,machine):
     return get_temp_dn(machine,spec_args)+'temp_'+str(ind_random)+"_"+"{:.8f}".format(chi)+'.npy'
 
-def get_res_fn(spec_args,machine):
-    return get_res_dn(machine)+'result_'+get_spec_args_txt(spec_args)+'.npy'
+def get_res_fn(TMD,machine):
+    return get_res_dn(machine)+'result_'+TMD+'.npy'
 
 def get_fig_fn(spec_args,machine):
     return get_fig_dn(machine)+'fig_'+get_spec_args_txt(spec_args)+'.png'
@@ -299,14 +481,14 @@ def get_fig_fn(spec_args,machine):
 def get_SOC_fn(TMD,machine):
     return get_res_dn(machine)+TMD+'_SOC.npy'
 
-def get_fig_dn(machine):
-    return get_res_dn(machine)+'Figures/'
-
 def get_exp_dn(machine):
     return get_home_dn(machine)+'inputs/'
 
 def get_res_dn(machine):
     return get_home_dn(machine)+'Data/'
+
+def get_fig_dn(machine):
+    return get_home_dn(machine)+'Figures/'
 
 def get_temp_dn(machine,spec_args):
     return get_res_dn(machine)+'temp_'+get_spec_args_txt(spec_args)+'/'
