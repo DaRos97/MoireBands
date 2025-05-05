@@ -31,9 +31,9 @@ from time import time as ttt
 from datetime import timedelta
 machine = cfs.get_machine(os.getcwd())          #Machine on which the computation is happening
 
-if len(sys.argv) > 3:
+if len(sys.argv) > 2:
     print("Usage: py monolayer.py arg1(optional=0) arg2(optional=0)",
-         "\narg1->specifications, arg2->random realization")
+         "\narg1->specifications")
     exit()
 
 disp = True                                     #Display messages during computation
@@ -46,8 +46,13 @@ time_profile = False                            #Profiling of different fitting 
 if time_profile:
     t_initial = ttt()
 
-ind_spec_args = 0 if len(sys.argv)==1 else int(sys.argv[1])
-ind_random = 0 if len(sys.argv)<3 else int(sys.argv[2])
+argc = int(sys.argv[1])
+if machine == 'maf':
+    argc -= 1
+Number_random = 10      #number of random initializations
+
+ind_spec_args = 0 if len(sys.argv)==1 else argc//Number_random
+ind_random = argc%Number_random
 
 spec_args = fsm.get_spec_args(ind_spec_args)
 TMD = spec_args[0]
@@ -166,7 +171,7 @@ initial_point_full = DFT_values*rand_vals    #eps,t,off,lam
 #
 Bounds_full = fsm.get_bounds(DFT_values,spec_args)
 HSO = cfs.find_HSO(SOC_pars[-2:])
-args_chi2 = (reduced_data,HSO,SOC_pars,machine,spec_args,ind_random)
+args_chi2 = (reduced_data,HSO,SOC_pars,machine,spec_args,ind_random,1e5)
 Bounds = Bounds_full[:-2]
 initial_point = DFT_values[:-2]#initial_point_full[:-2]
 #

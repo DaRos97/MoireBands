@@ -62,7 +62,7 @@ def chi2(pars_tb,*args):
     """
     Compute square difference of bands with exp data.
     """
-    reduced_data, HSO, SOC_pars, machine, spec_args, ind_random = args
+    reduced_data, HSO, SOC_pars, machine, spec_args, ind_random, max_eval = args
     full_pars = np.append(pars_tb,SOC_pars[-2:])
     #Compute energy of new pars
     tb_en = cfs.energy(full_pars,HSO,reduced_data,spec_args[0])
@@ -80,8 +80,8 @@ def chi2(pars_tb,*args):
     result += Pbc*(2-np.sum(np.absolute(band_content)**2))
     #chi2 of distance at Gamma and K
     Pdk = spec_args[6]
-    indexes = [0,np.argmax(reduced_data[0][:,1])]    #indexes of Gamma and K for ind_reduced=14      #####
     for i in range(2):  #2 bands
+        indexes = [0,np.argmax(reduced_data[0][~np.isnan(reduced_data[i][:,1]),1])]    #indexes of Gamma and K for ind_reduced=14      #####
         for j in range(2):  #Gamma and K
             result += Pdk*(np.absolute(tb_en[i,indexes[j]]-reduced_data[i][indexes[j],1])**2)
     #Save temporary file if result goes down
@@ -93,10 +93,13 @@ def chi2(pars_tb,*args):
         min_chi2 = result
         temp_fn = get_temp_fit_fn(min_chi2,spec_args,ind_random,machine)
         np.save(temp_fn,pars_tb)
+    global evaluation_step
+    evaluation_step += 1
+    if evaluation_step>max_eval:
+        print("reached max number of evaluations")
+        exit()
     #Plot figure every N steps to see how it is going
     if machine=='loc':    #Plot each nnnn steps
-        global evaluation_step
-        evaluation_step += 1
         nnnn = 1000
         if evaluation_step%nnnn==0:
             fig = plt.figure(figsize=(20,20))
