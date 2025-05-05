@@ -28,7 +28,6 @@ def energy(parameters,HSO,data,TMD):
     for i in range(kpts):
         #index of TVB is 13, the other is 12 (out of 22: 11 bands times 2 for SOC. 7/11 are valence -> 14 is the TVB)
         ens[:,i] = la.eigvalsh(all_H[i])[12:14][::-1]
-#        Ens = Parallel(n_jobs=16)(delayed(egvals)(H_i) for H_i in all_H)
     return ens
 
 def H_monolayer(K_p,*args):
@@ -45,14 +44,14 @@ def H_monolayer(K_p,*args):
     H_0 = np.zeros((11,11),dtype=complex) if not vec else np.zeros((11,11,K_p.shape[0]),dtype=complex)
     #Diagonal
     for i in range(11):
-        H_0[i,i] += (epsilon[i] + 2*t[0][i,i]*np.cos(np.dot(K_p,delta[0])) 
+        H_0[i,i] += (epsilon[i] + 2*t[0][i,i]*np.cos(np.dot(K_p,delta[0]))
                              + 2*t[1][i,i]*(np.cos(np.dot(K_p,delta[1])) + np.cos(np.dot(K_p,delta[2])))
                  )
     #Off diagonal symmetry +
     for ind in J_plus:
         i = ind[0]-1
         j = ind[1]-1
-        temp = (2*t[0][i,j]*np.cos(np.dot(K_p,delta[0])) 
+        temp = (2*t[0][i,j]*np.cos(np.dot(K_p,delta[0]))
                 + t[1][i,j]*(np.exp(-1j*np.dot(K_p,delta[1])) + np.exp(-1j*np.dot(K_p,delta[2])))
                 + t[2][i,j]*(np.exp(1j*np.dot(K_p,delta[1])) + np.exp(1j*np.dot(K_p,delta[2])))
                 )
@@ -62,7 +61,7 @@ def H_monolayer(K_p,*args):
     for ind in J_minus:
         i = ind[0]-1
         j = ind[1]-1
-        temp = (-2*1j*t[0][i,j]*np.sin(np.dot(K_p,delta[0])) 
+        temp = (-2*1j*t[0][i,j]*np.sin(np.dot(K_p,delta[0]))
                 + t[1][i,j]*(np.exp(-1j*np.dot(K_p,delta[1])) - np.exp(-1j*np.dot(K_p,delta[2])))
                 + t[2][i,j]*(-np.exp(1j*np.dot(K_p,delta[1])) + np.exp(1j*np.dot(K_p,delta[2])))
                 )

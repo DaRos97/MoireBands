@@ -34,6 +34,7 @@ machine = cfs.get_machine(os.getcwd())          #Machine on which the computatio
 if len(sys.argv) > 3:
     print("Usage: py monolayer.py arg1(optional=0) arg2(optional=0)",
          "\narg1->specifications, arg2->random realization")
+    exit()
 
 disp = True                                     #Display messages during computation
 plot_exp = False                                #Plot experimental data for fit
@@ -151,6 +152,7 @@ else:
 
 """
 We want a minimization of tb bands vs experiment which penalizes going away from DFT initial values.
+Here we fit the rest of the parameters -> not SOC.
 """
 print("Computing tb parameters")
 #
@@ -174,7 +176,7 @@ result = minimize(fsm.chi2,
         bounds = Bounds,
         method = 'Nelder-Mead',
         options = {
-            'disp': False,
+            'disp': True,
             'adaptive' : True,
             'fatol': 1e-4,
 #            'xatol': 1e-8,
@@ -184,8 +186,9 @@ result = minimize(fsm.chi2,
 
 min_chi2 = result.fun
 print("Minimum chi2: ",min_chi2)
-t_final = timedelta(seconds=ttt()-t_initial)
-print("Total time: ",str(t_final))
+if time_profile:
+    t_final = timedelta(seconds=ttt()-t_initial)
+    print("Total time: ",str(t_final))
 
 
 

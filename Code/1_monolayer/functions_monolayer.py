@@ -13,17 +13,18 @@ min_chi2 = 1e5
 evaluation_step = 0
 
 def get_spec_args(ind):
-    lP = [0.1,]
-    lrp = [0.5]     #tb bounds
-    lrl = [0,]      #SOC bounds
+    lTMDs = cfs.TMDs    #TMDs
+    lP = [0.1,0.2,0.3]         #coefficient of parameters distance from DFT chi2
+    lrp = [0.2,0.5,1,2]         #tb bounds
+    lrl = [0,]          #SOC bounds
     lReduced = [13,]
-    lPbc = [10,]
-    lPdk = [20,]
-    return list(itertools.product(*[cfs.TMDs,lP,lrp,lrl,lReduced,lPbc,lPdk]))[ind]
+    lPbc = [10,]        #coefficient of band content chi2
+    lPdk = [20,]        #coefficient of distance at gamma and K chi2
+    return list(itertools.product(*[lTMDs,lP,lrp,lrl,lReduced,lPbc,lPdk]))[ind]
 
 def chi2_SOC(pars_SOC,*args):
     """
-    Compute square difference of bands with exp data.
+    Compute square difference of bands with exp data and compare G, K and maybe M point.
     """
     reduced_data, other_pars, TMD, machine = args
     HSO = cfs.find_HSO(pars_SOC[1:])
@@ -58,8 +59,8 @@ def chi2_SOC(pars_SOC,*args):
     return result
 
 def chi2(pars_tb,*args):
-    """Compute square difference of bands with exp data.
-
+    """
+    Compute square difference of bands with exp data.
     """
     reduced_data, HSO, SOC_pars, machine, spec_args, ind_random = args
     full_pars = np.append(pars_tb,SOC_pars[-2:])
@@ -69,7 +70,7 @@ def chi2(pars_tb,*args):
     result = 0
     #chi2 of bands distance
     for b in range(2):
-        result += np.sum(np.absolute(tb_en[b]-reduced_data[b][:,1])**2)
+        result += np.sum(np.absolute((tb_en[b]-reduced_data[b][:,1])[~np.isnan(reduced_data[b][:,1])])**2)
     #chi2 of parameters distance
     par_dis = compute_parameter_distance(pars_tb,spec_args[0])
     result += spec_args[1]*par_dis
@@ -79,7 +80,7 @@ def chi2(pars_tb,*args):
     result += Pbc*(2-np.sum(np.absolute(band_content)**2))
     #chi2 of distance at Gamma and K
     Pdk = spec_args[6]
-    indexes = [0,27]    #indexes of Gamma and K for ind_reduced=14
+    indexes = [0,np.argmax(reduced_data[0][:,1])]    #indexes of Gamma and K for ind_reduced=14      #####
     for i in range(2):  #2 bands
         for j in range(2):  #Gamma and K
             result += Pdk*(np.absolute(tb_en[i,indexes[j]]-reduced_data[i][indexes[j],1])**2)
@@ -109,7 +110,7 @@ def chi2(pars_tb,*args):
             ax.set_ylabel('E(eV)')
             ax.set_title("chi2: "+"{:.4f}".format(result))
             plt.legend()
-            plt.savefig('results/figures/temp.png')
+            plt.savefig('Figures/temp.png')
             plt.close(fig)
             print("New fig ",evaluation_step//nnnn,", chi2: ","{:.8f}".format(result))
 
@@ -123,7 +124,7 @@ def chi2(pars_tb,*args):
             ax2.set_ylabel("Percentage")
             ax.set_title("chi2: "+"{:.4f}".format(result))
             fig.tight_layout()
-            plt.savefig('results/figures/memp.png')
+            plt.savefig('Figures/memp.png')
             plt.close(fig)
     #print("chi2: ","{:.7f}".format(result))
     return result
@@ -133,16 +134,20 @@ def compute_band_content(parameters,HSO,TMD):
     Computes the band content of d0 and p0e at Gamma and the band content of dp2 and ppe at K.
     Returns a list with the coefficients: (c1t,c1,c6t,c6) in the notation of Fang et al., which
     are the components of d0,p0e,dp2,ppe respectvely.
+    HSO not really needed but time not so critical here.
     """
     functions_kpt = [[d0,p0e],[dp2,ppe]]
     args_H = (cfs.find_t(parameters),cfs.find_e(parameters),HSO,cfs.dic_params_a_mono[TMD],parameters[-3])
-    k_pts = np.array([np.zeros(2),cfs.R_z(np.pi/3)@np.array([4/3*np.pi/cfs.dic_params_a_mono[TMD],0])])
+    k_pts = np.array([
+        np.zeros(2),        #Gamma
+        cfs.R_z(np.pi/3)@np.array([4/3*np.pi/cfs.dic_params_a_mono[TMD],0])     #K
+    ])
     H = cfs.H_monolayer(k_pts,*args_H)
     result = []
     for i in range(k_pts.shape[0]): #kpt
         evals,evecs = np.linalg.eigh(H[i,:11,:11])
-        for j in range(2):  #2 orbitals at each k_pt
-            result.append(functions_kpt[i][j](evecs[:,6]))
+        for j in range(2):  #2 orbitals at each momentum point
+            result.append(functions_kpt[i][j](evecs[:,6]))  # 6 -> top valence band
     return result
 
 def get_exp_data(TMD,machine):
@@ -292,7 +297,7 @@ def get_SOC_fn(TMD,machine):
     return get_res_dn(machine)+TMD+'_SOC.npy'
 
 def get_fig_dn(machine):
-    return get_res_dn(machine)+'figures/'
+    return get_res_dn(machine)+'Figures/'
 
 def get_exp_dn(machine):
     return get_home_dn(machine)+'inputs/'
