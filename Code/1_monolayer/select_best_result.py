@@ -21,9 +21,14 @@ from matplotlib.lines import Line2D
 from pathlib import Path
 machine = cfs.get_machine(os.getcwd())          #Machine on which the computation is happening
 
+if len(sys.argv) not in [1,2]:
+    print("Usage: py select_best_result.py arg1")
+    print("arg1: WSe2(default) or WS2")
+    exi()
+
 pars_selected_dic = {       #Best foud parameters
-    'WSe2':[0.05,0.5  ,0],
-    'WS2': [0.05,0.5  ,0]
+    'WSe2':[0.1,0.2  ,0],
+    'WS2': [0.1,0.2  ,0]
                     }
 
 #Loop over spec_args

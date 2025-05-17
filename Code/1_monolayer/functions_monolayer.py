@@ -15,15 +15,15 @@ evaluation_step = 0
 
 def get_spec_args(ind):
     lTMDs = cfs.TMDs    #TMDs
-    lP = [0.01,0.05,0.1,0.5,1]         #coefficient of parameters distance from DFT chi2
-    lrp = [0.2,0.5,1,1.5,2]         #tb bounds
-    lrl = [0,]          #SOC bounds
+    lP = [0.01,0.05,0.07,0.1,0.2,0.3]         #coefficient of parameters distance from DFT chi2
+    lrp = [0.1,0.2,0.3,0.5,0.7,1]         #tb bounds
+    lrl = [0,0.1,0.2,0.3]          #SOC bounds
     lReduced = [13,]
     lPbc = [10,]        #coefficient of band content chi2
     lPdk = [20,]        #coefficient of distance at gamma and K chi2
     return list(itertools.product(*[lTMDs,lP,lrp,lrl,lReduced,lPbc,lPdk]))[ind]
 
-def chi2_SOC(pars_SOC,*args):
+def chi2_off_SOC(pars_SOC,*args):
     """
     Compute square difference of bands with exp data and compare G, K and maybe M point.
     """
@@ -59,12 +59,24 @@ def chi2_SOC(pars_SOC,*args):
         plt.show()
     return result
 
-def chi2(pars_tb,*args):
+def chi2_full(pars_full,*args):
+    """
+    Wrapper of chi2_tb with SOC paameters.
+    """
+    reduced_data,machine,spec_args,ind_random,max_eval = args
+    SOC_pars = pars_full[-2:]
+    HSO = cfs.find_HSO(SOC_pars)
+    args_chi2 = (reduced_data,HSO,SOC_pars,machine,spec_args,ind_random,max_eval)
+    pars_tb = pars_full[:-2]
+    return chi2_tb(pars_tb,*args_chi2)
+
+def chi2_tb(pars_tb,*args):
     """
     Compute square difference of bands with exp data.
+    Made for fitting WITHOUT SOC parameters -> HSO already computed.
     """
     reduced_data, HSO, SOC_pars, machine, spec_args, ind_random, max_eval = args
-    full_pars = np.append(pars_tb,SOC_pars[-2:])
+    full_pars = np.append(pars_tb,SOC_pars)
     #Compute energy of new pars
     tb_en = cfs.energy(full_pars,HSO,reduced_data,spec_args[0])
     #
@@ -93,7 +105,8 @@ def chi2(pars_tb,*args):
             os.system('rm '+temp_fn)
         min_chi2 = result
         temp_fn = get_temp_fit_fn(min_chi2,spec_args,ind_random,machine)
-        np.save(temp_fn,pars_tb)
+        pars_full = np.append(pars_tb,SOC_pars)
+        np.save(temp_fn,pars_full)
     global evaluation_step
     evaluation_step += 1
     if evaluation_step>max_eval:

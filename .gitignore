@@ -27,3 +27,6 @@ Paper_Figures/*.npy
 Paper_Figures/*/*.npy
 Paper_Figures/*/*/*.npy
 Paper_Figures/*/*/*/*.npy
+
+#Poster
+Poster/

@@ -21,13 +21,13 @@ We add `rp` as the percentage max distance from the DT parameters -> best at 50%
 - `monolayer.py`
 - `functions_monolayer.py`
 
+#Analyze results
+- `select_best_result.py`
+
 #Copy from hpc: 'bash_code/'+
 - `ygg.sh`
 - `bao.sh`
 - `maf.sh`
-
-#Analyze results
-- `select_best_result.py`
 
 #Job scripts
 - `~*.sbatch` and `*.qsub` are for hpc
