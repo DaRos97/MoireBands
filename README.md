@@ -1,6 +1,12 @@
-# General structure
+#Main code -> Code
 
-Folders 0,1,... have the actual code in the order intended to be executed.
+We split it into the different steps of the calculation:
+- 1: monolayer
+- 2: interlayer coupling
+- 3: moire potential
+- 4: Constant Energy Maps (CEM's)
+
+# General structure
 
 ## Models
 
@@ -21,7 +27,7 @@ All steps from monolayer to moire fit and CEMs.
 - Three band model: 
     - KGK cut and CEMs
     Problem:    Crossing of bands b/w Gamma and K -> TB model not good
-- Eleven band model:    
+- Eleven band model:
     - Fitting of monolayers to the 44 parameters of the model (problem in GG data..) -> 1_monolayer_fitting
     - KGK cut
     Problem: no C3 symmetry around Gamma
@@ -43,4 +49,3 @@ Open problems:
     - S3 side band around Gamma
     - Matrix elements ? 
 
-# Last lap

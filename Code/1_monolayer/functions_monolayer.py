@@ -486,7 +486,7 @@ def get_temp_fit_fn(chi,spec_args,ind_random,machine):
     return get_temp_dn(machine,spec_args)+'temp_'+str(ind_random)+"_"+"{:.8f}".format(chi)+'.npy'
 
 def get_res_fn(TMD,machine):
-    return get_res_dn(machine)+'result_'+TMD+'.npy'
+    return get_fig_dn(machine)+'result_'+TMD+'.npy'
 
 def get_fig_fn(spec_args,machine):
     return get_fig_dn(machine)+'fig_'+get_spec_args_txt(spec_args)+'.png'

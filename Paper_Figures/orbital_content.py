@@ -2,12 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys,os
 cwd = os.getcwd()
-if cwd[6:11] == 'dario':
-    master_folder = cwd[:43]
-elif cwd[:20] == '/home/users/r/rossid':
-    master_folder = cwd[:20] + '/git/MoireBands/last_lap'
-elif cwd[:13] == '/users/rossid':
-    master_folder = cwd[:13] + '/git/MoireBands/last_lap'
+master_folder = '/home/dario/Desktop/git/MoireBands/Code/'
 sys.path.insert(1, master_folder)
 import CORE_functions as cfs
 from pathlib import Path

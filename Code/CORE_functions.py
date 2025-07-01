@@ -11,6 +11,7 @@ J_MX_plus = ((3,1), (5,1), (4,2), (10,6), (9,7), (11,7), (10,8))
 J_MX_minus = ((4,1), (3,2), (5,2), (9,6), (11,6), (10,7), (9,8), (11,8))
 
 TMDs = ['WSe2','WS2']
+m_list = [[-1,1],[-1,0],[0,-1],[1,-1],[1,0],[0,1]]  #for computing mini-BZ hoppings in moirè potential
 
 def energy(parameters,HSO,data,TMD):
     """Compute energy along the two cuts of 2 TopValenceBand for all considered k.
@@ -326,24 +327,34 @@ def find_HSO(SO_pars):
     HSOf = HSOf[:,[6,7,10,8,9,0,2,1,5,3,4,17,18,21,19,20,11,13,12,16,14,15]]
     return HSOf
 
-def get_K(cut,k_pts):
-    """Get cut in BZ to compute. The cut is composed of a list of high symmetry points separated by '-'."""
-    K0 = 4/3*np.pi/dic_params_a_mono['WSe2']
-    K = np.array([K0,0])
-    k = K/10
+def get_kList(cut,kPts):
+    """
+    Get cut in BZ to compute.
+    The cut is composed of a list of high symmetry points separated by '-', supported: Kp, K, M, G.
+    The number of points in the list are divided in the different segments depending on their actual BZ length.
+    """
+    b2 = 4*np.pi/np.sqrt(3)/dic_params_a_mono['WSe2'] * np.array([0,1])
+    b1 = R_z(-np.pi/3) @ b2
+    b6 = R_z(-2*np.pi/3) @ b2
+    K = (b1+b6)/3
     Kp = R_z(np.pi/3)@K
-    kp = Kp/10
     G = np.array([0,0])
-    M = np.array([K0/4*3,K0/4*np.sqrt(3)])
-    dic_Kpts = {'K':K,'Kp':Kp,'G':G,'M':M,'k':k,'kp':kp}
-    res = np.zeros((k_pts,2))
+    M = b1/2
+    dic_Kpts = {'K':K,'Kp':Kp,'G':G,'M':M}
     terms = cut.split('-')
-    if k_pts%(len(terms)-1) != 0:
-        print("Number of points not a multiple of the cut sections")
-        exit()
-    for t in range(1,len(terms)):
-        for i in range(k_pts//(len(terms)-1)):
-            res[i+(t-1)*k_pts//(len(terms)-1)] = dic_Kpts[terms[t-1]] + (dic_Kpts[terms[t]]-dic_Kpts[terms[t-1]])/(k_pts//(len(terms)-1))*i
+    dks = np.zeros(len(terms)-1)    #compute absolute values of distances b/w points
+    for i in range(len(terms)-1):
+        dks[i] = np.linalg.norm(dic_Kpts[terms[i+1]]-dic_Kpts[terms[i]])
+    tot_k = np.sum(dks)     #sum to have total length of path
+    ls = np.zeros(len(terms)-1,dtype=int)   #define number of points for each segment
+    for i in range(len(terms)-1):
+        ls[i] = int(dks[i]/tot_k*kPts)
+    kPts = ls.sum()     #adjust total number of points
+    res = np.zeros((kPts,2))
+    for i in range(len(terms)-1):
+        for p in range(ls[i]):
+            ind = p if i==0 else p+ls[:i].sum()
+            res[ind] = dic_Kpts[terms[i]] + (dic_Kpts[terms[i+1]] - dic_Kpts[terms[i]])/ls[i]*p
     return res
 
 #######################################################################################
@@ -401,10 +412,52 @@ dic_params_twist = {
         }
 
 def moire_length(theta):
+    """
+    Real space moire lattice length.
+    """
     return 1/np.sqrt(1/dic_params_a_mono['WSe2']**2+1/dic_params_a_mono['WS2']**2-2*np.cos(theta)/dic_params_a_mono['WSe2']/dic_params_a_mono['WS2'])
 
 def miniBZ_rotation(theta):
-    return np.arctan(-np.tan(theta/2)*(dic_params_a_mono['WSe2']+dic_params_a_mono['WS2'])/(dic_params_a_mono['WSe2']-dic_params_a_mono['WS2']))
+    """
+    Compute eta, the rotation of the mini-BZ wrt the monolayer BZ.
+    It's the angle of the segment between the K points of the 2 layers.
+    """
+    return np.arctan(np.tan(theta/2)*(dic_params_a_mono['WSe2']+dic_params_a_mono['WS2'])/(dic_params_a_mono['WSe2']-dic_params_a_mono['WS2']))
+
+def get_reciprocal_moire(theta):
+    """
+    Compute moire reciprocal lattice vectors.
+    They depend on the moire length for the size and on the orientation of the mini-BZ for the direction.
+    Returns a list of 7 vectors, first one being 0.
+    """
+    eta = miniBZ_rotation(theta)
+    Mat = R_z(eta)
+    G1 = 4*np.pi/np.sqrt(3)/moire_length(theta)*np.array([np.sqrt(3)/2,1/2])
+    G_M = [np.zeros(2), Mat@G1,]
+    for i in range(1,6):
+        G_M.append(R_z(np.pi/3*i) @ G_M[1])
+    return G_M
+
+def get_lattice_vectors(TMD,theta=0):
+    """
+    Compute single layer real-space and reciprocal lattice vectors.
+    The conventions we use are:
+        - WSe2 -> unit cell is aligned, with vertical bonds.
+        - WS2 -> unit cell has theta rotation.
+    """
+    As = [ R_z(theta/180*np.pi) @ a_1*dic_params_a_mono[TMD], ]
+    for i in range(1,6):
+        As.append(R_z(np.pi/3*i) @ As[0])
+    # Compute area (scalar cross product)
+    area = As[0][0]*As[1][1] - As[0][1]*As[1][0]
+    # Reciprocal lattice vectors
+    Bs = [ 2 * np.pi * np.array([ As[1][1], -As[1][0]]) / area, ]
+    for i in range(1,6):
+        Bs.append(R_z(np.pi/3*i) @ Bs[0])
+    # Rotate Bs to stick with conventions
+    Bs = Bs[1:] + Bs[:1]
+    return As, Bs
+
 
 initial_pt = {
         'WS2': [
@@ -493,7 +546,7 @@ initial_pt = {
             -0.2736,
 
             #'offset
-            -1.34,
+            -1.350,
 
             #SO
             #'W':
@@ -588,7 +641,7 @@ initial_pt = {
             -0.2424,
 
             #'offset
-            -0.73,
+            -0.736,
 
             #SO
             #'W':
@@ -600,59 +653,59 @@ initial_pt = {
 
 #Names of independent parameters of the model
 list_names_all = [
-            'e1', 
-            'e3',  
-            'e4',   
-            'e6',   
-            'e7',   
-            'e9',   
-            'e10',  
+            'e1',
+            'e3',
+            'e4',
+            'e6',
+            'e7',
+            'e9',
+            'e10',
             't1_11',
-            't1_22',   
-            't1_33',   
-            't1_44',   
-            't1_55',   
-            't1_66',   
-            't1_77',   
-            't1_88',   
-            't1_99',   
-            't1_1010',   
+            't1_22',
+            't1_33',
+            't1_44',
+            't1_55',
+            't1_66',
+            't1_77',
+            't1_88',
+            't1_99',
+            't1_1010',
             't1_1111',
-            't1_35',   
-            't1_68',   
-            't1_911',   
+            't1_35',
+            't1_68',
+            't1_911',
             't1_12',
-            't1_34',   
-            't1_45',   
-            't1_67',   
-            't1_78',   
-            't1_910',   
-            't1_1011',   
-            't5_41',   
-            't5_32',   
-            't5_52',   
-            't5_96',   
-            't5_116',   
-            't5_107',   
-            't5_98',   
-            't5_118',   
-            't6_96',   
-            't6_116',   
-            't6_98',   
-            't6_118',          
+            't1_34',
+            't1_45',
+            't1_67',
+            't1_78',
+            't1_910',
+            't1_1011',
+            't5_41',
+            't5_32',
+            't5_52',
+            't5_96',
+            't5_116',
+            't5_107',
+            't5_98',
+            't5_118',
+            't6_96',
+            't6_116',
+            't6_98',
+            't6_118',
             'offset',
             'L_W',
             'L_S',
             ]
 #Formatted names of independent parameters of the model
 list_formatted_names_all = [
-            '$\epsilon_1$',
-            '$\epsilon_3$',
-            '$\epsilon_4$',
-            '$\epsilon_6$',
-            '$\epsilon_7$',
-            '$\epsilon_9$',
-            '$\epsilon_{10}$',
+            r'$\epsilon_1$',
+            r'$\epsilon_3$',
+            r'$\epsilon_4$',
+            r'$\epsilon_6$',
+            r'$\epsilon_7$',
+            r'$\epsilon_9$',
+            r'$\epsilon_{10}$',
             '$t^{(1)}_{1,1}$',
             '$t^{(1)}_{2,2}$',
             '$t^{(1)}_{3,3}$',
@@ -687,8 +740,8 @@ list_formatted_names_all = [
             '$t^{(6)}_{9,8}$',
             '$t^{(6)}_{11,8}$',
             '$offset$',
-            '$\lambda_W$',
-            '$\lambda_{Se}$',
+            r'$\lambda_W$',
+            r'$\lambda_{Se}$',
             ]
 
 #######################################################################################
@@ -699,20 +752,28 @@ list_formatted_names_all = [
 """Parameters of experimental image
 
 In order, are:
-    K_initial, K_final, E_initial, E_final,
-    pixel of k=-1, pixel of k=1, pixel of e=E_i, pixel of e=E_F
+    E_max, E_min,
+    pixel of k=-1, pixel of k=1, pixel of e=E_max, pixel of e=E_min
 
 """
 
 dic_pars_samples = {
-        'S11': [-1.4, 1.4, 0, -3.5,
+        'S11': [0.0, -3.5,       #adjusted to have same scale as S3
                 810, 2371, 89, 1899],
-        'S3':  [-1.4, 1.4, 0, -2.5,
+        'S3':  [0, -2.5,
                 697, 2156, 108, 1681],
-        'S11zoom': [-1.4, 1.4, -0.6, -1.8,
+        'S11zoom': [-0.6, -1.8,
                 840, 2980, 86, 1147],
         }
 
 dic_energy_bounds = {'S11zoom':(-0.6,-1.8), 'S11':(-0.5,-2.5), 'S3':(-0.2,-1.8)}
 
-
+#Interlayer parameters of "constant" part w1 for p and d orbitals in the different cases
+w1p_dic = {
+    'DFT':{'S3':-1.65,'S11':-1.82},
+    'fit':{'S3':-1.725,'S11':-1.725}#-1.92}
+          }
+w1d_dic = {
+    'DFT':{'S3':0.34 ,'S11':0.42},
+    'fit':{'S3':0.37  ,'S11':0.37}#0.46}
+          }
