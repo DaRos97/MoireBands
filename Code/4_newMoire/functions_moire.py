@@ -196,7 +196,7 @@ def weight_spreading(weight,K_temp,E_temp,K_list,e_grid,pars_spread):
     if type_of_spread == 'Lorentz':
         E2 = spread_E**2
         K2 = spread_k**2
-        return weight/(k_grid**2+K2)/((e_grid-E_temp)**2+E2)
+        return spread_E/np.pi*spread_k/np.pi*weight/(k_grid**2+K2)/((e_grid-E_temp)**2+E2)
     elif type_of_spread == 'Gauss':
         return weight*np.exp(-(k_grid/spread_k)**2)*np.exp(-((e_grid-E_temp)/spread_E)**2)
 
@@ -288,7 +288,6 @@ def plot_rk(theta,kList,cut,save_plot_rk):
 
     plt.show()
 
-
 def voigt(x, amplitude, center, sigma, gamma):
     """
     Voigt profile: convolution of Lorentzian and Gaussian
@@ -305,7 +304,7 @@ def double_voigt(x, amp1, cen1, sig1, gam1, amp2, cen2, sig2, gam2):
 import warnings
 warnings.filterwarnings("ignore", message="Using UFloat objects with std_dev==0")
 
-def EDC(args,spreadE=0.03,disp=False):
+def EDC(args,spreadE=0.03,disp=False,plot=False,figname=''):
     """
     Compute energy distance of side bands crossing from main band.
     We do it by diagonalizing the Hamiltonian at the desired k point.
@@ -339,7 +338,7 @@ def EDC(args,spreadE=0.03,disp=False):
             print(weightMainBand)
             print(fullWeightValues)
             print(np.max(fullWeightValues))
-        return -1
+#        return -1
     for i in range(len(fullEnergyValues)):
         weightList += spreadE/np.pi * fullWeightValues[i] / ((energyList-fullEnergyValues[i])**2+spreadE**2)
     try:    # Fit the spreaded weights with two Lorentzian peaks convoluted with a Gaussian
@@ -372,42 +371,67 @@ def EDC(args,spreadE=0.03,disp=False):
             print(result.fit_report())
     except Exception as e:
         if disp:
-            print("fit didn't work, exception {e}")
+            print("Fit didn't work, exception {e}")
         distance = -1
         fitSuccess = False
-    if disp:
-        imageAroundGamma = 0
+    if plot:
+        imageAroundGamma = 1
         if imageAroundGamma:       #Compute image zoom around Gamma
-            fig = plt.figure(figsize=(20,10))
+            fig = plt.figure(figsize=(20,13))
+            import matplotlib.gridspec as gridspec
+            gs = gridspec.GridSpec(2, 2, width_ratios=[1, 0.5])
             # Need to compute some points around Gamma
-            kPts = 71 #has to be odd
-            range_k = 0.3
+            kPts = 201 #has to be odd
+            range_k = 0.6
             kList = np.zeros((kPts,2))
             kList[:,0] = np.linspace(-range_k,range_k,kPts)
             nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, moir_pars, _, __, disp = args
-            args2 = (nShells, nCells, kList, monolayer_type, parsInterlayer, theta, moir_pars, '', False, disp)
+            args2 = (nShells, nCells, kList, monolayer_type, parsInterlayer, theta, moir_pars, '', False, True)
             evals2, evecs2 = diagonalize_matrix(*args2)
             weights2 = np.zeros((kPts,nCells*44))
             for i in range(kPts):
                 ab2 = np.absolute(evecs2[i])**2
                 weights2[i,:] = np.sum(ab2[:22,:],axis=0) + np.sum(ab2[22*nCells:22*(1+nCells),:],axis=0)
-            #Figure
-            ax = fig.add_subplot(121)
+            #Figure of points
+            ax = fig.add_subplot(gs[0,0])
             kLine = kList[:,0]
             for n in range(16*nCells,28*nCells):
                 ax.plot(kLine,evals2[:,n],color='r',lw=0.3,zorder=1)
                 ax.scatter(kLine,evals2[:,n], s=weights2[:,n]*100,
                            color='b',lw=0,zorder=3)
-    #        ax.set_ylim(fullEnergyValues[0],-0.6)
-            ax.set_ylim(-1.2,-0.6)
+            ax.set_ylim(-1.2,-0.4)
             ax.set_xlim(-range_k,range_k)
-            ax = fig.add_subplot(122)
+            ax.set_ylabel("eV")
+            #Figure of spread
+            ax = fig.add_subplot(gs[1,0])
+            E_list = np.linspace(-1.2,-0.4,150)
+            spread = np.zeros((kPts,len(E_list)))
+            pars_spread = (0.02,0.03,'Lorentz')
+            for i in range(kPts):
+                for n in range(indexMainBand-nCells*2+1,indexMainBand+1):
+                    spread += weight_spreading(weights2[i,n],kList[i],evals2[i,n],kList,E_list[None,:],pars_spread)
+            spread /= np.max(spread)        #0 to 1
+            map_ = 'gray_r'
+            ax.imshow(spread.T[::-1,:],
+              cmap=map_,
+              aspect=kPts/len(E_list)*0.45,
+#              aspect='auto',
+              interpolation='none'
+             )
+            ax.set_xticks([])
+            ax.set_xlabel('K')
+            #
+            ax = fig.add_subplot(gs[1,1])
+            ax.plot(E_list,spread[kPts//2,:])
+            ax.set_xlim(-1,-0.4)
+            ax = fig.add_subplot(gs[0,1])
         else:
             fig = plt.figure(figsize=(10,10))
             ax = fig.add_subplot()
-        # Plot
+        # Plot weight spreading
         ax.scatter(energyList,weightList,color='b')
         ax.scatter(fullEnergyValues,fullWeightValues,color='r')
+        ax.set_xlim(-1,-0.4)
         if fitSuccess:
             ax.plot(energyList,result.best_fit,color='g',ls='--',lw=2)
             ax.axvline(result.best_values['cen1'],color='r')
@@ -416,7 +440,9 @@ def EDC(args,spreadE=0.03,disp=False):
         phiG = args[6][2]
         ax.text(0.1,0.8,"Vg= %f eV\nphiG= %f °\nDistance: %f"%(Vg,phiG/np.pi*180,distance),size=20,transform=ax.transAxes)
         fig.tight_layout()
-        plt.show()
+        fig.savefig(figname)
+        #plt.show()
+        return
     return distance
 
 
