@@ -387,7 +387,7 @@ def get_machine(cwd):
 def R_z(t):
     return np.array([[np.cos(t),-np.sin(t)],[np.sin(t),np.cos(t)]])
 
-def tqdm(x):
+def tqdm(x,**kwargs):
     return x
 
 
@@ -770,10 +770,10 @@ dic_energy_bounds = {'S11zoom':(-0.6,-1.8), 'S11':(-0.5,-2.5), 'S3':(-0.2,-1.8)}
 
 #Interlayer parameters of "constant" part w1 for p and d orbitals in the different cases
 w1p_dic = {
-    'DFT':{'S3':-1.65,'S11':-1.82},
-    'fit':{'S3':-1.725,'S11':-1.725}#-1.92}
+    'DFT':{'S3':-1.650 , 'S11':-1.820},
+    'fit':{'S3':-1.725 , 'S11':-1.725}#-1.92}
           }
 w1d_dic = {
-    'DFT':{'S3':0.34 ,'S11':0.42},
-    'fit':{'S3':0.37  ,'S11':0.37}#0.46}
+    'DFT':{'S3':0.340 , 'S11':0.420},
+    'fit':{'S3':0.370 , 'S11':0.370}#0.46}
           }

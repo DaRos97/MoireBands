@@ -5,12 +5,10 @@ import itertools
 import os
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
+from scipy.special import wofz      #for fitting weights in EDC
+from lmfit import Model      #for fitting weights in EDC
 
 machine = cfs.get_machine(os.getcwd())
-if machine=='loc':
-    from tqdm import tqdm
-else:
-    tqdm = cfs.tqdm
 
 def get_pars(ind):
     lMonolayer_type = ['fit',]
@@ -67,7 +65,7 @@ def diagonalize_matrix(*args):
     """
     Compute and diagonalize big matrix and save to file the result.
     """
-    nShells, nCells, K_list, monolayer_type, parsInterlayer, theta, pars_V, energy_fn, save_data_energy = args
+    nShells, nCells, K_list, monolayer_type, parsInterlayer, theta, pars_V, energy_fn, save_data_energy, disp = args
     kPts = K_list.shape[0]
     #Monolayer parameters
     pars_monolayer = import_monolayer_parameters(monolayer_type,machine)
@@ -79,6 +77,10 @@ def diagonalize_matrix(*args):
     evals = np.zeros((kPts,nCells*44))
     evecs = np.zeros((kPts,nCells*44,nCells*44),dtype=complex)
     look_up = lu_table(nShells)
+    if disp:
+        from tqdm import tqdm
+    else:
+        tqdm = cfs.tqdm
     for i in tqdm(range(kPts),desc="Diagonalization of Hamiltonian along the cut"):
         K_i = K_list[i]
         H_tot = big_H(K_i,nShells,look_up,pars_monolayer,parsInterlayer,pars_moire)
@@ -135,8 +137,6 @@ def big_H(K_,nShells,lu,pars_monolayer,parsInterlayer,pars_moire):
         Kn = Kns[n]
         Ham [n*22:(n+1)*22,n*22:(n+1)*22] = cfs.H_monolayer(Kn,*args_WSe2)
         Ham [(nCells+n)*22:(nCells+n+1)*22,(nCells+n)*22:(nCells+n+1)*22] = cfs.H_monolayer(Kn,*args_WS2)
-#        for orb in orbpList:
-#            Ham [(nCells+n)*22+orb,(nCells+n)*22+orb] += offsetS
         # w1 p and d
         for orbp in orbpList:
             Ham[n*22 + orbp,(nCells+n)*22 + orbp] += parsInterlayer['w1p']
@@ -199,47 +199,6 @@ def weight_spreading(weight,K_temp,E_temp,K_list,e_grid,pars_spread):
         return weight/(k_grid**2+K2)/((e_grid-E_temp)**2+E2)
     elif type_of_spread == 'Gauss':
         return weight*np.exp(-(k_grid/spread_k)**2)*np.exp(-((e_grid-E_temp)/spread_E)**2)
-
-def get_fn(*args):
-    """
-    Get filename for set of parameters.
-    """
-    fn = ''
-    for i,a in enumerate(args):
-        t = type(a)
-        if t in [str,np.str_]:
-            fn += a
-        elif t in [int, np.int64]:
-            fn += str(a)
-        elif t in [float, np.float32, np.float64]:
-            fn += "{:.4f}".format(a)
-        elif t==dict:
-            args = np.copy(list(a.values()))
-            fn += get_fn(*args)
-        else:
-            print("Parameter ",a)
-            print("is unsupported type: ",t)
-            exit()
-        if not i==len(args)-1:
-            fn +='_'
-    return fn
-
-def get_figures_dn(machine):
-    return get_home_dn(machine)+'Figures/'
-
-def get_inputs_dn(machine):
-    return get_home_dn(machine)+'Inputs/'
-
-def get_data_dn(machine):
-    return get_home_dn(machine)+'Data/'
-
-def get_home_dn(machine):
-    if machine == 'loc':
-        return '/home/dario/Desktop/git/MoireBands/Code/4_newMoire/'
-    elif machine == 'hpc':
-        return '/home/users/r/rossid/4_newMoire/'
-    elif machine == 'maf':
-        return '/users/rossid/4_newMoire/'
 
 def plot_rk(theta,kList,cut,save_plot_rk):
     """
@@ -330,8 +289,178 @@ def plot_rk(theta,kList,cut,save_plot_rk):
     plt.show()
 
 
+def voigt(x, amplitude, center, sigma, gamma):
+    """
+    Voigt profile: convolution of Lorentzian and Gaussian
+    - sigma: Gaussian standard deviation
+    - gamma: Lorentzian half-width at half-maximum
+    """
+    z = ((x - center) + 1j*gamma) / (sigma * np.sqrt(2))
+    return amplitude * np.real(wofz(z)) / (sigma * np.sqrt(2*np.pi))
+
+def double_voigt(x, amp1, cen1, sig1, gam1, amp2, cen2, sig2, gam2):
+    return (voigt(x, amp1, cen1, sig1, gam1) +
+            voigt(x, amp2, cen2, sig2, gam2))
+
+import warnings
+warnings.filterwarnings("ignore", message="Using UFloat objects with std_dev==0")
+
+def EDC(args,spreadE=0.03,disp=False):
+    """
+    Compute energy distance of side bands crossing from main band.
+    We do it by diagonalizing the Hamiltonian at the desired k point.
+    We evaluate and extract the weights BELOW the main band (carefull to the SOC degeneracy at Gamma).
+    We spread the weights with a Lorentzian of width 30 meV.
+    We fit the intensity profile with 2 Lorentzians (convoluted with a Gaussian).
+    """
+    nCells = args[1]
+    # Evals, evecs and weights at Gamma
+    e_, ev_ = diagonalize_matrix(*args)
+    evals = e_[0]
+    evecs = ev_[0]
+    ab = np.absolute(evecs)**2
+    weights = np.sum(ab[:22,:],axis=0) + np.sum(ab[22*nCells:22*(1+nCells),:],axis=0)
+    # Extract energies and weights we need -> TVB: main band and all side bands, just on TOP layer
+    indexMainBand = 28*nCells - 1
+    energyMainBand = evals[indexMainBand]
+    weightMainBand = weights[indexMainBand]
+    fullEnergyValues = evals  [indexMainBand-nCells*2+1:indexMainBand+1]
+    fullWeightValues = weights[indexMainBand-nCells*2+1:indexMainBand+1]
+    # Define finer energy list for weight spreading: slightly larger for better spreading shape
+    energyList = np.linspace(-1.0,-0.4,200)      #we chose this from experimental data
+    weightList = np.zeros(len(energyList))
+    if energyMainBand > energyList[-1]:     # Check we are in right window
+        if disp:
+            print("TVB energy higher than -0.4 eV -> clearly wrong")
+        return -1
+    if np.max(fullWeightValues[:-2]) > weightMainBand:     # Check the main band has higher weight
+        if disp:
+            print("TVB weight is not the maximum -> clearly wrong")
+            print(weightMainBand)
+            print(fullWeightValues)
+            print(np.max(fullWeightValues))
+        return -1
+    for i in range(len(fullEnergyValues)):
+        weightList += spreadE/np.pi * fullWeightValues[i] / ((energyList-fullEnergyValues[i])**2+spreadE**2)
+    try:    # Fit the spreaded weights with two Lorentzian peaks convoluted with a Gaussian
+        model = Model(double_voigt, independent_vars=['x'])
+        # Initial guess and boundaries
+        params = model.make_params(amp1=1.57, cen1=-0.67, sig1=0.005, gam1=0.03,
+                               amp2=0.41, cen2=-0.76, sig2=0.005, gam2=0.03)
+        params['amp1'].set(min=1,max=10)
+        params['sig1'].set(min=1e-5,max=1)
+        params['cen1'].set(min=-0.73,max=-0.6)
+        params['gam1'].set(min=1e-5,max=0.08)
+        params['amp2'].set(min=0.1,max=5)
+        params['sig2'].set(min=1e-5,max=1)
+        params['cen2'].set(min=-0.81,max=-0.73)
+        params['gam2'].set(min=1e-5,max=0.08)
+        result = model.fit(weightList, params, x=energyList)
+        # Checks on the result
+        if result.chisqr > 100:     # Bad fit
+            if disp:
+                print("Chisqr high")
+            raise ValueError
+        for name, param in result.params.items():   #check if parameetrs are hitting the boundaries I set
+            if (param.min is not None and abs(param.value - param.min) < 1e-8) or (param.max is not None and abs(param.value - param.max) < 1e-8):
+                if disp:
+                    print("Par "+name+" at boundary: ",param)
+                raise ValueError
+        distance = result.best_values['cen1'] - result.best_values['cen2']
+        fitSuccess = True
+        if disp:
+            print(result.fit_report())
+    except Exception as e:
+        if disp:
+            print("fit didn't work, exception {e}")
+        distance = -1
+        fitSuccess = False
+    if disp:
+        imageAroundGamma = 0
+        if imageAroundGamma:       #Compute image zoom around Gamma
+            fig = plt.figure(figsize=(20,10))
+            # Need to compute some points around Gamma
+            kPts = 71 #has to be odd
+            range_k = 0.3
+            kList = np.zeros((kPts,2))
+            kList[:,0] = np.linspace(-range_k,range_k,kPts)
+            nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, moir_pars, _, __, disp = args
+            args2 = (nShells, nCells, kList, monolayer_type, parsInterlayer, theta, moir_pars, '', False, disp)
+            evals2, evecs2 = diagonalize_matrix(*args2)
+            weights2 = np.zeros((kPts,nCells*44))
+            for i in range(kPts):
+                ab2 = np.absolute(evecs2[i])**2
+                weights2[i,:] = np.sum(ab2[:22,:],axis=0) + np.sum(ab2[22*nCells:22*(1+nCells),:],axis=0)
+            #Figure
+            ax = fig.add_subplot(121)
+            kLine = kList[:,0]
+            for n in range(16*nCells,28*nCells):
+                ax.plot(kLine,evals2[:,n],color='r',lw=0.3,zorder=1)
+                ax.scatter(kLine,evals2[:,n], s=weights2[:,n]*100,
+                           color='b',lw=0,zorder=3)
+    #        ax.set_ylim(fullEnergyValues[0],-0.6)
+            ax.set_ylim(-1.2,-0.6)
+            ax.set_xlim(-range_k,range_k)
+            ax = fig.add_subplot(122)
+        else:
+            fig = plt.figure(figsize=(10,10))
+            ax = fig.add_subplot()
+        # Plot
+        ax.scatter(energyList,weightList,color='b')
+        ax.scatter(fullEnergyValues,fullWeightValues,color='r')
+        if fitSuccess:
+            ax.plot(energyList,result.best_fit,color='g',ls='--',lw=2)
+            ax.axvline(result.best_values['cen1'],color='r')
+            ax.axvline(result.best_values['cen2'],color='r')
+        Vg = args[6][0]
+        phiG = args[6][2]
+        ax.text(0.1,0.8,"Vg= %f eV\nphiG= %f °\nDistance: %f"%(Vg,phiG/np.pi*180,distance),size=20,transform=ax.transAxes)
+        fig.tight_layout()
+        plt.show()
+    return distance
 
 
+""" FILENAME FUNCTIONS """
+def get_fn(*args):
+    """
+    Get filename for set of parameters.
+    """
+    fn = ''
+    for i,a in enumerate(args):
+        t = type(a)
+        if t in [str,np.str_]:
+            fn += a
+        elif t in [int, np.int64]:
+            fn += str(a)
+        elif t in [float, np.float32, np.float64]:
+            fn += "{:.4f}".format(a)
+        elif t==dict:
+            args = np.copy(list(a.values()))
+            fn += get_fn(*args)
+        else:
+            print("Parameter ",a)
+            print("is unsupported type: ",t)
+            exit()
+        if not i==len(args)-1:
+            fn +='_'
+    return fn
+
+def get_figures_dn(machine):
+    return get_home_dn(machine)+'Figures/'
+
+def get_inputs_dn(machine):
+    return get_home_dn(machine)+'Inputs/'
+
+def get_data_dn(machine):
+    return get_home_dn(machine)+'Data/'
+
+def get_home_dn(machine):
+    if machine == 'loc':
+        return '/home/dario/Desktop/git/MoireBands/Code/4_newMoire/'
+    elif machine == 'hpc':
+        return '/home/users/r/rossid/4_newMoire/'
+    elif machine == 'maf':
+        return '/users/rossid/4_newMoire/'
 
 
 
