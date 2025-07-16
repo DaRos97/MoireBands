@@ -1,4 +1,5 @@
 """
+DESCRIPTION:
 Here we take a cut at Gamma to look at the distance between the main band and the side band crossing below it.
 We compute, for each set of (phi.w2p,w2d,stacking), the best V which gives the experimental distance:
     - 78 meV for S3
@@ -8,7 +9,9 @@ We then look also at the full image to see if the parameters make sense.
 
 An extension would be to do the same at K
 """
+
 import sys,os
+import argparse
 import numpy as np
 import scipy
 cwd = os.getcwd()
@@ -28,21 +31,21 @@ import itertools
 import csv
 machine = cfs.get_machine(os.getcwd())
 
-if len(sys.argv) != 3:
-    print("Usage: python3 EDC.py arg1 arg2")
-    print("arg1: index of arguments")
-    print("arg2: S3 or S11")
-    quit()
-else:
-    ind = int(sys.argv[1])
-    sample = sys.argv[2]
+""" Parameters and options """
+parser = argparse.ArgumentParser(description="Calculation of EDC")
+parser.add_argument("Index", help="Index of parameters (see list in code)", type=int)
+parser.add_argument("Sample", help="Sample to consider (S3 or S11)")
+parser.add_argument("-v","--verbose", help="Enable verbose output", action="store_true")
+parser.add_argument("-s","--save", help="Save data at the end of calculation", action="store_true")
+inputArguments = parser.parse_args()
+
+ind = inputArguments.Index
+sample = inputArguments.Sample
+disp = inputArguments.verbose
+save = inputArguments.save
 
 expVal = {'S3':0.078, 'S11':0.093}
 expEDC = expVal[sample]
-
-# Preamble
-disp = 1#False
-save = True
 
 if disp:
     from tqdm import tqdm
@@ -58,7 +61,7 @@ theta = 2.8 if sample=='S11' else 1.8    #twist angle, in degrees
 w1p = cfs.w1p_dic[monolayer_type][sample]
 w1d = cfs.w1d_dic[monolayer_type][sample]
 kListG = np.array([np.zeros(2),])
-if disp and 0:    #print what parameters we're using
+if disp:    #print what parameters we're using
     print("-----------FIXED PARAMETRS CHOSEN-----------")
     print("Monolayers' tight-binding parameters: ",monolayer_type)
     print("Interlayer coupling w1: %f, %f"%(w1p,w1d))
@@ -67,14 +70,15 @@ if disp and 0:    #print what parameters we're using
     print("Number of mini-BZs circles: ",nShells)
 
 """ Variable parameters """
-nPhi = 30
+nPhi = 60
 nW2p = 11
 nW2d = 7
 listPhi = np.linspace(0,2*np.pi/3,nPhi,endpoint=False)
-listW2p = [-0.1,-0.05,-0.02,-0.01,-0.005,0,0.005,0.01,0.02,0.05,0.1]
-listW2d = [-0.03,-0.01,-0.005,0,0.005,0.01,0.03]
-stackings = ['P','AP']
+listW2p = [0,]#[-0.1,-0.05,-0.02,-0.01,-0.005,0,0.005,0.01,0.02,0.05,0.1]
+listW2d = [0,]#[-0.03,-0.01,-0.005,0,0.005,0.01,0.03]
+stackings = ['P',]#['P','AP']
 stacking,w2p,w2d,phiG = list(itertools.product(*[stackings,listW2p,listW2d,listPhi]))[ind]
+w2p = w2d = 0
 if abs(w2p)<1e-8:
     w2p=0
 if abs(w2d)<1e-8:
@@ -84,7 +88,7 @@ if abs(phiG)<1e-8:
 parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
 if disp:
     print("---------VARIABLE PARAMETERS CHOSEN---------")
-    print("(stacking,w2_p,w2_d,phi) = (%s, %f eV, %f eV, %f°)"%(stacking,w2p,w2d,phiG/np.pi*180))
+    print("(stacking,w2_p,w2_d,phi) = (%s, %.4f eV, %.4f eV, %.1f°)"%(stacking,w2p,w2d,phiG/np.pi*180))
 
 """ Check we didn't already compute it """
 data_fn = 'Data/EDC/Vbest_'+fsm.get_fn(*(sample,nShells))+'.svg'
@@ -96,20 +100,22 @@ if Path(data_fn).is_file():
             terms = i.split(',')
             if terms[0] == stacking:
                 if terms[1]=="{:.7f}".format(w2p) and terms[2]=="{:.7f}".format(w2d) and terms[3]=="{:.7f}".format(phiG):
-                    print("Parameters already computed")
                     alreadyComputed = True
                     Vbest = float(terms[-1])
+                    print("Parameters already computed, Vbest=%.4f eV"%Vbest)
+                    break
 
+""" Computation of best V """
 if not alreadyComputed:
-    quit()
     """ Compute distances for many Vs """
     listVg = np.linspace(0.001,0.05,50)
     distances = np.zeros(len(listVg))
     for i in tqdm(range(len(listVg)),desc="Looping Vg"):
         Vg = listVg[i]
         args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', False, False)
-        disp_fit = 0#False
-        distances[i] = fsm.EDC(args,spreadE=0.03,disp=disp_fit)
+        disp_fit = False
+#        figname = 'Figures/EDC/example_'+fsm.get_fn(*(stacking,nShells,w2p,w2d,phiG,Vg))+'.png'
+        distances[i] = fsm.EDC(args,spreadE=0.03,disp=disp_fit,plot=False,figname='')
         if distances[i] == -1:
             distances[i] *= np.nan
             #break
@@ -152,11 +158,15 @@ if not alreadyComputed:
                 # Write a single row
                 writer.writerow([stacking, "{:.7f}".format(w2p), "{:.7f}".format(w2d), "{:.7f}".format(phiG), Vbest])
 
+exit()
+
 """ Plot image of final result """
 figname_final = 'Figures/EDC/final_'+fsm.get_fn(*(stacking,nShells,w2p,w2d,phiG))+'.png'
 if not Path(figname_final).is_file():
     args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vbest,Vk,phiG,phiK), '', False, False)
     fsm.EDC(args,spreadE=0.03,disp=False,plot=True,figname=figname_final)
+else:
+    os.system("xdg-open "+figname_final)
 
 
 

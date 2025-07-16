@@ -143,14 +143,14 @@ def big_H(K_,nShells,lu,pars_monolayer,parsInterlayer,pars_moire):
         for orbd in orbdList:
             Ham[n*22 + orbd,(nCells+n)*22 + orbd] += parsInterlayer['w1d']
         # w2 p and d
-        for ng in [1,2,3]:      #index of G_M to consider in the interlayer
+        for ng in [1,2,3,4,5,6]:      #index of G_M to consider in the interlayer
             diff = np.linalg.norm(np.absolute(Kn - Kns + G_M[ng]),axis=1)
             inds = np.where(diff<1e-10)[0]
             for ind in inds:
                 for orbp in orbpList:
-                    Ham[n*22 + orbp,(nCells+ind)*22 + orbp] += 2*parsInterlayer['w2p']
+                    Ham[n*22 + orbp,(nCells+ind)*22 + orbp] += parsInterlayer['w2p']
                 for orbd in orbdList:
-                    Ham[n*22 + orbd,(nCells+ind)*22 + orbd] += 2*parsInterlayer['w2d']*np.cos((-1)**(ng-1)*psiInterlayer)
+                    Ham[n*22 + orbd,(nCells+ind)*22 + orbd] += parsInterlayer['w2d']*np.exp(-1j*(-1)**(ng-1)*psiInterlayer)
     Ham[nCells*22:,:nCells*22] = np.copy(Ham[:nCells*22,nCells*22:].T.conj())
     #Moirè replicas
     for n in range(0,nShells+1):      #Circles
@@ -165,7 +165,7 @@ def big_H(K_,nShells,lu,pars_monolayer,parsInterlayer,pars_moire):
                 g = cfs.m_list.index(i)
                 Vup = moireHam if g%2 else moireHam.conj()
                 Ham [s*22:(s+1)*22,nn*22:(nn+1)*22] += Vup
-                Ham [nCells*22 + s*22:nCells*22 +(s+1)*22, nCells*22 + nn*22:nCells*22 +(nn+1)*22] += Vup.conj()
+                Ham [nCells*22 + s*22:nCells*22 +(s+1)*22, nCells*22 + nn*22:nCells*22 +(nn+1)*22] += Vup#.conj()
     return Ham
 
 def weight_spreading(weight,K_temp,E_temp,K_list,e_grid,pars_spread):
@@ -335,10 +335,7 @@ def EDC(args,spreadE=0.03,disp=False,plot=False,figname=''):
     if np.max(fullWeightValues[:-2]) > weightMainBand:     # Check the main band has higher weight
         if disp:
             print("TVB weight is not the maximum -> clearly wrong")
-            print(weightMainBand)
-            print(fullWeightValues)
-            print(np.max(fullWeightValues))
-#        return -1
+        return -1
     for i in range(len(fullEnergyValues)):
         weightList += spreadE/np.pi * fullWeightValues[i] / ((energyList-fullEnergyValues[i])**2+spreadE**2)
     try:    # Fit the spreaded weights with two Lorentzian peaks convoluted with a Gaussian
@@ -371,7 +368,7 @@ def EDC(args,spreadE=0.03,disp=False,plot=False,figname=''):
             print(result.fit_report())
     except Exception as e:
         if disp:
-            print("Fit didn't work, exception {e}")
+            print("Fit didn't work, exception ", e)
         distance = -1
         fitSuccess = False
     if plot:
@@ -402,20 +399,25 @@ def EDC(args,spreadE=0.03,disp=False,plot=False,figname=''):
             ax.set_ylim(-1.2,-0.4)
             ax.set_xlim(-range_k,range_k)
             ax.set_ylabel("eV")
+            V = args[6][0]
+            phiG = args[6][2]/np.pi*180
+            w2p = args[4]['w2p']
+            w2d = args[4]['w2d']
+            stacking = args[4]['stacking']
+            ax.text(0.1,0.9,r"stacking: %s, V=%.4f eV, $\varphi$=%.1f°, $w_2^p$=%.4f eV, $w_2^d$=%.4f eV"%(stacking,V,phiG,w2p,w2d),size=20,transform=ax.transAxes)
             #Figure of spread
             ax = fig.add_subplot(gs[1,0])
             E_list = np.linspace(-1.2,-0.4,150)
             spread = np.zeros((kPts,len(E_list)))
-            pars_spread = (0.02,0.03,'Lorentz')
+            pars_spread = (0.001,0.03,'Lorentz')
             for i in range(kPts):
                 for n in range(indexMainBand-nCells*2+1,indexMainBand+1):
                     spread += weight_spreading(weights2[i,n],kList[i],evals2[i,n],kList,E_list[None,:],pars_spread)
             spread /= np.max(spread)        #0 to 1
             map_ = 'gray_r'
-            ax.imshow(spread.T[::-1,:],
+            ax.imshow(spread.T[::-1,:]**0.5,
               cmap=map_,
-              aspect=kPts/len(E_list)*0.45,
-#              aspect='auto',
+              aspect=kPts/len(E_list)*0.45,     #to coincide by eye between the two images
               interpolation='none'
              )
             ax.set_xticks([])
@@ -436,13 +438,11 @@ def EDC(args,spreadE=0.03,disp=False,plot=False,figname=''):
             ax.plot(energyList,result.best_fit,color='g',ls='--',lw=2)
             ax.axvline(result.best_values['cen1'],color='r')
             ax.axvline(result.best_values['cen2'],color='r')
-        Vg = args[6][0]
-        phiG = args[6][2]
-        ax.text(0.1,0.8,"Vg= %f eV\nphiG= %f °\nDistance: %f"%(Vg,phiG/np.pi*180,distance),size=20,transform=ax.transAxes)
         fig.tight_layout()
-        fig.savefig(figname)
-        #plt.show()
-        return
+        if not figname=='':
+            fig.savefig(figname)
+        plt.show()
+        #return
     return distance
 
 
