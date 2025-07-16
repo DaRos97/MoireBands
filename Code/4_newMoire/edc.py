@@ -135,38 +135,34 @@ if not alreadyComputed:
         foundVbest = False
 
     """ Plot and save result """
+    fig = plt.figure()
+    ax = fig.add_subplot()
+    ax.plot(listVg,distances,'r*')
+    ax.axhline(expEDC,c='g',lw=2,label=sample)
     if foundVbest:
-        fig = plt.figure()
-        ax = fig.add_subplot()
-        ax.plot(listVg,distances,'r*')
-        ax.axhline(expEDC,c='g',lw=2,label=sample)
         ax.axvline(Vbest,c='m',lw=2,label="best V=%f"%Vbest)
-        ax.plot(vline,poly(vline,*popt),c='b',ls='--')
-        ax.set_xlabel("V")
-        ax.set_ylabel("distance")
-        ax.set_title(r"$\varphi$, $w_2^p$, $w_2^d$ = %f°, %f, %f"%(phiG/np.pi*180,w2p,w2d))
-        ax.legend()
-        figname = 'Figures/EDC/DvsV_'+fsm.get_fn(*(sample,nShells,stacking,w2p,w2d,phiG))+'.png'
-        fig.savefig(figname)
-        if disp:
-            print("Best V found")
+    ax.plot(vline,poly(vline,*popt),c='b',ls='--')
+    ax.set_xlabel("V")
+    ax.set_ylabel("distance")
+    ax.set_title(r"$\varphi$, $w_2^p$, $w_2^d$ = %f°, %f, %f"%(phiG/np.pi*180,w2p,w2d))
+    ax.legend()
+    figname = 'Figures/EDC/DvsV_'+fsm.get_fn(*(sample,nShells,stacking,w2p,w2d,phiG))+'.png'
+    fig.savefig(figname)
 
-        """ Save as a line """
-        if save:
-            with open(data_fn,'a') as file:
-                writer = csv.writer(file)
-                # Write a single row
-                writer.writerow([stacking, "{:.7f}".format(w2p), "{:.7f}".format(w2d), "{:.7f}".format(phiG), Vbest])
+    """ Save as a line """
+    if foundVbest and save:
+        with open(data_fn,'a') as file:
+            writer = csv.writer(file)
+            # Write a single row
+            writer.writerow([stacking, "{:.7f}".format(w2p), "{:.7f}".format(w2d), "{:.7f}".format(phiG), Vbest])
 
-exit()
 
-""" Plot image of final result """
-figname_final = 'Figures/EDC/final_'+fsm.get_fn(*(stacking,nShells,w2p,w2d,phiG))+'.png'
-if not Path(figname_final).is_file():
-    args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vbest,Vk,phiG,phiK), '', False, False)
-    fsm.EDC(args,spreadE=0.03,disp=False,plot=True,figname=figname_final)
-else:
-    os.system("xdg-open "+figname_final)
+if foundVbest:
+    """ Plot image of final result """
+    figname_final = 'Figures/EDC/final_'+fsm.get_fn(*(sample,stacking,nShells,w2p,w2d,phiG))+'.png'
+    if not Path(figname_final).is_file():
+        args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vbest,Vk,phiG,phiK), '', False, False)
+        fsm.EDC(args,spreadE=0.03,disp=False,plot=True,figname=figname_final)
 
 
 

@@ -441,8 +441,7 @@ def EDC(args,spreadE=0.03,disp=False,plot=False,figname=''):
         fig.tight_layout()
         if not figname=='':
             fig.savefig(figname)
-        plt.show()
-        #return
+        return
     return distance
 
 
