@@ -1,6 +1,6 @@
 """
 Here we compute the LDOS in real space and maybe even the chern number to construct the topological phase diagram.
-For the LDOS the steps are the same as for te test on the pan paper.
+For the LDOS the steps are the same as for the test on the pan paper.
 """
 
 import sys,os

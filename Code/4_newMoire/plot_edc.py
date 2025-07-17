@@ -21,7 +21,10 @@ import functions_moire as fsm
 from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import matplotlib
+import matplotlib.gridspec as gridspec
 import matplotlib.colors as mcolors
+from matplotlib.lines import Line2D
 machine = cfs.get_machine(os.getcwd())
 
 if len(sys.argv) != 3:
@@ -40,7 +43,7 @@ if Path(data_fn).is_file():
         l = f.readlines()
         for i in l:
             terms = i.split(',')
-            data[terms[0]].append([float(terms[1]),float(terms[2]),float(terms[3]),float(terms[4])])
+            data[terms[0]].append([float(terms[1]),float(terms[2]),float(terms[3])/np.pi*180,float(terms[4])])
 else:
     print("Data file not found")
     quit()
@@ -50,48 +53,74 @@ data['AP'] = np.array(data['AP'])
 
 # Choice of parameters: 0->w2p, 1->w2d, 2->phi
 par1 = 2
-par2 = 0
-par3 = 1
-marker = {'P':'+', 'AP':'^'}
-colormap = {'P':'plasma','AP':'viridis'}
-labels = [r'$w_2^p$',r'$w_2^d$',r'$\varphi$']
+par2 = 1
+par3 = 0
+marker = {'P':'o', 'AP':'^'}
+colormap = {'P':'coolwarm','AP':'coolwarm'}
+labels = [r'$w_2^p$ eV',r'$w_2^d$ eV',r'$\varphi$ °']
 
-fig = plt.figure(figsize=(15,15))
-ax = fig.add_subplot()
-sm = {}
-for stacking in ['P','AP']:
+fig = plt.figure(figsize=(20,10))
+gs = gridspec.GridSpec(1, 3, width_ratios=[1, 0.05, 1], wspace=0.2, left=0.05,bottom=0.07,right=0.988,top=0.943)
+list_stack = ['P','AP']
+s_ = 20
+for i_s in range(2):
+    if data[list_stack[i_s]].shape[0]==0:
+        continue
+    stacking = list_stack[i_s]
+    ax = fig.add_subplot(gs[0, 0]) if i_s==0 else fig.add_subplot(gs[0,2])
     # Sizes -> par2
-    sizes = data[stacking][:,par2]
-    sizes /= np.max(abs(sizes)) * 50
+    sizes = np.copy(data[stacking][:,par2])
+    if np.max(abs(sizes))>0:
+        sizes /= np.max(abs(sizes))     #Normalize
+    sizes *= 10     #make it larger
+    sizes -= np.min(sizes) - 5     #Bring from 0 to 1 and add offset
     # Colors -> par3
     colorValues = data[stacking][:,par3]
     norm = mcolors.Normalize(vmin=np.min(colorValues), vmax=np.max(colorValues))
-    cmap = cm.get_cmap(colormap[stacking])
+    cmap = matplotlib.colormaps[colormap[stacking]]
     colors = cmap(norm(colorValues))  # Array of RGBA tuples
     ax.scatter(
         data[stacking][:,par1],             #x
         data[stacking][:,-1],               #y
         marker=marker[stacking],            #marker
-        s=sizes,
+        lw=0,
+        s=sizes**2,
         c=colors,
-        label=stacking
+        alpha=0.8
     )
-    sm_ = cm.ScalarMappable(norm=norm, cmap=cmap)
-    sm_.set_array([])  # Required for colorbar, can be empty
-    sm[stacking] = sm_
+    ax.set_xlabel(labels[par1],size=s_)
+    if i_s==0:
+        ax.set_ylabel("Best V (eV)",size=s_)
+    ax.set_title(stacking,size=s_)
+    # Legend
+    sizes1 = np.unique(data[stacking][:,par2])
+    sizes2 = np.unique(sizes)
+    legend_elements = [ Line2D([0], [0],
+                       marker=marker[stacking], color='gray',
+                       label="{:.3f}".format(label)+' eV',
+                       markerfacecolor='gray',
+                       markeredgecolor='k',
+                       markersize=size,
+                       linewidth=0,
+                       markeredgewidth=0.5
+                      )     for size, label in zip(sizes2, sizes1)
+    ]
+    ax.legend(handles=legend_elements,
+              loc='upper right' if stacking=='P' else 'upper left',
+              title=labels[par2],
+              fontsize=s_-10,
+              title_fontsize=s_
+             )
 
-#Colorbars
-cax1 = fig.add_axes([0.92, 0.3, 0.02, 0.4])  # right of plot
-cax2 = fig.add_axes([0.96, 0.3, 0.02, 0.4])  # right of the first colorbar
-cbar1 = fig.colorbar(sm['P'], cax=cax1)
-cbar1.set_label(labels[par3])
-cbar2 = fig.colorbar(sm['AP'], cax=cax2)
-cbar2.set_label(labels[par3])
+# Colorbar
+cax = fig.add_subplot(gs[0, 1])
+cbar = fig.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax)
+cbar.set_label(labels[par3],size=s_)
+cax.yaxis.set_label_position('left')
+#cax.yaxis.set_ticks_position('left')
 
-s_ = 20
-ax.legend(size=s_)
-ax.set_title("Sample="+sample+", nShells=%d"%nShells,size=s_)
-ax.set_xlabel(xlabels[par1],size=s_)
-ax.set_ylabel("Best V",size=s_)
+plt.suptitle("Sample="+sample+", nShells=%d"%nShells,size=s_)
 
 plt.show()
+if input("Save fig? [y/N]")=='y':
+    fig.savefig("Figures/edc_"+sample+'_'+str(nShells)+'.png')

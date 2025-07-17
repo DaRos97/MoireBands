@@ -100,7 +100,7 @@ if Path(data_fn).is_file():
             terms = i.split(',')
             if terms[0] == stacking:
                 if terms[1]=="{:.7f}".format(w2p) and terms[2]=="{:.7f}".format(w2d) and terms[3]=="{:.7f}".format(phiG):
-                    alreadyComputed = True
+                    #alreadyComputed = True
                     Vbest = float(terms[-1])
                     print("Parameters already computed, Vbest=%.4f eV"%Vbest)
                     break
@@ -113,9 +113,10 @@ if not alreadyComputed:
     for i in tqdm(range(len(listVg)),desc="Looping Vg"):
         Vg = listVg[i]
         args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', False, False)
-        disp_fit = False
+        disp_fit = 1#False
+        disp_plot = 1#False
 #        figname = 'Figures/EDC/example_'+fsm.get_fn(*(stacking,nShells,w2p,w2d,phiG,Vg))+'.png'
-        distances[i] = fsm.EDC(args,spreadE=0.03,disp=disp_fit,plot=False,figname='')
+        distances[i] = fsm.EDC(args,spreadE=0.03,disp=disp_fit,plot=disp_plot,figname='')
         if distances[i] == -1:
             distances[i] *= np.nan
             #break
@@ -124,7 +125,7 @@ if not alreadyComputed:
     def poly(x,a,b,c,d,e):
         return a + b*x + c*x**2 + d*x**3 + e*x**4
     try:    # Try the fit -> could not work for very random points
-        inds = np.array(np.argwhere(abs(distances-expEDC)<0.01))[:,0]
+        inds = np.array(np.argwhere(abs(distances-expEDC)<0.02))[:,0]
         Vvalues = listVg[inds]
         Dvalues = distances[inds]
         popt, pcov = curve_fit(poly,Vvalues,Dvalues)
@@ -141,7 +142,7 @@ if not alreadyComputed:
     ax.axhline(expEDC,c='g',lw=2,label=sample)
     if foundVbest:
         ax.axvline(Vbest,c='m',lw=2,label="best V=%f"%Vbest)
-    ax.plot(vline,poly(vline,*popt),c='b',ls='--')
+        ax.plot(vline,poly(vline,*popt),c='b',ls='--')
     ax.set_xlabel("V")
     ax.set_ylabel("distance")
     ax.set_title(r"$\varphi$, $w_2^p$, $w_2^d$ = %f°, %f, %f"%(phiG/np.pi*180,w2p,w2d))

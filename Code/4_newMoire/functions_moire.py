@@ -81,7 +81,7 @@ def diagonalize_matrix(*args):
         from tqdm import tqdm
     else:
         tqdm = cfs.tqdm
-    for i in tqdm(range(kPts),desc="Diagonalization of Hamiltonian along the cut"):
+    for i in tqdm(range(kPts),desc="Diagonalization of Hamiltonian"):
         K_i = K_list[i]
         H_tot = big_H(K_i,nShells,look_up,pars_monolayer,parsInterlayer,pars_moire)
         evals[i],evecs[i] = scipy.linalg.eigh(H_tot,check_finite=False,overwrite_a=True)           #Diagonalize to get eigenvalues and eigenvectors
@@ -344,11 +344,11 @@ def EDC(args,spreadE=0.03,disp=False,plot=False,figname=''):
         params = model.make_params(amp1=1.57, cen1=-0.67, sig1=0.005, gam1=0.03,
                                amp2=0.41, cen2=-0.76, sig2=0.005, gam2=0.03)
         params['amp1'].set(min=1,max=10)
-        params['sig1'].set(min=1e-5,max=1)
+        params['sig1'].set(min=0,max=1)
         params['cen1'].set(min=-0.73,max=-0.6)
         params['gam1'].set(min=1e-5,max=0.08)
         params['amp2'].set(min=0.1,max=5)
-        params['sig2'].set(min=1e-5,max=1)
+        params['sig2'].set(min=0,max=1)
         params['cen2'].set(min=-0.81,max=-0.73)
         params['gam2'].set(min=1e-5,max=0.08)
         result = model.fit(weightList, params, x=energyList)
@@ -372,7 +372,7 @@ def EDC(args,spreadE=0.03,disp=False,plot=False,figname=''):
         distance = -1
         fitSuccess = False
     if plot:
-        imageAroundGamma = 1
+        imageAroundGamma = 0
         if imageAroundGamma:       #Compute image zoom around Gamma
             fig = plt.figure(figsize=(20,13))
             import matplotlib.gridspec as gridspec
@@ -441,7 +441,8 @@ def EDC(args,spreadE=0.03,disp=False,plot=False,figname=''):
         fig.tight_layout()
         if not figname=='':
             fig.savefig(figname)
-        return
+        plt.show()
+        return distance
     return distance
 
 
@@ -487,10 +488,39 @@ def get_home_dn(machine):
     elif machine == 'maf':
         return '/users/rossid/4_newMoire/'
 
+""" LDOS FUNCTIONS """
 
+def LDOS_kList(kPts,G_M):
+    """
+    Here we have to define the grid of momentum points to sum over.
+    Here now is a grid of the mini-BZ.
+    """
+    G1,G2 = G_M[1:3]
+    kList = np.zeros((kPts,kPts,2))
+    for ix in range(kPts):
+        for iy in range(kPts):
+            kList[ix,iy] = G1*ix/kPts + G2*iy/kPts
+    kFlat = kList.reshape(-1,2)
+    return kFlat
 
+def LDOS_rList(rPts,a_M):
+    """
+    Here we have to define the real space points to compute.
+    """
+    a1,a2 = a_M
+    rList = np.zeros((rPts,2))
+    for i in range(rPts):
+        rList[i] = (a1+a2)*i/rPts
+    return rList
 
-
+def get_rs_moire(G_M):
+    """
+    Here we compute the moirè real-space vectors from the reciprocal ones.
+    """
+    a_M = 2*np.pi*np.linalg.inv(G_M[1:3])
+    a1 = a_M[:,0]
+    a2 = cfs.R_z(np.pi/3) @ a1
+    return [a1,a2]
 
 
 

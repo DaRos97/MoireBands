@@ -21,13 +21,13 @@ For multiple orbitals we shift one of the two to have maximum at one of the unit
 aM = 80     #Angstrom
 ptsx = 200
 ptsy = 210
-W1p = 1
+W1p = 0
 W2p = 0.3
 
 W1d = 1
 W2d = 0.1
 
-psip = 0*2*np.pi/3
+psip = np.pi/3
 psid = 0*2*np.pi/3
 
 if int_type==0:
@@ -53,13 +53,19 @@ a3 = aM*np.array([-1/2,np.sqrt(3)/2])
 G1 = 4*np.pi/np.sqrt(3)/aM*np.array([np.sqrt(3)/2,1/2])
 G2 = 4*np.pi/np.sqrt(3)/aM*np.array([0,1])
 G3 = 4*np.pi/np.sqrt(3)/aM*np.array([-np.sqrt(3)/2,1/2])
+G4 = -G1
+G5 = -G2
+G6 = -G3
 
 def interlayer(rx,ry,w1,w2,psi):
     r = np.array([rx,ry])
-    t1 = np.cos(np.dot(G1,r)+psi)
-    t2 = np.cos(np.dot(G2,r)-psi)
-    t3 = np.cos(np.dot(G3,r)+psi)
-    return w1 + 2*w2*(t1+t2+t3)
+    t1 = np.exp(-1j*(np.dot(G1,r)+psi))
+    t2 = np.exp(-1j*(np.dot(G2,r)-psi))
+    t3 = np.exp(-1j*(np.dot(G3,r)+psi))
+    t4 = np.exp(-1j*(np.dot(G4,r)-psi))
+    t5 = np.exp(-1j*(np.dot(G5,r)+psi))
+    t6 = np.exp(-1j*(np.dot(G6,r)-psi))
+    return w1 + w2*(t1+t2+t3+t4+t5+t6)
 
 fig = plt.figure(figsize=(13,10))
 ax = fig.add_subplot()
@@ -71,12 +77,12 @@ if int_type==0:
     data = np.zeros((ptsx,ptsy))
     for ix in range(ptsx):
         for iy in range(ptsy):
-            data[ix,iy] = interlayer(x_list[ix],y_list[iy],W1p,W2p,psip)
+            data[ix,iy] = np.real(interlayer(x_list[ix],y_list[iy],W1p,W2p,psip))
 elif int_type==1:
     data = np.zeros((ptsx,ptsy))
     for ix in range(ptsx):
         for iy in range(ptsy):
-            data[ix,iy] = interlayer(x_list[ix],y_list[iy],W1p,W2p,psip) + interlayer(x_list[ix],y_list[iy],W1d,W2d,psid)
+            data[ix,iy] = np.real(interlayer(x_list[ix],y_list[iy],W1p,W2p,psip)) + np.real(interlayer(x_list[ix],y_list[iy],W1d,W2d,psid))
 
 X,Y = np.meshgrid(x_list,y_list)
 
