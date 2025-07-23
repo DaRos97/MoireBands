@@ -312,7 +312,7 @@ def double_voigt(x, amp1, cen1, sig1, gam1, amp2, cen2, sig2, gam2):
 import warnings
 warnings.filterwarnings("ignore", message="Using UFloat objects with std_dev==0")
 
-def EDC(args,spreadE=0.03,disp=False,plot=False,figname=''):
+def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
     """
     Compute energy distance of side bands crossing from main band.
     We do it by diagonalizing the Hamiltonian at the desired k point.
@@ -345,7 +345,7 @@ def EDC(args,spreadE=0.03,disp=False,plot=False,figname=''):
         if disp:
             print("TVB weight is not the maximum -> clearly wrong")
         else:
-            return -1
+            return -2
     for i in range(len(fullEnergyValues)):
         weightList += spreadE/np.pi * fullWeightValues[i] / ((energyList-fullEnergyValues[i])**2+spreadE**2)
     try:    # Fit the spreaded weights with two Lorentzian peaks convoluted with a Gaussian
@@ -356,12 +356,12 @@ def EDC(args,spreadE=0.03,disp=False,plot=False,figname=''):
         params['amp1'].set(min=1,max=10)
 #        params['amp1'].set(min=0.1,max=10)
         params['sig1'].set(min=0,max=1)
-        params['cen1'].set(min=-0.73,max=-0.6)
+        params['cen1'].set(min=-0.715,max=-0.67)
         params['gam1'].set(min=1e-5,max=0.08)
         params['amp2'].set(min=0.1,max=5)
 #        params['amp2'].set(min=0.1,max=10)
         params['sig2'].set(min=0,max=1)
-        params['cen2'].set(min=-0.81,max=-0.73)
+        params['cen2'].set(min=-0.8,max=-0.756)
         params['gam2'].set(min=1e-5,max=0.08)
         result = model.fit(weightList, params, x=energyList)
         # Checks on the result
@@ -452,6 +452,10 @@ def EDC(args,spreadE=0.03,disp=False,plot=False,figname=''):
             ax.plot(energyList,result.best_fit,color='g',ls='--',lw=2)
             ax.axvline(result.best_values['cen1'],color='r')
             ax.axvline(result.best_values['cen2'],color='r')
+        peak0 = -0.6948 if sample=='S3' else -0.6899
+        peak1 = -0.7730 if sample=='S3' else -0.7831
+        ax.axvline(peak0,color='y',lw=2,zorder=-1)
+        ax.axvline(peak1,color='y',lw=2,zorder=-1)
         fig.tight_layout()
         if not figname=='':
             fig.savefig(figname)

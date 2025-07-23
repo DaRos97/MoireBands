@@ -69,97 +69,103 @@ if disp:    #print what parameters we're using
     print("Number of mini-BZs circles: ",nShells)
 
 """ Variable parameters """
-nPhi = 19
+nPhi = 38
 nW1p = 41
 nW1d = 13
 listPhi = np.linspace(0,np.pi,nPhi)
 listW1p = np.linspace(-1.68,-1.88,nW1p)
 listW1d = np.linspace(0.38,0.44,nW1d)
 stackings = ['P',]#['P','AP']
-stacking,w1p,w1d,phiG = list(itertools.product(*[stackings,listW1p,listW1d,listPhi]))[ind]
+stacking,w1p,w1d = list(itertools.product(*[stackings,listW1p,listW1d]))[ind]
 w2p = w2d = 0
 parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
-if disp:
-    print("---------VARIABLE PARAMETERS CHOSEN---------")
-    print("Interlayer coupling w1: %f, %f"%(w1p,w1d))
-    print("(stacking,w2_p,w2_d,phi) = (%s, %.4f eV, %.4f eV, %.1f°)"%(stacking,w2p,w2d,phiG/np.pi*180))
 
-""" Check we didn't already compute it """
-data_fn = 'Data/EDC/Vbest_'+fsm.get_fn(*(sample,nShells))+'.svg'
-alreadyComputed = False
-if Path(data_fn).is_file():
-    with open(data_fn,'r') as f:
-        l = f.readlines()
-        for i in l:
-            terms = i.split(',')
-            if terms[0] == stacking:
-                if terms[1]=="{:.7f}".format(w2p) and terms[2]=="{:.7f}".format(w2d) and terms[3]=="{:.7f}".format(phiG):
-                    alreadyComputed = True
-                    Vbest = float(terms[-1])
-                    print("Parameters already computed, Vbest=%.4f eV"%Vbest)
-                    break
-
-""" Computation of best V """
-if not alreadyComputed:
-    """ Compute distances for many Vs """
-    listVg = np.linspace(0.001,0.05,50)
-    distances = np.zeros(len(listVg))
-    for i in tqdm(range(len(listVg)),desc="Looping Vg"):
-        Vg = listVg[i]
-        args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', False, False)
-        disp_fit = 0#False
-        disp_plot = 0#False
-        distances[i] = fsm.EDC(args,spreadE=0.03,disp=disp_fit,plot=disp_plot,figname='')
-        if distances[i] == -1:
-            distances[i] *= np.nan
-            #break
-
-    """ Fit to extrct best V """
-    def poly(x,a,b,c,d,e):
-        return a + b*x + c*x**2 + d*x**3 + e*x**4
-    try:    # Try the fit -> could not work for very random points
-        inds = np.array(np.argwhere(abs(distances-expEDC)<0.02))[:,0]
-        Vvalues = listVg[inds]
-        Dvalues = distances[inds]
-        popt, pcov = curve_fit(poly,Vvalues,Dvalues)
-        vline = np.linspace(Vvalues[0],Vvalues[-1],100)
-        Vbest = vline[np.argmin(abs(poly(vline,*popt)-expEDC))]
-        foundVbest = True
-    except:
-        foundVbest = False
-
-    """ Plot and save result """
-    fig = plt.figure()
-    ax = fig.add_subplot()
-    ax.plot(listVg,distances,'r*')
-    ax.axhline(expEDC,c='g',lw=2,label=sample)
-    if foundVbest:
-        ax.axvline(Vbest,c='m',lw=2,label="best V=%f"%Vbest)
-        ax.plot(vline,poly(vline,*popt),c='b',ls='--')
-    ax.set_xlabel("V")
-    ax.set_ylabel("distance")
-    ax.set_title(r"$\varphi$, $w_1^p$, $w_1^d$ = %f°, %f, %f"%(phiG/np.pi*180,w1p,w1d))
-    ax.legend()
+for phiG in listPhi:
     if disp:
-        plt.show()
-    if save:
-        figname = 'Figures/EDC/DvsV_'+fsm.get_fn(*(sample,nShells,w1p,w1d,phiG))+'.png'
-        fig.savefig(figname)
+        print("---------VARIABLE PARAMETERS CHOSEN---------")
+        print("Interlayer coupling w1: %f, %f"%(w1p,w1d))
+        print("(stacking,w2_p,w2_d,phi) = (%s, %.4f eV, %.4f eV, %.1f°)"%(stacking,w2p,w2d,phiG/np.pi*180))
 
-    """ Save as a line """
-    if foundVbest and save:
-        with open(data_fn,'a') as file:
-            writer = csv.writer(file)
-            # Write a single row
-            writer.writerow([stacking, "{:.7f}".format(w1p), "{:.7f}".format(w1d), "{:.7f}".format(phiG), Vbest])
+    """ Check we didn't already compute it """
+    data_fn = 'Data/EDC/Vbest_'+fsm.get_fn(*(sample,nShells))+'.svg'
+    alreadyComputed = False
+    if Path(data_fn).is_file():
+        with open(data_fn,'r') as f:
+            l = f.readlines()
+            for i in l:
+                terms = i.split(',')
+                if terms[0] == stacking:
+                    if terms[1]=="{:.7f}".format(w2p) and terms[2]=="{:.7f}".format(w2d) and terms[3]=="{:.7f}".format(phiG):
+                        alreadyComputed = True
+                        Vbest = float(terms[-1])
+                        print("Parameters already computed, Vbest=%.4f eV"%Vbest)
+                        break
+
+    """ Computation of best V """
+    if not alreadyComputed:
+        """ Compute distances for many Vs """
+        listVg = np.linspace(0.001,0.05,50)
+        distances = np.zeros(len(listVg))
+        for i in tqdm(range(len(listVg)),desc="Looping Vg"):
+            Vg = listVg[i]
+            args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', False, False)
+            disp_fit = 0#False
+            disp_plot = 0#False
+            distances[i] = fsm.EDC(args,sample,spreadE=0.03,disp=disp_fit,plot=disp_plot,figname='')
+            if distances[i] == -2:      #exit loop because the weight moved to the other band so we cannot get a good solution anyway
+                distances[i] *= np.nan
+                break
+            if distances[i] == -1:
+                distances[i] *= np.nan
+                #break
+
+        """ Fit to extrct best V """
+        def poly(x,a,b,c,d,e):
+            return a + b*x + c*x**2 + d*x**3 + e*x**4
+        try:    # Try the fit -> could not work for very random points
+            inds = np.array(np.argwhere(abs(distances-expEDC)<0.02))[:,0]
+            Vvalues = listVg[inds]
+            Dvalues = distances[inds]
+            popt, pcov = curve_fit(poly,Vvalues,Dvalues)
+            vline = np.linspace(Vvalues[0],Vvalues[-1],100)
+            Vbest = vline[np.argmin(abs(poly(vline,*popt)-expEDC))]
+            foundVbest = True
+        except:
+            foundVbest = False
+
+        if foundVbest:
+            """ Plot and save result """
+            fig = plt.figure()
+            ax = fig.add_subplot()
+            ax.plot(listVg,distances,'r*')
+            ax.axhline(expEDC,c='g',lw=2,label=sample)
+            if foundVbest:
+                ax.axvline(Vbest,c='m',lw=2,label="best V=%f"%Vbest)
+                ax.plot(vline,poly(vline,*popt),c='b',ls='--')
+            ax.set_xlabel("V")
+            ax.set_ylabel("distance")
+            ax.set_title(r"$\varphi$, $w_1^p$, $w_1^d$ = %f°, %f, %f"%(phiG/np.pi*180,w1p,w1d))
+            ax.legend()
+            if disp:
+                plt.show()
+            if save:
+                figname = 'Figures/EDC/DvsV_'+fsm.get_fn(*(sample,nShells,w1p,w1d,phiG))+'.png'
+                fig.savefig(figname)
+
+        """ Save as a line """
+        if foundVbest and save:
+            with open(data_fn,'a') as file:
+                writer = csv.writer(file)
+                # Write a single row
+                writer.writerow([stacking, "{:.7f}".format(w1p), "{:.7f}".format(w1d), "{:.7f}".format(phiG), Vbest])
 
 
-if foundVbest:
-    """ Plot image of final result """
-    figname_final = 'Figures/EDC/final_'+fsm.get_fn(*(sample,nShells,w1p,w1d,phiG))+'.png'
-    if not Path(figname_final).is_file():
-        args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vbest,Vk,phiG,phiK), '', False, False)
-        fsm.EDC(args,spreadE=0.03,disp=False,plot=True,figname=figname_final)
+    if foundVbest and 0:
+        """ Plot image of final result """
+        figname_final = 'Figures/EDC/final_'+fsm.get_fn(*(sample,nShells,w1p,w1d,phiG))+'.png'
+        if not Path(figname_final).is_file():
+            args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vbest,Vk,phiG,phiK), '', False, False)
+            fsm.EDC(args,sample,spreadE=0.03,disp=False,plot=True,figname=figname_final)
 
 
 
