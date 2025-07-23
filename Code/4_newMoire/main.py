@@ -38,117 +38,139 @@ else:
 #Parameters
 monolayer_type, stacking, w2p, w2d, Vg, Vk, phiG, phiK, sample, nShells, cut, kPts = fsm.get_pars(ind_pars)
 theta = 2.8 if sample=='S11' else 1.8    #twist angle, in degrees
-w1p = cfs.w1p_dic[monolayer_type][sample]
-w1d = cfs.w1d_dic[monolayer_type][sample]
-parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
-#Momentum cut values
-kList = cfs.get_kList(cut,kPts)
-kPts = kList.shape[0]
 
-# Preamble
-disp = True
-plot_rk = 0#True     #plot real and momentum space pictures
-save_plot_rk = True
-# Energy
-save_data_energy = 1
-plot_superimposed = 1
-show_superimposed = 1
-save_fig_superimposed = 1
-# Spread
-save_data_spread = 0
-plot_spread = 1
-show_spread = 1
-save_fig_spread = 1
-save_spread_txt = 0
-#
-if disp:    #print what parameters we're using
-    print("-----------PARAMETRS CHOSEN-----------")
-    print("Monolayers' tight-binding parameters: ",monolayer_type)
-    print("Interlayer coupling: ",parsInterlayer)
-    print("Sample ",sample," which has twist ",theta,"° and moiré length: "+"{:.4f}".format(cfs.moire_length(theta/180*np.pi))+" A")
-    print("Moiré potential values (eV,deg): G->("+"{:.4f}".format(Vg)+","+"{:.1f}".format(phiG/np.pi*180)+"°), K->("
-          +"{:.4f}".format(Vk)+","+"{:.1f}".format(phiK/np.pi*180)+"°)")
-    print("Number of mini-BZs circles: ",nShells)
-    print("Computing over BZ cut: ",cut," with ",kPts," points")
+Np = 101
+Nd = 51
+lW1p = np.linspace(-2.,0,Np)
+lW1d = np.linspace(0,1.,Nd)
+for i in range(Np*Nd):
+    if i!=0 and 0:
+        quit()
+    inp = i//Nd
+    ind = i%Nd
+    w1p = lW1p[inp]#cfs.w1p_dic[monolayer_type][sample]
+    w1d = lW1d[ind]#cfs.w1d_dic[monolayer_type][sample]
+    print("w1p: %.4f and w1d: %.4f"%(w1p,w1d))
+    parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d,}
 
-if plot_rk:     #Plot real and momentum space lattices to visualize system
-    fsm.plot_rk(theta,kList,cut,save_plot_rk)
-    exit()
+    #Momentum cut values
+    kList = cfs.get_kList(cut,kPts)
+    kPts = kList.shape[0]
 
-###################################################################################
-# Diagonalize Hamiltonian to get eigenvalues and eigenvectors
-###################################################################################
-nCells = int(1+3*nShells*(nShells+1))
-args_fn = (monolayer_type, parsInterlayer, Vg, Vk, phiG, phiK, theta, sample, nShells, cut, kPts)
-energy_fn = fsm.get_data_dn(machine) + 'energy_' + fsm.get_fn(*args_fn) + '.npz'
-if not Path(energy_fn).is_file():
-    args = (nShells, nCells, kList, monolayer_type, parsInterlayer, theta, (Vg,Vk,phiG,phiK), energy_fn, save_data_energy)
+    # Preamble
+    disp = 0#True
+    plot_rk = 0#True     #plot real and momentum space pictures
+    save_plot_rk = 0#True
+    # Energy
+    save_data_energy = 0#1
+    plot_superimposed = 1
+    show_superimposed = 0
+    save_fig_superimposed = 1
+    # Spread
+    save_data_spread = 0
+    plot_spread = 0#1
+    show_spread = 0#1
+    save_fig_spread = 0#1
+    save_spread_txt = 0
+    #
+    if disp:    #print what parameters we're using
+        print("-----------PARAMETRS CHOSEN-----------")
+        print("Monolayers' tight-binding parameters: ",monolayer_type)
+        print("Interlayer coupling: ",parsInterlayer)
+        print("Sample ",sample," which has twist ",theta,"° and moiré length: "+"{:.4f}".format(cfs.moire_length(theta/180*np.pi))+" A")
+        print("Moiré potential values (eV,deg): G->("+"{:.4f}".format(Vg)+","+"{:.1f}".format(phiG/np.pi*180)+"°), K->("
+              +"{:.4f}".format(Vk)+","+"{:.1f}".format(phiK/np.pi*180)+"°)")
+        print("Number of mini-BZs circles: ",nShells)
+        print("Computing over BZ cut: ",cut," with ",kPts," points")
+
+    if plot_rk:     #Plot real and momentum space lattices to visualize system
+        fsm.plot_rk(theta,kList,cut,save_plot_rk)
+        exit()
+
+    """ Diagonalize Hamiltonian to get eigenvalues and eigenvectors at Gamma to check energies"""
+    nCells = int(1+3*nShells*(nShells+1))
+    args = (nShells, nCells, np.array([np.zeros(2),]), monolayer_type, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', save_data_energy,disp)
     evals, evecs = fsm.diagonalize_matrix(*args)
-else:
-    evals = np.load(energy_fn)['evals']
-    evecs = np.load(energy_fn)['evecs']
 
-###################################################################################
-# Compute bands' weights
-###################################################################################
-weights = np.zeros((kPts,nCells*44))
-for i in range(kPts):
-    ab = np.absolute(evecs[i])**2
-    weights[i,:] = np.sum(ab[:22,:],axis=0) + np.sum(ab[22*nCells:22*(1+nCells),:],axis=0)
-#
-if plot_superimposed:
-    fig = plt.figure(figsize=(15,15))
-    ax = fig.add_subplot()
-    E_max, E_min, pKi, pKf, pEmax, pEmin = cfs.dic_pars_samples[sample]
-    if cut in ['Kp-G-K','Kp-G'] and 1:   #plot experimental image underneath
-        from PIL import Image
-        fig_fn = fsm.get_inputs_dn(machine) + sample + '_KGK.png'
-        pic_raw = np.array(np.asarray(Image.open(fig_fn)))
-        totPe,totPk,_ = pic_raw.shape
-        K0 = np.linalg.norm(kList[0])   #val of |K|
-#        K0 = 1.4
-        pK0 = int((pKf+pKi)/2)   #pixel of middle -> k=0
-        pKF = int((pKf-pK0)*K0+pK0)   #pixel of k=|K|
-        pKI = 2*pK0-pKF             #pixel of k=-|K|
-        pic = pic_raw[pEmax:pEmin,pKI:pKF]
-        if 0:   #plot full image to check bounds
-            ax.imshow(pic_raw)
-            ax.plot([pKi,pKi],[0,totPe],color='k')
-            ax.plot([pKf,pKf],[0,totPe],color='k')
-            ax.plot([pK0,pK0],[0,totPe],color='b')
-            ax.plot([pKI,pKI],[0,totPe],color='r')
-            ax.plot([pKF,pKF],[0,totPe],color='r')
-            plt.show()
-            exit()
-        ax.imshow(pic,zorder=0)
-        pe,pk,z = pic.shape
-    else:
-        pe,pk = (1000,kPts)
-    if cut=='Kp-G':
-        evals = np.concatenate([evals,(evals[::-1,:])[:,:]],axis=0)
-        weights = np.concatenate([weights,(weights[::-1,:])[:,:]],axis=0)
-        kPts = evals.shape[0]
-    kLine = np.arange(kPts)/kPts * pk
-    if sample=='S11':
-        evals -= 0.47
-    for n in range(16*nCells,28*nCells):
-        ax.plot(kLine,
-                (E_max-evals[:,n])/(E_max-E_min)*pe,
-                color='r',lw=0.1,zorder=1)
-        ax.scatter(kLine,
-                (E_max-evals[:,n])/(E_max-E_min)*pe,
-                s=weights[:,n]*50,
-                lw=0,color='b',zorder=3
-                )
-    ax.set_ylim(pe-1,0)
-    ax.set_xlim(0,pk-1)
-    ax.set_title(fsm.get_fn(*args_fn))
+    d1 = abs(evals[0,27]+0.68)
+    d2 = abs(evals[0,25]+1.34)
+    if (d1<0.05 and d2<0.01) or 0:
+        print("right range")
 
-    if save_fig_superimposed:
-        figname = fsm.get_figures_dn(machine) + "superimposed_" + fsm.get_fn(*args_fn) + '.png'
-        plt.savefig(figname)
-    if show_superimposed:
-        plt.show()
+        """ Diagonalize Hamiltonian to get eigenvalues and eigenvectors """
+        nCells = int(1+3*nShells*(nShells+1))
+        args_fn = (monolayer_type, parsInterlayer, Vg, Vk, phiG, phiK, theta, sample, nShells, cut, kPts)
+#        energy_fn = fsm.get_data_dn(machine) + 'energy_' + fsm.get_fn(*args_fn) + '.npz'
+#        if not Path(energy_fn).is_file():
+        args = (nShells, nCells, kList, monolayer_type, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', save_data_energy,True)
+        evals,evecs = fsm.diagonalize_matrix(*args)
+#        else:
+#            evals = np.load(energy_fn)['evals']
+#            evecs = np.load(energy_fn)['evecs']
+
+        """ Compute bands' weights """
+        weights = np.zeros((kPts,nCells*44))
+        for i in range(kPts):
+            ab = np.absolute(evecs[i])**2
+            weights[i,:] = np.sum(ab[:22,:],axis=0) + np.sum(ab[22*nCells:22*(1+nCells),:],axis=0)
+
+        """ Plot superimposed """
+        if plot_superimposed:
+            fig = plt.figure(figsize=(15,15))
+            ax = fig.add_subplot()
+            E_max, E_min, pKi, pKf, pEmax, pEmin = cfs.dic_pars_samples[sample]
+            if cut in ['Kp-G-K','Kp-G'] and 1:   #plot experimental image underneath
+                from PIL import Image
+                fig_fn = fsm.get_inputs_dn(machine) + sample + '_KGK.png'
+                pic_raw = np.array(np.asarray(Image.open(fig_fn)))
+                totPe,totPk,_ = pic_raw.shape
+                K0 = np.linalg.norm(kList[0])   #val of |K|
+        #        K0 = 1.4
+                pK0 = int((pKf+pKi)/2)   #pixel of middle -> k=0
+                pKF = int((pKf-pK0)*K0+pK0)   #pixel of k=|K|
+                pKI = 2*pK0-pKF             #pixel of k=-|K|
+                pic = pic_raw[pEmax:pEmin,pKI:pKF]
+                if 0:   #plot full image to check bounds
+                    ax.imshow(pic_raw)
+                    ax.plot([pKi,pKi],[0,totPe],color='k')
+                    ax.plot([pKf,pKf],[0,totPe],color='k')
+                    ax.plot([pK0,pK0],[0,totPe],color='b')
+                    ax.plot([pKI,pKI],[0,totPe],color='r')
+                    ax.plot([pKF,pKF],[0,totPe],color='r')
+                    plt.show()
+                    exit()
+                ax.imshow(pic,zorder=0)
+                pe,pk,z = pic.shape
+            else:
+                pe,pk = (1000,kPts)
+            if cut=='Kp-G':
+                evals = np.concatenate([evals,(evals[::-1,:])[:,:]],axis=0)
+                weights = np.concatenate([weights,(weights[::-1,:])[:,:]],axis=0)
+                kPtsPlot = evals.shape[0]
+            else:
+                kPtsPlot = kPts
+            kLine = np.arange(kPtsPlot)/kPtsPlot * pk
+            if sample=='S11':
+                evals -= 0.47
+            for n in range(16*nCells,28*nCells):
+                ax.plot(kLine,
+                        (E_max-evals[:,n])/(E_max-E_min)*pe,
+                        color='r',lw=0.1,zorder=1)
+                ax.scatter(kLine,
+                        (E_max-evals[:,n])/(E_max-E_min)*pe,
+                        s=weights[:,n]*50,
+                        lw=0,color='b',zorder=3
+                        )
+            ax.set_ylim(pe-1,0)
+            ax.set_xlim(0,pk-1)
+            ax.set_title(fsm.get_fn(*args_fn))
+
+            if save_fig_superimposed:
+                figname = fsm.get_figures_dn(machine) + "Int/superimposed_" + fsm.get_fn(*args_fn) + '.png'
+                plt.savefig(figname)
+            if show_superimposed:
+                plt.show()
+            plt.close()
 
 
 

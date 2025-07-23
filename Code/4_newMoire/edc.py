@@ -58,36 +58,30 @@ monolayer_type = 'fit'
 Vk,phiK = (0.007,-106/180*np.pi)
 nCells = int(1+3*nShells*(nShells+1))
 theta = 2.8 if sample=='S11' else 1.8    #twist angle, in degrees
-w1p = cfs.w1p_dic[monolayer_type][sample]
-w1d = cfs.w1d_dic[monolayer_type][sample]
+#w1p = cfs.w1p_dic[monolayer_type][sample]
+#w1d = cfs.w1d_dic[monolayer_type][sample]
 kListG = np.array([np.zeros(2),])
 if disp:    #print what parameters we're using
     print("-----------FIXED PARAMETRS CHOSEN-----------")
     print("Monolayers' tight-binding parameters: ",monolayer_type)
-    print("Interlayer coupling w1: %f, %f"%(w1p,w1d))
     print("Sample ",sample," which has twist ",theta,"°")
     print("Moiré potential at K (%f eV, %f°)"%(Vk,phiK/np.pi*180))
     print("Number of mini-BZs circles: ",nShells)
 
 """ Variable parameters """
-nPhi = 60
-nW2p = 11
-nW2d = 7
-listPhi = np.linspace(0,2*np.pi/3,nPhi,endpoint=False)
-listW2p = [0,]#[-0.1,-0.05,-0.02,-0.01,-0.005,0,0.005,0.01,0.02,0.05,0.1]
-listW2d = [0,]#[-0.03,-0.01,-0.005,0,0.005,0.01,0.03]
+nPhi = 19
+nW1p = 41
+nW1d = 13
+listPhi = np.linspace(0,np.pi,nPhi)
+listW1p = np.linspace(-1.68,-1.88,nW1p)
+listW1d = np.linspace(0.38,0.44,nW1d)
 stackings = ['P',]#['P','AP']
-stacking,w2p,w2d,phiG = list(itertools.product(*[stackings,listW2p,listW2d,listPhi]))[ind]
+stacking,w1p,w1d,phiG = list(itertools.product(*[stackings,listW1p,listW1d,listPhi]))[ind]
 w2p = w2d = 0
-if abs(w2p)<1e-8:
-    w2p=0
-if abs(w2d)<1e-8:
-    w2d=0
-if abs(phiG)<1e-8:
-    phiG=0
 parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
 if disp:
     print("---------VARIABLE PARAMETERS CHOSEN---------")
+    print("Interlayer coupling w1: %f, %f"%(w1p,w1d))
     print("(stacking,w2_p,w2_d,phi) = (%s, %.4f eV, %.4f eV, %.1f°)"%(stacking,w2p,w2d,phiG/np.pi*180))
 
 """ Check we didn't already compute it """
@@ -100,7 +94,7 @@ if Path(data_fn).is_file():
             terms = i.split(',')
             if terms[0] == stacking:
                 if terms[1]=="{:.7f}".format(w2p) and terms[2]=="{:.7f}".format(w2d) and terms[3]=="{:.7f}".format(phiG):
-                    #alreadyComputed = True
+                    alreadyComputed = True
                     Vbest = float(terms[-1])
                     print("Parameters already computed, Vbest=%.4f eV"%Vbest)
                     break
@@ -113,9 +107,8 @@ if not alreadyComputed:
     for i in tqdm(range(len(listVg)),desc="Looping Vg"):
         Vg = listVg[i]
         args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', False, False)
-        disp_fit = 1#False
-        disp_plot = 1#False
-#        figname = 'Figures/EDC/example_'+fsm.get_fn(*(stacking,nShells,w2p,w2d,phiG,Vg))+'.png'
+        disp_fit = 0#False
+        disp_plot = 0#False
         distances[i] = fsm.EDC(args,spreadE=0.03,disp=disp_fit,plot=disp_plot,figname='')
         if distances[i] == -1:
             distances[i] *= np.nan
@@ -145,22 +138,25 @@ if not alreadyComputed:
         ax.plot(vline,poly(vline,*popt),c='b',ls='--')
     ax.set_xlabel("V")
     ax.set_ylabel("distance")
-    ax.set_title(r"$\varphi$, $w_2^p$, $w_2^d$ = %f°, %f, %f"%(phiG/np.pi*180,w2p,w2d))
+    ax.set_title(r"$\varphi$, $w_1^p$, $w_1^d$ = %f°, %f, %f"%(phiG/np.pi*180,w1p,w1d))
     ax.legend()
-    figname = 'Figures/EDC/DvsV_'+fsm.get_fn(*(sample,nShells,stacking,w2p,w2d,phiG))+'.png'
-    fig.savefig(figname)
+    if disp:
+        plt.show()
+    if save:
+        figname = 'Figures/EDC/DvsV_'+fsm.get_fn(*(sample,nShells,w1p,w1d,phiG))+'.png'
+        fig.savefig(figname)
 
     """ Save as a line """
     if foundVbest and save:
         with open(data_fn,'a') as file:
             writer = csv.writer(file)
             # Write a single row
-            writer.writerow([stacking, "{:.7f}".format(w2p), "{:.7f}".format(w2d), "{:.7f}".format(phiG), Vbest])
+            writer.writerow([stacking, "{:.7f}".format(w1p), "{:.7f}".format(w1d), "{:.7f}".format(phiG), Vbest])
 
 
 if foundVbest:
     """ Plot image of final result """
-    figname_final = 'Figures/EDC/final_'+fsm.get_fn(*(sample,stacking,nShells,w2p,w2d,phiG))+'.png'
+    figname_final = 'Figures/EDC/final_'+fsm.get_fn(*(sample,nShells,w1p,w1d,phiG))+'.png'
     if not Path(figname_final).is_file():
         args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vbest,Vk,phiG,phiK), '', False, False)
         fsm.EDC(args,spreadE=0.03,disp=False,plot=True,figname=figname_final)

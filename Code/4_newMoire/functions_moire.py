@@ -12,19 +12,19 @@ machine = cfs.get_machine(os.getcwd())
 
 def get_pars(ind):
     lMonolayer_type = ['fit',]
-    lSample = ['S11',]  #this and theta are related! Sample needed also for interlayer parameters' choice
-    lStacking = ['AP',]
+    lSample = ['S3',]  #this and theta are related! Sample needed also for interlayer parameters' choice
+    lStacking = ['P',]
     lW2p = [0.0]#np.linspace(-0.05,0.05,5)
     lW2d = [0.0]#np.linspace(-0.05,0.05,5)
     pars_Vgs = [0.0,]        #Moire potential at Gamma
-    pars_Vks = [0.0,]             #Moire potential at K
-    phi_G = [np.pi,]                #Phase at Gamma
+    pars_Vks = [0.007,]             #Moire potential at K
+    phi_G = [np.pi/3,]                #Phase at Gamma
     phi_K = [-106*np.pi/180,]       #Phase at K
-    lnShells = [1,]                       #number of BZ circles
-    lCuts = ['Kp-G-K',]          #'Kp-G-K-Kp'
+    lnShells = [0,]                       #number of BZ circles
+    lCuts = ['Kp-G-K',]#'Kp-G-K',]          #'Kp-G-K-Kp'
     lKpts = [100,]
     #
-    ll = [lMonolayer_type,lStacking,lW2p,lW2d,pars_Vgs,pars_Vks,phi_G,phi_K,lSample,lnShells,lCuts,lKpts]
+    ll = [lMonolayer_type,lStacking,lW2p,lW2d,pars_Vgs,pars_Vks,phi_G,phi_K,lSample,lnShells,lCuts,lKpts,]
     return list(itertools.product(*ll))[ind]
 
 def import_monolayer_parameters(monolayer_type,machine):
@@ -129,6 +129,7 @@ def big_H(K_,nShells,lu,pars_monolayer,parsInterlayer,pars_moire):
     Kns = np.zeros((nCells,2))
     for i in range(nCells):
         Kns[i] = K_ + G_M[1]*lu[i][0] + G_M[2]*lu[i][1]
+    #
     orbpList = [8,19]       #list of indexes of p-orbitals for interlayer coupling -> p_z^e
     orbdList = [5,16]       #list of indexes of d-orbitals for interlayer coupling -> d_z^2
     psiInterlayer = 0 if parsInterlayer['stacking']=='P' else 2*np.pi/3
@@ -137,20 +138,27 @@ def big_H(K_,nShells,lu,pars_monolayer,parsInterlayer,pars_moire):
         Kn = Kns[n]
         Ham [n*22:(n+1)*22,n*22:(n+1)*22] = cfs.H_monolayer(Kn,*args_WSe2)
         Ham [(nCells+n)*22:(nCells+n+1)*22,(nCells+n)*22:(nCells+n+1)*22] = cfs.H_monolayer(Kn,*args_WS2)
-        # w1 p and d
-        for orbp in orbpList:
-            Ham[n*22 + orbp,(nCells+n)*22 + orbp] += parsInterlayer['w1p']
+        # w1 p and d: e-e, e-o, o-e and o-o (last two with minus sign)
+        for iSO in [0,11]:
+            Ham[n*22 + 8 + iSO,(nCells+n)*22 + 8 + iSO] += parsInterlayer['w1p']
+#        for orbp in orbpList:
+#            Ham[n*22 + orbp,(nCells+n)*22 + orbp] += parsInterlayer['w1p']
         for orbd in orbdList:
             Ham[n*22 + orbd,(nCells+n)*22 + orbd] += parsInterlayer['w1d']
-        # w2 p and d
-        for ng in [1,2,3,4,5,6]:      #index of G_M to consider in the interlayer
-            diff = np.linalg.norm(np.absolute(Kn - Kns + G_M[ng]),axis=1)
-            inds = np.where(diff<1e-10)[0]
-            for ind in inds:
-                for orbp in orbpList:
-                    Ham[n*22 + orbp,(nCells+ind)*22 + orbp] += parsInterlayer['w2p']
-                for orbd in orbdList:
-                    Ham[n*22 + orbd,(nCells+ind)*22 + orbd] += parsInterlayer['w2d']*np.exp(-1j*(-1)**(ng-1)*psiInterlayer)
+        if 0:# w2 p and d
+            for ng in [1,2,3,4,5,6]:      #index of G_M to consider in the interlayer
+                diff = np.linalg.norm(np.absolute(Kn - Kns + G_M[ng]),axis=1)
+                inds = np.where(diff<1e-10)[0]
+                for ind in inds:
+                    for iSO in [0,11]:
+                        Ham[n*22 + 2 + iSO,(nCells+ind)*22 + 2 + iSO] += parsInterlayer['w2p']/2
+                        Ham[n*22 + 2 + iSO,(nCells+ind)*22 + 8 + iSO] += parsInterlayer['w2p']/2
+                        Ham[n*22 + 8 + iSO,(nCells+ind)*22 + 2 + iSO] -= parsInterlayer['w2p']/2
+                        Ham[n*22 + 8 + iSO,(nCells+ind)*22 + 8 + iSO] -= parsInterlayer['w2p']/2
+#                    for orbp in orbpList:
+#                        Ham[n*22 + orbp,(nCells+ind)*22 + orbp] += parsInterlayer['w2p']
+                    for orbd in orbdList:
+                        Ham[n*22 + orbd,(nCells+ind)*22 + orbd] += parsInterlayer['w2d']*np.exp(-1j*(-1)**(ng-1)*psiInterlayer)
     Ham[nCells*22:,:nCells*22] = np.copy(Ham[:nCells*22,nCells*22:].T.conj())
     #Moirè replicas
     for n in range(0,nShells+1):      #Circles
@@ -328,14 +336,16 @@ def EDC(args,spreadE=0.03,disp=False,plot=False,figname=''):
     # Define finer energy list for weight spreading: slightly larger for better spreading shape
     energyList = np.linspace(-1.0,-0.4,200)      #we chose this from experimental data
     weightList = np.zeros(len(energyList))
-    if energyMainBand > energyList[-1]:     # Check we are in right window
+    if energyMainBand > energyList[-1] and 1:     # Check we are in right window
         if disp:
             print("TVB energy higher than -0.4 eV -> clearly wrong")
-        return -1
-    if np.max(fullWeightValues[:-2]) > weightMainBand:     # Check the main band has higher weight
+        else:
+            return -1
+    if np.max(fullWeightValues[:-2]) > weightMainBand and 1:     # Check the main band has higher weight
         if disp:
             print("TVB weight is not the maximum -> clearly wrong")
-        return -1
+        else:
+            return -1
     for i in range(len(fullEnergyValues)):
         weightList += spreadE/np.pi * fullWeightValues[i] / ((energyList-fullEnergyValues[i])**2+spreadE**2)
     try:    # Fit the spreaded weights with two Lorentzian peaks convoluted with a Gaussian
@@ -344,10 +354,12 @@ def EDC(args,spreadE=0.03,disp=False,plot=False,figname=''):
         params = model.make_params(amp1=1.57, cen1=-0.67, sig1=0.005, gam1=0.03,
                                amp2=0.41, cen2=-0.76, sig2=0.005, gam2=0.03)
         params['amp1'].set(min=1,max=10)
+#        params['amp1'].set(min=0.1,max=10)
         params['sig1'].set(min=0,max=1)
         params['cen1'].set(min=-0.73,max=-0.6)
         params['gam1'].set(min=1e-5,max=0.08)
         params['amp2'].set(min=0.1,max=5)
+#        params['amp2'].set(min=0.1,max=10)
         params['sig2'].set(min=0,max=1)
         params['cen2'].set(min=-0.81,max=-0.73)
         params['gam2'].set(min=1e-5,max=0.08)
@@ -357,11 +369,13 @@ def EDC(args,spreadE=0.03,disp=False,plot=False,figname=''):
             if disp:
                 print("Chisqr high")
             raise ValueError
-        for name, param in result.params.items():   #check if parameetrs are hitting the boundaries I set
-            if (param.min is not None and abs(param.value - param.min) < 1e-8) or (param.max is not None and abs(param.value - param.max) < 1e-8):
-                if disp:
-                    print("Par "+name+" at boundary: ",param)
-                raise ValueError
+        if 1:
+            for name, param in result.params.items():   #check if parameetrs are hitting the boundaries I set
+                if (param.min is not None and abs(param.value - param.min) < 1e-10) or (param.max is not None and abs(param.value - param.max) < 1e-10):
+                    if disp:
+                        print("Par "+name+" at boundary: ",param)
+#                    break
+                    raise ValueError
         distance = result.best_values['cen1'] - result.best_values['cen2']
         fitSuccess = True
         if disp:
@@ -372,13 +386,13 @@ def EDC(args,spreadE=0.03,disp=False,plot=False,figname=''):
         distance = -1
         fitSuccess = False
     if plot:
-        imageAroundGamma = 0
+        imageAroundGamma = 1
         if imageAroundGamma:       #Compute image zoom around Gamma
             fig = plt.figure(figsize=(20,13))
             import matplotlib.gridspec as gridspec
             gs = gridspec.GridSpec(2, 2, width_ratios=[1, 0.5])
             # Need to compute some points around Gamma
-            kPts = 201 #has to be odd
+            kPts = 101 #has to be odd
             range_k = 0.6
             kList = np.zeros((kPts,2))
             kList[:,0] = np.linspace(-range_k,range_k,kPts)
@@ -401,10 +415,10 @@ def EDC(args,spreadE=0.03,disp=False,plot=False,figname=''):
             ax.set_ylabel("eV")
             V = args[6][0]
             phiG = args[6][2]/np.pi*180
-            w2p = args[4]['w2p']
-            w2d = args[4]['w2d']
+            w1p = args[4]['w1p']
+            w1d = args[4]['w1d']
             stacking = args[4]['stacking']
-            ax.text(0.1,0.9,r"stacking: %s, V=%.4f eV, $\varphi$=%.1f°, $w_2^p$=%.4f eV, $w_2^d$=%.4f eV"%(stacking,V,phiG,w2p,w2d),size=20,transform=ax.transAxes)
+            ax.text(0.1,0.9,r"stacking: %s, V=%.4f eV, $\varphi$=%.1f°, $w_1^p$=%.4f eV, $w_1^d$=%.4f eV"%(stacking,V,phiG,w1p,w1d),size=20,transform=ax.transAxes)
             #Figure of spread
             ax = fig.add_subplot(gs[1,0])
             E_list = np.linspace(-1.2,-0.4,150)
