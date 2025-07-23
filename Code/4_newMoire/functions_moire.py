@@ -348,8 +348,8 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
     try:    # Fit the spreaded weights with two Lorentzian peaks convoluted with a Gaussian
         model = Model(double_voigt, independent_vars=['x'])
         # Initial guess and boundaries
-        params = model.make_params(amp1=1.57, cen1=-0.67, sig1=0.005, gam1=0.03,
-                               amp2=0.41, cen2=-0.76, sig2=0.005, gam2=0.03)
+        params = model.make_params(amp1=1.57, cen1=peak0, sig1=0.005, gam1=0.03,
+                               amp2=0.41, cen2=peak1, sig2=0.005, gam2=0.03)
         params['amp1'].set(min=1,max=5)
 #        params['amp1'].set(min=0.1,max=10)
         params['sig1'].set(min=0,max=1)

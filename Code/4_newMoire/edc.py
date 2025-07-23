@@ -73,12 +73,11 @@ nPhi = 37
 nW1p = 21
 nW1d = 7
 listPhi = np.linspace(0,np.pi,nPhi)
-listW1p = np.linspace(-1.68,-1.88,nW1p)
+listW1p = np.linspace(-1.68,-1.78,nW1p)
 listW1d = np.linspace(0.38,0.44,nW1d)
 stackings = ['P',]#['P','AP']
 stacking,w1p,w1d = list(itertools.product(*[stackings,listW1p,listW1d]))[ind]
 w2p = w2d = 0
-
 parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
 
 for phiG in listPhi:
@@ -86,7 +85,6 @@ for phiG in listPhi:
         print("---------VARIABLE PARAMETERS CHOSEN---------")
         print("Interlayer coupling w1: %f, %f"%(w1p,w1d))
         print("(stacking,w2_p,w2_d,phi) = (%s, %.4f eV, %.4f eV, %.1f°)"%(stacking,w2p,w2d,phiG/np.pi*180))
-
     """ Check we didn't already compute it """
     data_fn = 'Data/EDC/Vbest_'+fsm.get_fn(*(sample,nShells))+'.svg'
     alreadyComputed = False
@@ -186,7 +184,7 @@ for phiG in listPhi:
             with open(data_fn,'a') as file:
                 writer = csv.writer(file)
                 # Write a single row
-                writer.writerow([stacking, "{:.7f}".format(w1p), "{:.7f}".format(w1d), "{:.7f}".format(phiG), Vbest])
+                writer.writerow([stacking, "{:.7f}".format(w1p), "{:.7f}".format(w1d), "{:.7f}".format(phiG), "{:.7f}".format(Vbest)])
 
         if foundVbest and 1:
             if disp:
