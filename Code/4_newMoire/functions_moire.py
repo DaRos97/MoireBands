@@ -320,6 +320,8 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
     We spread the weights with a Lorentzian of width 30 meV.
     We fit the intensity profile with 2 Lorentzians (convoluted with a Gaussian).
     """
+    peak0 = -0.6948 if sample=='S3' else -0.6899
+    peak1 = -0.7730 if sample=='S3' else -0.7831
     nCells = args[1]
     # Evals, evecs and weights at Gamma
     e_, ev_ = diagonalize_matrix(*args)
@@ -336,11 +338,6 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
     # Define finer energy list for weight spreading: slightly larger for better spreading shape
     energyList = np.linspace(-1.0,-0.4,200)      #we chose this from experimental data
     weightList = np.zeros(len(energyList))
-    if energyMainBand > energyList[-1] and 1:     # Check we are in right window
-        if disp:
-            print("TVB energy higher than -0.4 eV -> clearly wrong")
-        else:
-            return -1
     if np.max(fullWeightValues[:-2]) > weightMainBand and 1:     # Check the main band has higher weight
         if disp:
             print("TVB weight is not the maximum -> clearly wrong")
@@ -356,16 +353,16 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
         params['amp1'].set(min=1,max=10)
 #        params['amp1'].set(min=0.1,max=10)
         params['sig1'].set(min=0,max=1)
-        params['cen1'].set(min=-0.715,max=-0.67)
+        params['cen1'].set(min=peak0-0.005,max=peak0+0.005)
         params['gam1'].set(min=1e-5,max=0.08)
         params['amp2'].set(min=0.1,max=5)
 #        params['amp2'].set(min=0.1,max=10)
         params['sig2'].set(min=0,max=1)
-        params['cen2'].set(min=-0.8,max=-0.756)
+        params['cen2'].set(min=peak1-0.005,max=peak1+0.005)
         params['gam2'].set(min=1e-5,max=0.08)
         result = model.fit(weightList, params, x=energyList)
         # Checks on the result
-        if result.chisqr > 100:     # Bad fit
+        if result.chisqr > 30:     # Bad fit
             if disp:
                 print("Chisqr high")
             raise ValueError
@@ -386,7 +383,7 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
         distance = -1
         fitSuccess = False
     if plot:
-        imageAroundGamma = 1
+        imageAroundGamma = 0
         if imageAroundGamma:       #Compute image zoom around Gamma
             fig = plt.figure(figsize=(20,13))
             import matplotlib.gridspec as gridspec
@@ -406,11 +403,11 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
             #Figure of points
             ax = fig.add_subplot(gs[0,0])
             kLine = kList[:,0]
-            for n in range(16*nCells,28*nCells):
+            for n in range(10*nCells,28*nCells):
                 ax.plot(kLine,evals2[:,n],color='r',lw=0.3,zorder=1)
                 ax.scatter(kLine,evals2[:,n], s=weights2[:,n]*100,
                            color='b',lw=0,zorder=3)
-            ax.set_ylim(-1.2,-0.4)
+            ax.set_ylim(-1.6,-0.4)
             ax.set_xlim(-range_k,range_k)
             ax.set_ylabel("eV")
             V = args[6][0]
@@ -421,11 +418,11 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
             ax.text(0.1,0.9,r"stacking: %s, V=%.4f eV, $\varphi$=%.1f°, $w_1^p$=%.4f eV, $w_1^d$=%.4f eV"%(stacking,V,phiG,w1p,w1d),size=20,transform=ax.transAxes)
             #Figure of spread
             ax = fig.add_subplot(gs[1,0])
-            E_list = np.linspace(-1.2,-0.4,150)
+            E_list = np.linspace(-1.6,-0.4,150)
             spread = np.zeros((kPts,len(E_list)))
             pars_spread = (0.001,0.03,'Lorentz')
             for i in range(kPts):
-                for n in range(indexMainBand-nCells*2+1,indexMainBand+1):
+                for n in range(indexMainBand-nCells*4+1,indexMainBand+1):
                     spread += weight_spreading(weights2[i,n],kList[i],evals2[i,n],kList,E_list[None,:],pars_spread)
             spread /= np.max(spread)        #0 to 1
             map_ = 'gray_r'
@@ -452,14 +449,13 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
             ax.plot(energyList,result.best_fit,color='g',ls='--',lw=2)
             ax.axvline(result.best_values['cen1'],color='r')
             ax.axvline(result.best_values['cen2'],color='r')
-        peak0 = -0.6948 if sample=='S3' else -0.6899
-        peak1 = -0.7730 if sample=='S3' else -0.7831
         ax.axvline(peak0,color='y',lw=2,zorder=-1)
         ax.axvline(peak1,color='y',lw=2,zorder=-1)
         fig.tight_layout()
         if not figname=='':
             fig.savefig(figname)
-        plt.show()
+        if disp:
+            plt.show()
         return distance
     return distance
 

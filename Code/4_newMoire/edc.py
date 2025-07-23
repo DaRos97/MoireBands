@@ -69,9 +69,9 @@ if disp:    #print what parameters we're using
     print("Number of mini-BZs circles: ",nShells)
 
 """ Variable parameters """
-nPhi = 38
-nW1p = 41
-nW1d = 13
+nPhi = 37
+nW1p = 21
+nW1d = 7
 listPhi = np.linspace(0,np.pi,nPhi)
 listW1p = np.linspace(-1.68,-1.88,nW1p)
 listW1d = np.linspace(0.38,0.44,nW1d)
@@ -109,11 +109,11 @@ for phiG in listPhi:
         for i in tqdm(range(len(listVg)),desc="Looping Vg"):
             Vg = listVg[i]
             args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', False, False)
-            disp_fit = 0#False
-            disp_plot = 0#False
+            disp_fit = False
+            disp_plot = False
             distances[i] = fsm.EDC(args,sample,spreadE=0.03,disp=disp_fit,plot=disp_plot,figname='')
             if distances[i] == -2:      #exit loop because the weight moved to the other band so we cannot get a good solution anyway
-                distances[i] *= np.nan
+                distances[i:] *= np.nan
                 break
             if distances[i] == -1:
                 distances[i] *= np.nan
@@ -123,14 +123,20 @@ for phiG in listPhi:
         def poly(x,a,b,c,d,e):
             return a + b*x + c*x**2 + d*x**3 + e*x**4
         try:    # Try the fit -> could not work for very random points
-            inds = np.array(np.argwhere(abs(distances-expEDC)<0.02))[:,0]
+            inds = np.array(np.argwhere(abs(distances-expEDC)<0.015))[:,0]
             Vvalues = listVg[inds]
             Dvalues = distances[inds]
+            if len(Vvalues) < 4 or max(Dvalues)<expEDC or min(Dvalues)>expEDC:
+                if disp:
+                    print("Found distances not good enough for the fit")
+                raise ValueError
             popt, pcov = curve_fit(poly,Vvalues,Dvalues)
             vline = np.linspace(Vvalues[0],Vvalues[-1],100)
             Vbest = vline[np.argmin(abs(poly(vline,*popt)-expEDC))]
             foundVbest = True
         except:
+            if disp:
+                print("Fit of Vbest didn't work")
             foundVbest = False
 
         if foundVbest:
@@ -160,12 +166,12 @@ for phiG in listPhi:
                 writer.writerow([stacking, "{:.7f}".format(w1p), "{:.7f}".format(w1d), "{:.7f}".format(phiG), Vbest])
 
 
-    if foundVbest and 0:
-        """ Plot image of final result """
-        figname_final = 'Figures/EDC/final_'+fsm.get_fn(*(sample,nShells,w1p,w1d,phiG))+'.png'
-        if not Path(figname_final).is_file():
-            args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vbest,Vk,phiG,phiK), '', False, False)
-            fsm.EDC(args,sample,spreadE=0.03,disp=False,plot=True,figname=figname_final)
+        if foundVbest and 1:
+            """ Plot image of final result """
+            figname_final = 'Figures/EDC/final_'+fsm.get_fn(*(sample,nShells,w1p,w1d,phiG))+'.png'
+            if not Path(figname_final).is_file():
+                args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vbest,Vk,phiG,phiK), '', False, False)
+                fsm.EDC(args,sample,spreadE=0.03,disp=False,plot=True,figname=figname_final)
 
 
 
