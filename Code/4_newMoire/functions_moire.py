@@ -350,25 +350,25 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
         # Initial guess and boundaries
         params = model.make_params(amp1=1.57, cen1=-0.67, sig1=0.005, gam1=0.03,
                                amp2=0.41, cen2=-0.76, sig2=0.005, gam2=0.03)
-        params['amp1'].set(min=1,max=10)
+        params['amp1'].set(min=1,max=5)
 #        params['amp1'].set(min=0.1,max=10)
         params['sig1'].set(min=0,max=1)
-        params['cen1'].set(min=peak0-0.005,max=peak0+0.005)
+        params['cen1'].set(min=peak0-0.0025,max=peak0+0.0025)
         params['gam1'].set(min=1e-5,max=0.08)
-        params['amp2'].set(min=0.1,max=5)
+        params['amp2'].set(min=0.3,max=1)
 #        params['amp2'].set(min=0.1,max=10)
         params['sig2'].set(min=0,max=1)
-        params['cen2'].set(min=peak1-0.005,max=peak1+0.005)
+        params['cen2'].set(min=peak1-0.0025,max=peak1+0.0025)
         params['gam2'].set(min=1e-5,max=0.08)
         result = model.fit(weightList, params, x=energyList)
         # Checks on the result
-        if result.chisqr > 30:     # Bad fit
+        if result.chisqr > 7:     # Bad fit
             if disp:
                 print("Chisqr high")
             raise ValueError
         if 1:
             for name, param in result.params.items():   #check if parameetrs are hitting the boundaries I set
-                if (param.min is not None and abs(param.value - param.min) < 1e-10) or (param.max is not None and abs(param.value - param.max) < 1e-10):
+                if (param.min is not None and abs(param.value - param.min) < 1e-8) or (param.max is not None and abs(param.value - param.max) < 1e-8):
                     if disp:
                         print("Par "+name+" at boundary: ",param)
 #                    break

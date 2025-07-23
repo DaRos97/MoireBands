@@ -78,6 +78,7 @@ listW1d = np.linspace(0.38,0.44,nW1d)
 stackings = ['P',]#['P','AP']
 stacking,w1p,w1d = list(itertools.product(*[stackings,listW1p,listW1d]))[ind]
 w2p = w2d = 0
+
 parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
 
 for phiG in listPhi:
@@ -104,59 +105,81 @@ for phiG in listPhi:
     """ Computation of best V """
     if not alreadyComputed:
         """ Compute distances for many Vs """
-        listVg = np.linspace(0.001,0.05,50)
+        listVg = np.linspace(0.001,0.05,99)
         distances = np.zeros(len(listVg))
         for i in tqdm(range(len(listVg)),desc="Looping Vg"):
             Vg = listVg[i]
             args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', False, False)
-            disp_fit = False
-            disp_plot = False
+            disp_fit = 0#False
+            disp_plot = 0#False
             distances[i] = fsm.EDC(args,sample,spreadE=0.03,disp=disp_fit,plot=disp_plot,figname='')
             if distances[i] == -2:      #exit loop because the weight moved to the other band so we cannot get a good solution anyway
-                distances[i:] *= np.nan
                 break
-            if distances[i] == -1:
-                distances[i] *= np.nan
-                #break
 
-        """ Fit to extrct best V """
-        def poly(x,a,b,c,d,e):
-            return a + b*x + c*x**2 + d*x**3 + e*x**4
-        try:    # Try the fit -> could not work for very random points
-            inds = np.array(np.argwhere(abs(distances-expEDC)<0.015))[:,0]
-            Vvalues = listVg[inds]
-            Dvalues = distances[inds]
-            if len(Vvalues) < 4 or max(Dvalues)<expEDC or min(Dvalues)>expEDC:
-                if disp:
-                    print("Found distances not good enough for the fit")
-                raise ValueError
-            popt, pcov = curve_fit(poly,Vvalues,Dvalues)
-            vline = np.linspace(Vvalues[0],Vvalues[-1],100)
-            Vbest = vline[np.argmin(abs(poly(vline,*popt)-expEDC))]
-            foundVbest = True
-        except:
-            if disp:
-                print("Fit of Vbest didn't work")
+        """ Extract best V """
+        inds = np.argwhere(distances>0)[:,0]
+        Vvalues = listVg[inds]
+        Dvalues = distances[inds]
+        # Check all Vs are in Vvalues within a range
+        foundVbest = True
+        if len(Vvalues)==0:
             foundVbest = False
+        else:
+            for iv in range(len(Vvalues)-1):
+                if Vvalues[iv+1]-Vvalues[iv] > listVg[1]-listVg[1]:
+                    foundVbest=False
+        if foundVbest:  #Take middle of interval
+            Vbest = (Vvalues[-1]+Vvalues[0])/2
+            if disp:
+                print("Best V %.4f"%Vbest)
+
+        if 0:       #fitting over V
+            def poly(x,a,b,c,d,e):
+                return a + b*x + c*x**2 + d*x**3 + e*x**4
+            try:    # Try the fit -> could not work for very random points
+                inds = np.array(np.argwhere(abs(distances-expEDC)<0.015))[:,0]
+                Vvalues = listVg[inds]
+                Dvalues = distances[inds]
+                if len(Vvalues) < 4 or max(Dvalues)<expEDC or min(Dvalues)>expEDC:
+                    if disp:
+                        print("Found distances not good enough for the fit")
+                    raise ValueError
+                popt, pcov = curve_fit(poly,Vvalues,Dvalues)
+                vline = np.linspace(Vvalues[0],Vvalues[-1],100)
+                Vbest = vline[np.argmin(abs(poly(vline,*popt)-expEDC))]
+                foundVbest = True
+            except:
+                if disp:
+                    print("Fit of Vbest didn't work")
+                foundVbest = False
 
         if foundVbest:
-            """ Plot and save result """
-            fig = plt.figure()
-            ax = fig.add_subplot()
-            ax.plot(listVg,distances,'r*')
-            ax.axhline(expEDC,c='g',lw=2,label=sample)
-            if foundVbest:
-                ax.axvline(Vbest,c='m',lw=2,label="best V=%f"%Vbest)
-                ax.plot(vline,poly(vline,*popt),c='b',ls='--')
-            ax.set_xlabel("V")
-            ax.set_ylabel("distance")
-            ax.set_title(r"$\varphi$, $w_1^p$, $w_1^d$ = %f°, %f, %f"%(phiG/np.pi*180,w1p,w1d))
-            ax.legend()
-            if disp:
-                plt.show()
-            if save:
-                figname = 'Figures/EDC/DvsV_'+fsm.get_fn(*(sample,nShells,w1p,w1d,phiG))+'.png'
-                fig.savefig(figname)
+            """ Check that the EDC fit works """
+            args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vbest,Vk,phiG,phiK), '', False, False)
+            dBest = fsm.EDC(args,sample,spreadE=0.03,disp=disp_fit,plot=disp_plot,figname='')
+            if dBest<0:
+                if disp:
+                    print("Vbest found was a fake -> no fitting in the EDC")
+                quit()
+
+            if 0:   #plotting of fit over V
+                """ Plot and save result """
+                fig = plt.figure()
+                ax = fig.add_subplot()
+                ax.plot(listVg,distances,'r*')
+                ax.axhline(expEDC,c='g',lw=2,label=sample)
+                if foundVbest:
+                    ax.axvline(Vbest,c='m',lw=2,label="best V=%f"%Vbest)
+                    ax.plot(vline,poly(vline,*popt),c='b',ls='--')
+                ax.set_xlabel("V")
+                ax.set_ylabel("distance")
+                ax.set_title(r"$\varphi$, $w_1^p$, $w_1^d$ = %f°, %f, %f"%(phiG/np.pi*180,w1p,w1d))
+                ax.legend()
+                if disp:
+                    plt.show()
+                if save:
+                    figname = 'Figures/EDC/DvsV_'+fsm.get_fn(*(sample,nShells,w1p,w1d,phiG))+'.png'
+                    fig.savefig(figname)
 
         """ Save as a line """
         if foundVbest and save:
@@ -165,8 +188,9 @@ for phiG in listPhi:
                 # Write a single row
                 writer.writerow([stacking, "{:.7f}".format(w1p), "{:.7f}".format(w1d), "{:.7f}".format(phiG), Vbest])
 
-
         if foundVbest and 1:
+            if disp:
+                print("Best V found, plotting")
             """ Plot image of final result """
             figname_final = 'Figures/EDC/final_'+fsm.get_fn(*(sample,nShells,w1p,w1d,phiG))+'.png'
             if not Path(figname_final).is_file():
