@@ -53,7 +53,7 @@ else:
     tqdm = cfs.tqdm
 
 """ Fixed parameetrs """
-nShells = 2
+Shells = 2
 monolayer_type = 'fit'
 Vk,phiK = (0.007,-106/180*np.pi)
 nCells = int(1+3*nShells*(nShells+1))
@@ -128,6 +128,8 @@ for phiG in listPhi:
                 if Vvalues[iv+1]-Vvalues[iv] > listVg[1]-listVg[1]:
                     foundVbest=False
         if foundVbest:  #Take middle of interval
+            VbestMin = np.min(Vvalues)
+            VbestMax = np.max(Vvalues)
             Vbest = (Vvalues[-1]+Vvalues[0])/2
             if disp:
                 print("Best V %.4f"%Vbest)
@@ -185,7 +187,7 @@ for phiG in listPhi:
             with open(data_fn,'a') as file:
                 writer = csv.writer(file)
                 # Write a single row
-                writer.writerow([stacking, "{:.7f}".format(w1p), "{:.7f}".format(w1d), "{:.7f}".format(phiG), "{:.7f}".format(Vbest)])
+                writer.writerow([stacking, "{:.7f}".format(w1p), "{:.7f}".format(w1d), "{:.7f}".format(phiG), "{:.7f}".format(VbestMin), "{:.7f}".format(VbestMax), "{:.7f}".format(Vbest)])
 
         if foundVbest and 1:
             if disp:
