@@ -42,8 +42,14 @@ monolayer_type = 'fit'
 Vk,phiK = (0.007,-106/180*np.pi)
 nCells = int(1+3*nShells*(nShells+1))
 theta = 2.8 if sample=='S11' else 1.8    #twist angle, in degrees
-w1p = cfs.w1p_dic[monolayer_type][sample]
-w1d = cfs.w1d_dic[monolayer_type][sample]
+
+w1p = -1.7 if sample=='S3' else -1.73
+w1d = 0.38 if sample=='S3' else 0.39
+stacking = 'P'
+w2p=w2d = 0
+phiG = np.pi/3
+parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
+
 if disp:    #print what parameters we're using
     print("-----------FIXED PARAMETRS CHOSEN-----------")
     print("Monolayers' tight-binding parameters: ",monolayer_type)
@@ -51,14 +57,6 @@ if disp:    #print what parameters we're using
     print("Sample ",sample," which has twist ",theta,"°")
     print("Moiré potential at K (%f eV, %f°)"%(Vk,phiK/np.pi*180))
     print("Number of mini-BZs circles: ",nShells)
-
-""" Variable parameters """
-stacking = 'P'
-w2p=w2d = 0
-phiG = np.pi/3
-parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
-if disp:
-    print("---------VARIABLE PARAMETERS CHOSEN---------")
     print("(stacking,w2_p,w2_d,phi) = (%s, %.4f eV, %.4f eV, %.1f°)"%(stacking,w2p,w2d,phiG/np.pi*180))
 
 """ Import best V from EDC fitting """
@@ -69,14 +67,14 @@ if Path(data_fn).is_file():
         l = f.readlines()
         for i in l:
             terms = i.split(',')
-            if terms[0]==stacking and terms[1]=="{:.7f}".format(w2p) and terms[2]=="{:.7f}".format(w2d) and terms[3]=="{:.7f}".format(phiG):
+            if terms[0]==stacking and terms[1]=="{:.7f}".format(w1p) and terms[2]=="{:.7f}".format(w1d) and terms[3]=="{:.7f}".format(phiG):
                 Vg = float(terms[-1])
                 break
 else:
     print("Data file not found: ",data_fn)
     quit()
 if Vg==-1:
-    print("Values of stacking,w2p,w2d and phiG not found in fit: %s, %.3f, %.3f, %.1f"%(stacking,w2p,w2d,phiG/np.pi*180))
+    print("Values of stacking,w1p,w1d and phiG not found in fit: %s, %.3f, %.3f, %.1f"%(stacking,w1p,w1d,phiG/np.pi*180))
     quit()
 
 """Left half experimental image"""

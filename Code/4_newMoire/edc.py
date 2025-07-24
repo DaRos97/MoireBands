@@ -78,6 +78,7 @@ listW1d = np.linspace(0.38,0.44,nW1d)
 stackings = ['P',]#['P','AP']
 stacking,w1p,w1d = list(itertools.product(*[stackings,listW1p,listW1d]))[ind]
 w2p = w2d = 0
+
 parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
 
 for phiG in listPhi:
@@ -103,7 +104,7 @@ for phiG in listPhi:
     """ Computation of best V """
     if not alreadyComputed:
         """ Compute distances for many Vs """
-        listVg = np.linspace(0.001,0.05,99)
+        listVg = np.linspace(0.001,0.05,50)
         distances = np.zeros(len(listVg))
         for i in tqdm(range(len(listVg)),desc="Looping Vg"):
             Vg = listVg[i]

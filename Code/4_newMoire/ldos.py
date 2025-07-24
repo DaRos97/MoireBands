@@ -21,10 +21,12 @@ machine = cfs.get_machine(os.getcwd())
 """ Parameters and options """
 parser = argparse.ArgumentParser(description="LDOS of final set of parameters")
 parser.add_argument("Sample", help="Sample to consider (S3 or S11)")
+parser.add_argument("Phase", help="Phase solution to consider (60 for pi/3 or 180 for pi, only one of these two)", type=float)
 parser.add_argument("-v","--verbose", help="Enable verbose output", action="store_true")
 inputArguments = parser.parse_args()
 
 sample = inputArguments.Sample
+phiG = inputArguments.Phase/180*np.pi
 disp = inputArguments.verbose
 
 """ Fixed parameters """
@@ -33,10 +35,22 @@ monolayer_type = 'fit'
 Vk,phiK = (0.007,-106/180*np.pi)
 nCells = int(1+3*nShells*(nShells+1))
 theta = 2.8 if sample=='S11' else 1.8    #twist angle, in degrees
-w1p = cfs.w1p_dic[monolayer_type][sample]
-w1d = cfs.w1d_dic[monolayer_type][sample]
+
+if inputArguments.Phase==60:
+    w1p = -1.7 if sample=='S3' else -1.73
+    w1d = 0.38 if sample=='S3' else 0.39
+elif inputArguments.Phase==180:
+    w1p = -1.71 if sample=='S3' else -1.73
+    w1d = 0.38 if sample=='S3' else 0.39
+if sample=='S3' and phiG==np.pi:
+    phiG = 175/180*np.pi
+
+stacking = 'P'
+w2p=w2d = 0
+parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
 G_M = cfs.get_reciprocal_moire(theta/180*np.pi)     #7 reciprocal moire lattice vectors
 a_M = fsm.get_rs_moire(G_M)        #real space moirè vectors
+
 if disp:    #print what parameters we're using
     print("-----------FIXED PARAMETRS CHOSEN-----------")
     print("Monolayers' tight-binding parameters: ",monolayer_type)
@@ -44,15 +58,8 @@ if disp:    #print what parameters we're using
     print("Sample ",sample," which has twist ",theta,"°")
     print("Moiré potential at K (%f eV, %f°)"%(Vk,phiK/np.pi*180))
     print("Number of mini-BZs circles: ",nShells)
-
-""" Variable parameters """
-stacking = 'P'
-w2p=w2d = 0
-phiG = np.pi/3
-parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
-if disp:
-    print("---------VARIABLE PARAMETERS CHOSEN---------")
     print("(stacking,w2_p,w2_d,phi) = (%s, %.4f eV, %.4f eV, %.1f°)"%(stacking,w2p,w2d,phiG/np.pi*180))
+
 
 """ Import best V from EDC fitting """
 Vg = -1
@@ -62,20 +69,20 @@ if Path(data_fn).is_file():
         l = f.readlines()
         for i in l:
             terms = i.split(',')
-            if terms[0]==stacking and terms[1]=="{:.7f}".format(w2p) and terms[2]=="{:.7f}".format(w2d) and terms[3]=="{:.7f}".format(phiG):
+            if terms[0]==stacking and terms[1]=="{:.7f}".format(w1p) and terms[2]=="{:.7f}".format(w1d) and terms[3]=="{:.7f}".format(phiG):
                 Vg = float(terms[-1])
                 break
 else:
     print("Data file not found: ",data_fn)
     quit()
 if Vg==-1:
-    print("Values of stacking,w2p,w2d and phiG not found in fit: %s, %.3f, %.3f, %.1f"%(stacking,w2p,w2d,phiG/np.pi*180))
+    print("Values of stacking,w1p,w1d and phiG not found in fit: %s, %.3f, %.3f, %.1f"%(stacking,w1p,w1d,phiG/np.pi*180))
     quit()
 
 """ Evals and evecs """
 kPts = 20
 kFlat = fsm.LDOS_kList(kPts,G_M)
-args_e_data = (sample,nShells,monolayer_type,Vk,phiK,theta,stacking,w2p,w2d,phiG,kPts)
+args_e_data = (sample,nShells,monolayer_type,Vk,phiK,theta,stacking,w1p,w1d,phiG,kPts)
 th_e_data_fn = 'Data/ldos_data_e_'+fsm.get_fn(*args_e_data)+'.npz'
 if not Path(th_e_data_fn).is_file():
     moire_pars = (Vg,Vk,phiG,phiK)
