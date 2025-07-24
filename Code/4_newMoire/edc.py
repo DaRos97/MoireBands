@@ -35,12 +35,15 @@ machine = cfs.get_machine(os.getcwd())
 parser = argparse.ArgumentParser(description="Calculation of EDC")
 parser.add_argument("Index", help="Index of parameters (see list in code)", type=int)
 parser.add_argument("Sample", help="Sample to consider (S3 or S11)")
+parser.add_argument("Angle", help="Twist angle to use (-,0 or + for -0.3°,0° and +0.3° wrt LEED measured twist)")
 parser.add_argument("-v","--verbose", help="Enable verbose output", action="store_true")
 parser.add_argument("-s","--save", help="Save data at the end of calculation", action="store_true")
 inputArguments = parser.parse_args()
 
 ind = inputArguments.Index
 sample = inputArguments.Sample
+ang_dic = {'-':-0.3, '0':0, '-':0.3}
+ang = ang_dic[inputArguments.Angle]
 disp = inputArguments.verbose
 save = inputArguments.save
 
@@ -53,11 +56,12 @@ else:
     tqdm = cfs.tqdm
 
 """ Fixed parameetrs """
-Shells = 2
+nShells = 2
 monolayer_type = 'fit'
 Vk,phiK = (0.007,-106/180*np.pi)
 nCells = int(1+3*nShells*(nShells+1))
 theta = 2.8 if sample=='S11' else 1.8    #twist angle, in degrees
+theta += ang
 #w1p = cfs.w1p_dic[monolayer_type][sample]
 #w1d = cfs.w1d_dic[monolayer_type][sample]
 kListG = np.array([np.zeros(2),])
