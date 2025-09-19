@@ -47,7 +47,7 @@ w1p = -1.7 if sample=='S3' else -1.73
 w1d = 0.38 if sample=='S3' else 0.39
 stacking = 'P'
 w2p=w2d = 0
-phiG = np.pi/3
+phiG = 60/180*np.pi
 parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
 
 if disp:    #print what parameters we're using
@@ -61,7 +61,7 @@ if disp:    #print what parameters we're using
 
 """ Import best V from EDC fitting """
 Vg = -1
-data_fn = 'Data/EDC/Vbest_'+fsm.get_fn(*(sample,nShells))+'.svg'
+data_fn = 'Data/EDC/Vbest_'+fsm.get_fn(*(sample,nShells,theta))+'.svg'
 if Path(data_fn).is_file():
     with open(data_fn,'r') as f:
         l = f.readlines()
@@ -115,7 +115,8 @@ if sample=='S11':
 
 """ Spread """
 spread_K = 0.001
-spread_type = 'Lorentz'
+#spread_type = 'Lorentz'
+spread_type = 'Gauss'
 Epts = exp_pic.shape[0]
 args_s_data = (sample,nShells,monolayer_type,Vk,phiK,theta,stacking,w2p,w2d,phiG,spread_E,spread_K,spread_type,kPts)
 th_s_data_fn = 'Data/final_data_s_'+fsm.get_fn(*args_s_data)+'.npy'

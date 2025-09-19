@@ -21,7 +21,7 @@ machine = cfs.get_machine(os.getcwd())
 """ Parameters and options """
 parser = argparse.ArgumentParser(description="LDOS of final set of parameters")
 parser.add_argument("Sample", help="Sample to consider (S3 or S11)")
-parser.add_argument("Phase", help="Phase solution to consider (60 for pi/3 or 180 for pi, only one of these two)", type=float)
+parser.add_argument("Phase", help="Phase solution to consider (60 for pi/3 or 180 for pi, check to have solutions for other angles)", type=float)
 parser.add_argument("-v","--verbose", help="Enable verbose output", action="store_true")
 inputArguments = parser.parse_args()
 
@@ -41,6 +41,9 @@ if inputArguments.Phase==60:
     w1d = 0.38 if sample=='S3' else 0.39
 elif inputArguments.Phase==180:
     w1p = -1.71 if sample=='S3' else -1.73
+    w1d = 0.38 if sample=='S3' else 0.39
+elif inputArguments.Phase==175:
+    w1p = -1.71 if sample=='S3' else -1.74
     w1d = 0.38 if sample=='S3' else 0.39
 if sample=='S3' and phiG==np.pi:
     phiG = 175/180*np.pi
@@ -63,7 +66,7 @@ if disp:    #print what parameters we're using
 
 """ Import best V from EDC fitting """
 Vg = -1
-data_fn = 'Data/EDC/Vbest_'+fsm.get_fn(*(sample,nShells))+'.svg'
+data_fn = 'Data/EDC/Vbest_'+fsm.get_fn(*(sample,nShells,theta))+'.svg'
 if Path(data_fn).is_file():
     with open(data_fn,'r') as f:
         l = f.readlines()

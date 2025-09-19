@@ -42,7 +42,7 @@ inputArguments = parser.parse_args()
 
 ind = inputArguments.Index
 sample = inputArguments.Sample
-ang_dic = {'-':-0.3, '0':0, '-':0.3}
+ang_dic = {'-':-0.3, '0':0, '+':0.3}
 ang = ang_dic[inputArguments.Angle]
 disp = inputArguments.verbose
 save = inputArguments.save
@@ -77,6 +77,7 @@ nPhi = 37
 nW1p = 21
 nW1d = 7
 listPhi = np.linspace(0,np.pi,nPhi)
+#listPhi = [listPhi[-2],]        #######################
 listW1p = np.linspace(-1.68,-1.78,nW1p)
 listW1d = np.linspace(0.38,0.44,nW1d)
 stackings = ['P',]#['P','AP']
@@ -91,7 +92,7 @@ for phiG in listPhi:
         print("Interlayer coupling w1: %f, %f"%(w1p,w1d))
         print("(stacking,w2_p,w2_d,phi) = (%s, %.4f eV, %.4f eV, %.1f°)"%(stacking,w2p,w2d,phiG/np.pi*180))
     """ Check we didn't already compute it """
-    data_fn = 'Data/EDC/Vbest_'+fsm.get_fn(*(sample,nShells))+'.svg'
+    data_fn = 'Data/EDC/Vbest_'+fsm.get_fn(*(sample,nShells,theta))+'.svg'
     alreadyComputed = False
     if Path(data_fn).is_file():
         with open(data_fn,'r') as f:
@@ -99,16 +100,15 @@ for phiG in listPhi:
             for i in l:
                 terms = i.split(',')
                 if terms[0] == stacking:
-                    if terms[1]=="{:.7f}".format(w2p) and terms[2]=="{:.7f}".format(w2d) and terms[3]=="{:.7f}".format(phiG):
+                    if terms[1]=="{:.7f}".format(w1p) and terms[2]=="{:.7f}".format(w1d) and terms[3]=="{:.7f}".format(phiG):
                         alreadyComputed = True
                         Vbest = float(terms[-1])
                         print("Parameters already computed, Vbest=%.4f eV"%Vbest)
                         break
-
     """ Computation of best V """
     if not alreadyComputed:
         """ Compute distances for many Vs """
-        listVg = np.linspace(0.001,0.05,50)
+        listVg = np.linspace(0.001,0.05,99)
         distances = np.zeros(len(listVg))
         for i in tqdm(range(len(listVg)),desc="Looping Vg"):
             Vg = listVg[i]
@@ -193,14 +193,12 @@ for phiG in listPhi:
                 # Write a single row
                 writer.writerow([stacking, "{:.7f}".format(w1p), "{:.7f}".format(w1d), "{:.7f}".format(phiG), "{:.7f}".format(VbestMin), "{:.7f}".format(VbestMax), "{:.7f}".format(Vbest)])
 
-        if foundVbest and 1:
-            if disp:
-                print("Best V found, plotting")
-            """ Plot image of final result """
-            figname_final = 'Figures/EDC/final_'+fsm.get_fn(*(sample,nShells,w1p,w1d,phiG))+'.png'
-            if not Path(figname_final).is_file():
-                args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vbest,Vk,phiG,phiK), '', False, False)
-                fsm.EDC(args,sample,spreadE=0.03,disp=False,plot=True,figname=figname_final)
+    """ Plot image of final result """
+    if save:
+        figname_final = 'Figures/EDC/final_'+fsm.get_fn(*(sample,nShells,theta,w1p,w1d,phiG))+'.png'
+        if 1 or not Path(figname_final).is_file():
+            args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vbest,Vk,phiG,phiK), '', False, False)
+            fsm.EDC(args,sample,spreadE=0.03,disp=True,plot=True,figname=figname_final)
 
 
 

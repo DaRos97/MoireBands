@@ -28,95 +28,111 @@ from matplotlib.lines import Line2D
 machine = cfs.get_machine(os.getcwd())
 
 nShells = 2
+allAngles = True
 
-fig = plt.figure(figsize=(13,10))
-ax = fig.add_subplot()
-for sample in ['S3','S11']:
-    data_fn = 'Data/EDC/Vbest_'+fsm.get_fn(*(sample,nShells))+'.svg'
-    if Path(data_fn).is_file():
-        data = {'P':[],'AP':[]}
-        with open(data_fn,'r') as f:
-            l = f.readlines()
-            for i in l:
-                terms = i.split(',')
-                if terms[0]!='P':
-                    continue
-                data[terms[0]].append([float(terms[1]),float(terms[2]),float(terms[3])/np.pi*180,float(terms[4])])
+if allAngles:
+    fig = plt.figure(figsize=(22,8))
+    angles = {'S3':[1.5,1.8,2.1], 'S11':[2.5,2.8,3.1]}
+else:
+    fig = plt.figure(figsize=(13,10))
+    angles = {'S3':[1.8,], 'S11':[2.8,]}
+
+for i_ang in range(len(angles['S3'])):
+    if allAngles:
+        ax = fig.add_subplot(1,3,i_ang+1)
     else:
-        print("Data file not found")
-        quit()
+        ax = fig.add_subplot()
+    for sample in ['S3','S11']:
+        theta = angles[sample][i_ang]
+        data_fn = 'Data/EDC/Vbest_'+fsm.get_fn(*(sample,nShells,theta))+'.svg'
+        if Path(data_fn).is_file():
+            data = {'P':[],'AP':[]}
+            with open(data_fn,'r') as f:
+                l = f.readlines()
+                for i in l:
+                    terms = i.split(',')
+                    if terms[0]!='P':
+                        continue
+                    data[terms[0]].append([float(terms[1]),float(terms[2]),float(terms[3])/np.pi*180,float(terms[4])])
+        else:
+            print("Data file not found")
+            quit()
 
-    data['P'] = np.array(data['P'])
-    data['AP'] = np.array(data['AP'])
+        data['P'] = np.array(data['P'])
+        data['AP'] = np.array(data['AP'])
 
-    # Choice of parameters: 0->w1p, 1->w1d, 2->phi
-    par1 = 2
-    par2 = 1
-    par3 = 0
-    marker = {'P':'o', 'AP':'^'} if sample == 'S3' else {'P':'*', 'AP':'^'}
-    colormap = {'P':'coolwarm','AP':'coolwarm'} if sample == 'S3' else {'P':'inferno_r','AP':'viridis'}
-    labels = [r'$w_1^p$ [eV]',r'$w_1^d$ [eV]',r'$\varphi$ °']
+        # Choice of parameters: 0->w1p, 1->w1d, 2->phi
+        par1 = 2
+        par2 = 1
+        par3 = 0
+        marker = {'P':'o', 'AP':'^'} if sample == 'S3' else {'P':'*', 'AP':'^'}
+        colormap = {'P':'coolwarm','AP':'coolwarm'} if sample == 'S3' else {'P':'inferno_r','AP':'viridis'}
+        labels = [r'$w_1^p$ [eV]',r'$w_1^d$ [eV]',r'$\varphi$ °']
 
-    s_ = 20
-    stacking = 'P'
-    # Sizes -> par2
-    sizes = np.copy(data[stacking][:,par2])
-    if np.max(abs(sizes))>0:
-        sizes /= np.max(abs(sizes))     #Normalize
-    sizes = sizes**10     #make it larger
-    sizes = sizes*25
-    #sizes -= np.min(sizes) - 5     #Bring from 0 to 1 and add offset
-    # Colors -> par3
-    colorValues = data[stacking][:,par3]
-    norm = mcolors.Normalize(vmin=np.min(colorValues), vmax=np.max(colorValues))
-    cmap = matplotlib.colormaps[colormap[stacking]]
-    colors = cmap(norm(colorValues))  # Array of RGBA tuples
-    ax.scatter(
-        data[stacking][:,par1],             #x
-        data[stacking][:,-1],               #y
-        marker=marker[stacking],            #marker
-        lw=0,
-        s=sizes**2,
-        c=colors,
-        alpha=0.8
-    )
-    # Colorbar
-    cbar = fig.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax, location='right' if sample=='S3' else 'left')
-    cbar.set_label(labels[par3],size=s_)
-    #cax.yaxis.set_label_position('left')
-    #cax.yaxis.set_ticks_position('left')
+        s_ = 20
+        stacking = 'P'
+        # Sizes -> par2
+        sizes = np.copy(data[stacking][:,par2])
+        if np.max(abs(sizes))>0:
+            sizes /= np.max(abs(sizes))     #Normalize
+        sizes = sizes**10     #make it larger
+        sizes = sizes*25
+        #sizes -= np.min(sizes) - 5     #Bring from 0 to 1 and add offset
+        # Colors -> par3
+        colorValues = data[stacking][:,par3]
+        norm = mcolors.Normalize(vmin=np.min(colorValues), vmax=np.max(colorValues))
+        cmap = matplotlib.colormaps[colormap[stacking]]
+        colors = cmap(norm(colorValues))  # Array of RGBA tuples
+        ax.scatter(
+            data[stacking][:,par1],             #x
+            data[stacking][:,-1],               #y
+            marker=marker[stacking],            #marker
+            lw=0,
+            s=sizes**2,
+            c=colors,
+            alpha=0.8
+        )
+        # Colorbar
+        if allAngles and ((i_ang==0 and sample=='S11') or (i_ang==2 and sample=='S3')):
+            cbar = fig.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax, location='right' if sample=='S3' else 'left')
+            cbar.set_label(labels[par3],size=s_)
+            #cax.yaxis.set_label_position('left')
+            #cax.yaxis.set_ticks_position('left')
 
-    # Legend
-    if sample == 'S11':
-        ax = ax.twinx()
-        ax.axis('off')
-    else:
-        ax.set_xlabel(labels[par1],size=s_)
-    sizes1 = np.unique(data[stacking][:,par2])
-    sizes2 = np.unique(sizes)
-    legend_elements = [ Line2D([0], [0],
-                       marker=marker[stacking], color='gray',
-                       label="{:.3f}".format(label),
-                       markerfacecolor='gray',
-                       markeredgecolor='k',
-                       markersize=size,
-                       linewidth=0,
-                       markeredgewidth=0.5
-                      )     for size, label in zip(sizes2, sizes1)
-    ]
-    ax.legend(handles=legend_elements,
-              loc='lower center' if sample == 'S3' else 'upper center',
-              title=labels[par2],
-              fontsize=s_-10,
-              title_fontsize=s_
-             )
+        # Legend
+        if allAngles and ((i_ang==0 and sample=='S3') or (i_ang==2 and sample=='S11')):
+            if sample == 'S11':
+                ax = ax.twinx()
+                ax.axis('off')
+            else:
+                ax.set_xlabel(labels[par1],size=s_)
+            sizes1 = np.unique(data[stacking][:,par2])
+            sizes2 = np.unique(sizes)
+            legend_elements = [ Line2D([0], [0],
+                               marker=marker[stacking], color='gray',
+                               label="{:.3f}".format(label),
+                               markerfacecolor='gray',
+                               markeredgecolor='k',
+                               markersize=size,
+                               linewidth=0,
+                               markeredgewidth=0.5
+                              )     for size, label in zip(sizes2, sizes1)
+            ]
+            ax.legend(handles=legend_elements,
+                      loc='lower center' if sample == 'S3' else 'upper center',
+                      title=labels[par2] + ' ' + sample,
+                      fontsize=s_-10,
+                      title_fontsize=s_
+                     )
+        if allAngles:
+            titles = ['-0.3°','0°','+0.3°']
+            ax.set_title("Angle difference from LEED: "+titles[i_ang])
+        ax.set_ylim(0.013,0.020)
 
-ax.set_title("Best V [eV]",size=s_)
+#ax.set_title("Best V [eV]",size=s_)
 
-#ax.set_title(stacking,size=s_)
-
-#plt.suptitle("Sample="+sample+", nShells=%d"%nShells,size=s_)
 fig.tight_layout()
 plt.show()
 if input("Save fig? [y/N]")=='y':
-    fig.savefig("Figures/edc_"+str(nShells)+'.png')
+    txt_ang = '_allAngles' if allAngles else ''
+    fig.savefig("Figures/edc_"+str(nShells)+txt_ang+'.png')
