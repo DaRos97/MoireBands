@@ -26,7 +26,7 @@ machine = cfs.get_machine(os.getcwd())          #Machine on which the computatio
 if len(sys.argv) not in [1,2]:
     print("Usage: py select_best_result.py arg1")
     print("arg1: WSe2(default) or WS2")
-    exi()
+    exit()
 else:
     TMD = 'WSe2' if len(sys.argv)!=2 else sys.argv[1]
 

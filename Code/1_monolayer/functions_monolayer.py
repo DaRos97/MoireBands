@@ -270,6 +270,10 @@ def plot_orbitals(full_pars,title='',figname='',show=False,TMD='WSe2'):
         xvals = np.linspace(Nk-1,2*Nk-2,Nk)
         for i in range(22):
             ax.plot(xvals,data_evals[subp,::-1,i],'k-',lw=0.3,zorder=0)
+#            orb_pzo = 2
+#            print("p_z^o at Gamma in band i=%i is %.6f"%(i,np.linalg.norm(data_evecs[subp,0,orb_pzo,i])**2 + np.linalg.norm(data_evecs[subp,0,orb_pzo+11,i])**2))
+#            orb_pze = 8
+#            print("p_z^e at Gamma in band i=%i is %.6f"%(i,np.linalg.norm(data_evecs[subp,0,orb_pze,i])**2 + np.linalg.norm(data_evecs[subp,0,orb_pze+11,i])**2))
             for orb in [2,3]:    #3 different d orbitals
                 for ko in range(Nk-1,-1,-N2):   #kpts
                     orb_content = np.linalg.norm(data_evecs[subp,ko,orb,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+11,i])**2
