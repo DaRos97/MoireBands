@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.linalg as la
+from pathlib import Path
 
 """Functions related to Monolayer Hamiltonian"""
 
@@ -23,12 +24,13 @@ def energy(parameters,HSO,data,TMD):
     offset = parameters[-3]
     #
     args_H = (hopping,epsilon,HSO,a_TMD,offset) #
-    kpts = data[0].shape[0]
-    all_H = H_monolayer(np.array(data[0][:,2:]),*args_H)
-    ens = np.zeros((2,kpts))
+    kpts = data.shape[0]
+    all_H = H_monolayer(np.array(data[:,1:3]),*args_H)
+    nbands = 4 if TMD=='WSe2' else 4
+    ens = np.zeros((nbands,kpts))
     for i in range(kpts):
         #index of TVB is 13, the other is 12 (out of 22: 11 bands times 2 for SOC. 7/11 are valence -> 14 is the TVB)
-        ens[:,i] = la.eigvalsh(all_H[i])[12:14][::-1]
+        ens[:,i] = la.eigvalsh(all_H[i])[14-nbands:14][::-1]
     return ens
 
 def H_monolayer(K_p,*args):
@@ -363,6 +365,44 @@ def get_kList(cut,kPts):
 #######################################################################################
 
 """Utility functions"""
+
+def getFilename(*args,dirname='',extension='',floatPrecision=4):
+    """ Get filename for set of parameters.
+
+    Parameters
+    ----------
+    *args: list of arguments to put in the filename.
+    dirname: str, should end with '/'
+    extension: string, should start with '.'
+    floatPrecision: int, detail of floating point arguments.
+
+    Returns
+    -------
+    filename : string.
+    """
+    if len(dirname)>0 and dirname[-1]!='/':
+        raise ValueError("directory name  %s must end with '/'"%dirname)
+    if len(extension)>0 and extension[0]!='.':
+        raise ValueError("extension name  %s must begin with '.'"%extension)
+
+    filename = ''
+    filename += dirname
+    for i,a in enumerate(args):
+        t = type(a)
+        if t in [str,np.str_]:
+            filename += a
+        elif t in [int, np.int64, np.int32]:
+            filename += str(a)
+        elif t in [float, np.float32, np.float64]:
+            filename += f"{a:.{floatPrecision}f}"
+        elif t==tuple:
+            filename += getFilename(*a)
+        else:
+            raise TypeError("Parameter %s has unsupported type: %s"%(a,t))
+        if not i==len(args)-1:
+            filename += '_'
+    filename += extension
+    return filename
 
 def get_machine(cwd):
     """Selects the machine the code is running on by looking at the working directory. Supports local, hpc (baobab or yggdrasil) and mafalda.
@@ -775,14 +815,210 @@ w1d_dic = {
 
 
 
+class monolayerData():
+    def __init__(self,TMD):
+        self.TMD = TMD
+        self.paths = ['KGK','KMKp']
+        self.raw_data = self._getRaw()
+        self.sym_data = self._getSym()
+        self.kpoints_sym = self._getKpoints()
+        self.offset = {'WSe2':-0.052,'WS2':0.01}
 
+    def _getRaw(self):
+        raw = {}
+        for path in self.paths:
+            raw[path] = []
+            nbands = 6 if (self.TMD=='WSe2' and path=='KMKp') else 2
+            for ib in range(nbands):
+                if nbands==2:
+                    fn = Path('Inputs/'+path+'_'+self.TMD+'_band%d'%(ib+1)+'.txt')
+                else:
+                    fn = Path('Inputs/fitM/%s_%s_band%d_v3.txt'%(path,self.TMD,ib+1))
+                with open(fn,'r') as f:
+                    lines = f.readlines()
+                temp = []
+                for il in range(len(lines)):
+                    k,e = lines[il].split('\t')
+                    if e=='NAN\n':
+                        temp.append([float(k),np.nan])
+                    else:
+                        temp.append([float(k),float(e)])
+                temp = np.array(temp)
+                if ib in [0,1]:
+                    raw[path].append(temp)
+                if ib in [2,3]:
+                    raw[path].append(temp)
+                if ib in [4,5]:
+                    oldb = 3 if ib==4 else 2
+                    raw[path][oldb] = np.concatenate([raw[path][oldb],temp])
+            if (self.TMD=='WSe2' and path=='KMKp'):
+                raw[path][0], raw[path][1] = raw[path][1], raw[path][0]
+        return raw
 
+    def _getSym(self):
+        sym = {}
+        for path in self.paths:
+            sym[path] = []
+            nbands = 4 if (self.TMD=='WSe2' and path=='KMKp') else 2
+            for ib in range(nbands):
+                rd = self.raw_data[path][ib]
+                nk = rd.shape[0]
+                nkl = nk//2
+                nkr = nk//2 if nk%2==0 else nk//2+1
+                temp = np.zeros((nkl,2))
+                temp[:,0] = rd[nkr:,0]
+                rd_m = rd[:nkl,1][::-1]
+                rd_p = rd[nkr:,1]
+                mask_m = ~np.isnan(rd_m)
+                mask_p = ~np.isnan(rd_p)
+                mask_tot = mask_m & mask_p
+                #
+                temp[mask_tot,1] = (rd_m[mask_tot]+rd_p[mask_tot])/2
+                mask_tm = mask_m & ~mask_p
+                temp[mask_tm,1] = rd_m[mask_tm]
+                mask_tp = ~mask_m & mask_p
+                temp[mask_tp,1] = rd_p[mask_tp]
+                temp = np.delete(temp, ~mask_m & ~mask_p, axis=0)
+                if nk%2==1:
+                    temp = np.insert(temp, 0, rd[nk//2], axis=0)
+                sym[path].append(temp)
+        return sym
 
+    def _getKpoints(self):
+        kpts = {}
+        M = np.array([np.pi,np.pi/np.sqrt(3)])/dic_params_a_mono[self.TMD]
+        K = np.array([4*np.pi/3,0])/dic_params_a_mono[self.TMD]
+        Kp = np.array([2*np.pi/3,2*np.pi/np.sqrt(3)])/dic_params_a_mono[self.TMD]
+        for path in self.paths:
+            kpts[path] = []
+            nbands = 4 if (self.TMD=='WSe2' and path=='KMKp') else 2
+            for ib in range(nbands):
+                sd = self.sym_data[path][ib]
+                temp = np.zeros((sd.shape[0],2))
+                if path=='KGK':
+                    temp[:,0] = sd[:,0]
+                else:
+                    for ik in range(sd.shape[0]):
+                        temp[ik] = M + (Kp-M)*sd[ik,0]/la.norm(Kp-M)
+                kpts[path].append(temp)
+        return kpts
 
+class dataWS2(monolayerData):
+    def __init__(self):
+        super().__init__(TMD='WS2')
 
+    def getFitData(self,ptsPerPath=(20,20)):
+        """ Here we compute the final array to give for the fitting.
+        It has (ptsPerPath * #paths) elements, each with 5 entries:
+            - |k| (shfted by |K| for the KMKp path -> for plotting)
+            - kx
+            - ky
+            - energy band 1
+            - energy band 2
+        """
+        M = np.array([np.pi,np.pi/np.sqrt(3)])/dic_params_a_mono[self.TMD]
+        K = np.array([4*np.pi/3,0])/dic_params_a_mono[self.TMD]
+        modM = la.norm(M-K)
+        modK = la.norm(K)
+        data = np.zeros((ptsPerPath[0]+ptsPerPath[1],5))
+        for ip,path in enumerate(self.paths):
+            sd = self.sym_data[path]
+            kk = self.kpoints_sym[path]
+            kmin,kmax = (sd[0][0,0],sd[0][-1,0]) if ip==0 else (sd[0][-1,0],sd[0][0,0])
+            kvals = np.linspace(kmin,kmax,ptsPerPath[ip])
+            if ip==0:
+                data[ptsPerPath[0]*ip:ptsPerPath[ip]*(ip+1),0] = kvals
+            else:
+                data[ptsPerPath[0]*ip:ptsPerPath[ip]*(ip+1),0] = modK + modM - kvals
+            data[ptsPerPath[0]*ip:ptsPerPath[ip]*(ip+1),1] = np.interp(
+                kvals,
+                sd[0][:,0],
+                kk[0][:,0],
+            )
+            data[ptsPerPath[0]*ip:ptsPerPath[ip]*(ip+1),2] = np.interp(
+                kvals,
+                sd[0][:,0],
+                kk[0][:,1],
+            )
+            data[ptsPerPath[0]*ip:ptsPerPath[ip]*(ip+1),3] = np.interp(
+                kvals,
+                sd[0][:,0],
+                sd[0][:,1]
+            )
+            data[ptsPerPath[0]*ip:ptsPerPath[ip]*(ip+1),4] = np.interp(
+                kvals,
+                sd[1][:,0],
+                sd[1][:,1]
+            )
+        # Offset
+        data[ptsPerPath[0]:,3] += self.offset[self.TMD]
+        data[ptsPerPath[0]:,4] += self.offset[self.TMD]
+        return data
 
+class dataWSe2(monolayerData):
+    def __init__(self):
+        super().__init__(TMD='WSe2')
 
+    def getFitData(self,ptsPerPath=(20,20,20)):
+        """ Here we compute the final array to give for the fitting.
+        It has (ptsPerPath * #paths) elements, each with 7 entries:
+            - |k| (shfted by |K| for the KMKp path -> for plotting)
+            - kx
+            - ky
+            - energy band 1
+            - energy band 2
+            - energy band 3
+            - energy band 4
+        Bands 3 and 4 are NAN except for |k| close to M.
+        """
+        M = np.array([np.pi,np.pi/np.sqrt(3)])/dic_params_a_mono[self.TMD]
+        K = np.array([4*np.pi/3,0])/dic_params_a_mono[self.TMD]
+        modM = la.norm(M-K)
+        modK = la.norm(K)
+        data = np.zeros((ptsPerPath[0]+ptsPerPath[1]+ptsPerPath[2],7))
+        # KGK
+        sd = self.sym_data[self.paths[0]]
+        kk = self.kpoints_sym[self.paths[0]]
+        kmin,kmax = (sd[0][0,0],sd[0][-1,0])
+        kvals = np.linspace(kmin,kmax,ptsPerPath[0])
+        data[:ptsPerPath[0],0] = kvals
+        data[:ptsPerPath[0],1] = np.interp( kvals, sd[0][:,0], kk[0][:,0] )
+        data[:ptsPerPath[0],2] = np.interp( kvals, sd[0][:,0], kk[0][:,1] )
+        data[:ptsPerPath[0],3] = np.interp( kvals, sd[0][:,0], sd[0][:,1] )
+        data[:ptsPerPath[0],4] = np.interp( kvals, sd[1][:,0], sd[1][:,1] )
+        data[:ptsPerPath[0],5:7] = np.nan
+        # KMKp
+        sd = self.sym_data[self.paths[1]]
+        kk = self.kpoints_sym[self.paths[1]]
+        kmin,kmax = (sd[0][-1,0],sd[3][-1,0])
+        kvals = np.linspace(kmin,kmax,ptsPerPath[1])
+        data[ptsPerPath[0]:ptsPerPath[0]+ptsPerPath[1],0] = modK + modM - kvals
+        data[ptsPerPath[0]:ptsPerPath[0]+ptsPerPath[1],1] = np.interp( kvals, sd[0][:,0], kk[0][:,0] )
+        data[ptsPerPath[0]:ptsPerPath[0]+ptsPerPath[1],2] = np.interp( kvals, sd[0][:,0], kk[0][:,1] )
+        data[ptsPerPath[0]:ptsPerPath[0]+ptsPerPath[1],3] = np.interp( kvals, sd[0][:,0], sd[0][:,1] )
+        data[ptsPerPath[0]:ptsPerPath[0]+ptsPerPath[1],4] = np.interp( kvals, sd[1][:,0], sd[1][:,1] )
+        data[ptsPerPath[0]:ptsPerPath[0]+ptsPerPath[1],5:7] = np.nan
 
+        kmin,kmax = (sd[3][-1,0],sd[3][0,0])
+        kvals = np.linspace(kmin,kmax,ptsPerPath[2])
+        data[ptsPerPath[0]+ptsPerPath[1]:,0] = modK + modM - kvals
+        data[ptsPerPath[0]+ptsPerPath[1]:,1] = np.interp( kvals, sd[0][:,0], kk[0][:,0] )
+        data[ptsPerPath[0]+ptsPerPath[1]:,2] = np.interp( kvals, sd[0][:,0], kk[0][:,1] )
+        data[ptsPerPath[0]+ptsPerPath[1]:,3] = np.interp( kvals, sd[0][:,0], sd[0][:,1] )
+        data[ptsPerPath[0]+ptsPerPath[1]:,4] = np.interp( kvals, sd[1][:,0], sd[1][:,1] )
+        data[ptsPerPath[0]+ptsPerPath[1]:,5] = np.interp( kvals, sd[2][:,0], sd[2][:,1] )
+        data[ptsPerPath[0]+ptsPerPath[1]:,6] = np.interp( kvals, sd[3][:,0], sd[3][:,1] )
+
+        # Order bands of index 1 and 2 which shifts at some point
+        pp = ptsPerPath[0]+ptsPerPath[1]
+        mask = data[pp:,4]<data[pp:,5]
+        data[pp:,4][mask], data[pp:,5][mask] = data[pp:,5][mask], data[pp:,4][mask]
+        # Shift of KMKp
+        data[ptsPerPath[0]:,3] += self.offset[self.TMD]
+        data[ptsPerPath[0]:,4] += self.offset[self.TMD]
+        data[ptsPerPath[0]:,5] += self.offset[self.TMD]
+        data[ptsPerPath[0]:,6] += self.offset[self.TMD]
+        return data
 
 
 
