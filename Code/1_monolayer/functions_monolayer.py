@@ -14,14 +14,16 @@ min_chi2 = 1e5
 evaluation_step = 0
 
 def get_spec_args(ind):
-    lTMDs = cfs.TMDs    #TMDs
-    lP = [0.01,0.05,0.07,0.1,0.2,0.3]         #coefficient of parameters distance from DFT chi2
+    lTMDs = ["WSe2", ]#cfs.TMDs    #TMDs
+    lP = [0.01,0.05,0.1,0.5,1,5]         #coefficient of parameters distance from DFT chi2
     lrp = [0.1,0.2,0.3,0.5,0.7,1]         #tb bounds
-    lrl = [0,0.1,0.2,0.3]          #SOC bounds
-    lReduced = [13,]
+    lrl = [0,]          #SOC bounds
+    #lReduced = [13,]
     lPbc = [10,]        #coefficient of band content chi2
     lPdk = [20,]        #coefficient of distance at gamma and K chi2
-    return list(itertools.product(*[lTMDs,lP,lrp,lrl,lReduced,lPbc,lPdk]))[ind]
+
+    ptsPerPath = [(20,15,10),]
+    return list(itertools.product(*[lTMDs,lP,lrp,lrl,lPbc,lPdk,ptsPerPath]))[ind]
 
 def chi2_off_SOC(pars_SOC,*args):
     """
@@ -75,71 +77,75 @@ def chi2_tb(pars_tb,*args):
     Compute square difference of bands with exp data.
     Made for fitting WITHOUT SOC parameters -> HSO already computed.
     """
-    reduced_data, HSO, SOC_pars, machine, spec_args, ind_random, max_eval = args
+    data, HSO, SOC_pars, machine, spec_args, max_eval = args
+    Ppar, Pbc,Pdk = spec_args[1], spec_args[4], spec_args[5]
     full_pars = np.append(pars_tb,SOC_pars)
     #Compute energy of new pars
-    tb_en = cfs.energy(full_pars,HSO,reduced_data,spec_args[0])
+    tb_en = cfs.energy(full_pars,HSO,data,spec_args[0])
+    nbands = tb_en.shape[0]
     #
     result = 0
     #chi2 of bands distance
-    for b in range(2):
-        result += np.sum(np.absolute((tb_en[b]-reduced_data[b][:,1])[~np.isnan(reduced_data[b][:,1])])**2)
+    for b in range(nbands):
+        result += np.sum(np.absolute((tb_en[b]-data[:,3+b])[~np.isnan(data[:,3+b])])**2)
     #chi2 of parameters distance
     par_dis = compute_parameter_distance(pars_tb,spec_args[0])
-    result += spec_args[1]*par_dis
+    result += Ppar*par_dis
     #chi2 of bands' content
     band_content = np.array(compute_band_content(full_pars,HSO,spec_args[0]))
-    Pbc = spec_args[5]
     result += Pbc*(2-np.sum(np.absolute(band_content)**2))
     #chi2 of distance at Gamma and K
-    Pdk = spec_args[6]
     for i in range(2):  #2 bands
-        indexes = [0,np.argmax(reduced_data[0][~np.isnan(reduced_data[i][:,1]),1])]    #indexes of Gamma and K for ind_reduced=14      #####
+        indexes = [0,np.argmax(data[~np.isnan(data[:,3]),3])]    #indexes of Gamma (first element) and K /(highest energy)
         for j in range(2):  #Gamma and K
-            result += Pdk*(np.absolute(tb_en[i,indexes[j]]-reduced_data[i][indexes[j],1])**2)
+            result += Pdk*(np.absolute(tb_en[i,indexes[j]]-data[indexes[j],3+i])**2)
     #Save temporary file if result goes down
+    home_dn = get_home_dn(machine)
+    temp_dn = cfs.getFilename(('temp',*spec_args),dirname=home_dn+'Data/')+'/'
+    figname = temp_dn+'figband.png'
+    figname2 = temp_dn+'figpar.png'
+    figname3 = temp_dn+'figorb.png'
+    if not Path(temp_dn).is_dir():
+        os.system("mkdir "+temp_dn)
     global min_chi2
-    if result < min_chi2 and ind_random >= 0:   #remove old temp and add new one
-        temp_fn = get_temp_fit_fn(min_chi2,spec_args,ind_random,machine)
-        if not min_chi2==1e5:
-            os.system('rm '+temp_fn)
-        min_chi2 = result
-        temp_fn = get_temp_fit_fn(min_chi2,spec_args,ind_random,machine)
-        pars_full = np.append(pars_tb,SOC_pars)
-        np.save(temp_fn,pars_full)
     global evaluation_step
     evaluation_step += 1
+    if result < min_chi2:   #remove old temp and add new one
+        if not min_chi2==1e5:
+            temp_fn = cfs.getFilename(('temp',min_chi2),dirname=temp_dn,extension='.npy')
+            os.system('rm '+temp_fn)
+        min_chi2 = result
+        temp_fn = cfs.getFilename(('temp',result),dirname=temp_dn,extension='.npy')
+        pars_full = np.append(pars_tb,SOC_pars)
+        np.save(temp_fn,pars_full)
     if evaluation_step>max_eval:
-        print("reached max number of evaluations")
+        print("reached max number of evaluations, plotting results")
+        best_fn = cfs.getFilename(('temp',min_chi2),dirname=temp_dn,extension='.npy')
+        best_tb = np.load(best_fn)
+        best_en = cfs.energy(full_pars,HSO,data,spec_args[0])
+        plot_bands(best_en,data,title="chi2: %.8f"%result,figname=figname,show=False,TMD=spec_args[0])
+        plot_parameters(best_tb,spec_args,title="chi2: %.8f"%result,figname=figname2,show=False)
+        #
+        from plotOrbitalContent import plotOrbitalContent
+        plotOrbitalContent(best_tb,spec_args[0],figname=figname3,show=False)
         exit()
     #Plot figure every N steps to see how it is going
-    if machine=='loc':    #Plot each nnnn steps
+    if machine=='loc' and 0:    #Plot each nnnn steps
         nnnn = 1000
         if evaluation_step%nnnn==0:
-            plot_bands(tb_en,reduced_data,title="chi2: "+"{:.4f}".format(result),figname='Figures/temp.png',show=False)
-            print("New fig ",evaluation_step//nnnn,", chi2: ","{:.8f}".format(result))
-            if 0:#fig of distance from DFT values
-                fig = plt.figure(figsize=(15,20))
-                ax1 = fig.add_subplot(2,1,1)
-                ax1.bar(np.arange(len(pars_tb)),pars_tb-cfs.initial_pt[spec_args[0]][:-2],color='r')
-                ax1.set_ylabel("Absolute")
-                ax2 = fig.add_subplot(2,1,2)
-                ax2.bar(np.arange(len(pars_tb)),(pars_tb-cfs.initial_pt[spec_args[0]][:-2])/abs(np.array(cfs.initial_pt[spec_args[0]][:-2]))*100,color='b')
-                ax2.set_ylabel("Percentage")
-                ax1.set_title("chi2: "+"{:.4f}".format(result))
-                fig.tight_layout()
-                plt.savefig('Figures/memp.png')
-                plt.close(fig)
-    #print("chi2: ","{:.7f}".format(result))
+            pars_full = np.array(list(pars_tb) + list(SOC_pars) )
+            plot_bands(tb_en,data,title="chi2: %.8f"%result,figname=figname,show=False,TMD=spec_args[0])
+            plot_parameters(pars_full,spec_args,title="chi2: %.8f"%result,figname=figname2,show=False)
+            print("New fig ",evaluation_step//nnnn,", chi2: %.8f"%result)
     return result
 
-def plot_bands(tb_en,reduced_data,dft_en=np.zeros(0),title='',figname='',show=False,TMD='WSe2'):
+def plot_bands(tb_en,data,dft_en=np.zeros(0),title='',figname='',show=False,TMD='WSe2'):
     fig = plt.figure(figsize=(20,20))
     ax = fig.add_subplot()
-    for b in range(2):
-        targ = np.argwhere(np.isfinite(reduced_data[b][:,1]))    #select only non-nan values
-        xline = reduced_data[b][targ,0]
-        ax.plot(xline,reduced_data[b][targ,1],color='r',marker='o',label='ARPES' if b == 0 else '',zorder=1,
+    for b in range(data.shape[1]-3):
+        targ = np.argwhere(np.isfinite(data[:,3+b]))    #select only non-nan values
+        xline = data[targ,0]
+        ax.plot(xline,data[targ,3+b],color='r',marker='o',label='ARPES' if b == 0 else '',zorder=1,
                 markersize=10,mew=1,mec='k',mfc='firebrick')
 #        ax.plot(reduced_data[b][:,0],reduced_data[b][:,1],color='r',marker='*',label='new symm' if b == 0 else '')
         ax.plot(xline,tb_en[b,targ],color='skyblue',marker='s',ls='-',label='Fit' if b == 0 else '',zorder=3,
@@ -149,14 +155,14 @@ def plot_bands(tb_en,reduced_data,dft_en=np.zeros(0),title='',figname='',show=Fa
             ax.plot(xline,dft_en[b,targ],color='g',marker='^',ls='-',label='DFT' if b == 0 else '',zorder=2,
                     markersize=10,mew=1,mec='k',mfc='darkgreen')
     #
-    ks = [xline[0][0],4/3*np.pi/cfs.dic_params_a_mono[TMD],xline[-1][0]]
+    ks = [data[0,0],4/3*np.pi/cfs.dic_params_a_mono[TMD],xline[-1][0]]
     ax.set_xticks(ks,[r"$\Gamma$",r"$K$",r"$M$"],size=20)
     for i in range(3):
         ax.axvline(ks[i],color='k',lw=0.5)
     ax.set_xlim(ks[0],ks[-1])
     ax.set_ylabel('energy (eV)',size=30)
     label_y = []
-    ticks_y = np.linspace(np.max(tb_en)+0.2,np.min(tb_en)-0.2,5)
+    ticks_y = np.linspace(np.max(data[:,3])+0.2,np.min(data[~np.isnan(data[:,6]),6])-0.2,5)
     for i in ticks_y:
         label_y.append("{:.1f}".format(i))
     ax.set_yticks(ticks_y,label_y,size=20)
@@ -352,99 +358,8 @@ def compute_band_content(parameters,HSO,TMD):
             result.append(functions_kpt[i][j](evecs[:,6]))  # 6 -> top valence band
     return result
 
-def get_exp_data(TMD,machine):
-    """
-    For given material, takes the two cuts (KGK and KMKp) and the two bands and returns the lists of energy and momentum for the 2 top valence bands.
-    We take from the .txt experiment data which has value of |k| and energy and save it as a .npy matrix with values:
-        |k|, energy, kx, ky.
-    Need to handle some NANs in the energy -> that point is not available -> still keep it.
-    """
-    data = []
-    offset_exp = {
-        'WSe2':{'KGK':0,'KMKp':-0.0521},
-        'WS2':{'KGK':0,'KMKp':-0.0025}
-    } #To align the two cuts -> fixed on symmetrized data
-    for cut in ['KGK','KMKp']:
-        data.append([])
-        for band in range(1,3):
-            data_fn = get_exp_data_fn(TMD,cut,band,machine)     #.npy file saved
-            if Path(data_fn).is_file():
-                data[-1].append(np.load(data_fn))
-                continue
-            with open(get_exp_fn(TMD,cut,band,machine), 'r') as f:  #original .txt file
-                lines = f.readlines()
-            temp = []
-            for i in range(len(lines)):
-                ke = lines[i].split('\t')       #momentum modulus and energy
-                if ke[1] == 'NAN\n':
-                    temp.append([float(ke[0]),np.nan,*find_vec_k(float(ke[0]),cut,TMD)])
-                else:
-                    temp.append([float(ke[0]),float(ke[1])+offset_exp[TMD][cut],*find_vec_k(float(ke[0]),cut,TMD)])
-            data[-1].append(np.array(temp))
-            np.save(data_fn,np.array(temp))
-    return data
-
-def get_symm_data(exp_data):
-    """
-    Symmetrize experimental data from k to -k, for the 2 cuts and the 2 bands.
-    Experimental values of |k| are symmetric around 0, so each point has a symmetric one.
-    We average between the two. If one of them is nan keep only the other. If both are nan give nan.
-    We also put the data on a line G-K-M so the result is a 2xN matrix for the 2 bands.
-    """
-    Nkgk = len(exp_data[0][0])
-    Nkmk = len(exp_data[1][0])
-    symm_data = np.zeros((2,Nkgk//2+Nkmk//2+Nkmk%2,4))
-    for i in range(2):  #two bands
-        for ik in range(Nkgk//2,Nkgk):       #second half for kgk
-            if np.isnan(exp_data[0][i][ik][1]):
-                symm_data[i,ik-Nkgk//2] = exp_data[0][i][Nkgk-1-ik]
-            else:
-                if np.isnan(exp_data[0][i][Nkgk-1-ik][1]):
-                    symm_data[i][ik-Nkgk//2] = exp_data[0][i][ik]
-                else:       #actuall average
-                    symm_data[i,ik-Nkgk//2] = np.array([exp_data[0][i][ik][0],(exp_data[0][i][ik][1]+exp_data[0][i][Nkgk-1-ik][1])/2,exp_data[0][i][ik][2],exp_data[0][i][ik][3]])
-        for ik in range(Nkmk//2+Nkmk%2):       #first half for kmk
-            if np.isnan(exp_data[1][i][ik][1]):
-                symm_data[i,Nkgk//2+ik] = exp_data[1][i][Nkmk-1-ik]
-            else:
-                if np.isnan(exp_data[1][i][Nkmk-1-ik][1]):
-                    symm_data[i][ik+Nkgk//2] = exp_data[1][i][ik]
-                else:       #actuall average
-                    symm_data[i,ik+Nkgk//2] = np.array([exp_data[1][i][ik][0],(exp_data[1][i][ik][1]+exp_data[1][i][Nkmk-1-ik][1])/2,exp_data[1][i][ik][2],exp_data[1][i][ik][3]])
-        symm_data[i,Nkgk//2:,0] += symm_data[i,Nkgk//2-1,0] + exp_data[1][i][-1][0]
-    return symm_data
-
-def get_reduced_data(symm_data,ind):
-    """
-    Get reduced set of k-points for the comparison.
-    """
-    red_data = []
-    for i in range(2):
-        red_data.append(np.concatenate((symm_data[i][::ind],[symm_data[i][-1],]),axis=0))
-    return red_data
-
-def symmetrize(dataset):
-    """dataset has N k-entries, each containing a couple (k,E,kx,ky)"""
-    new_ds = []
-    len_ds = len(dataset)//2 if len(dataset)%2 == 0 else len(dataset)//2+1
-    for i in range(len_ds):
-        temp = np.zeros(4)
-        temp[0] = np.abs(dataset[i,0])#np.sqrt(dataset[i,2]**2+dataset[i,3]**2)
-        temp[2:] = dataset[i,2:]
-        if np.isnan(dataset[i,1]) and np.isnan(dataset[-1-i,1]):
-            temp[1] = np.nan
-        elif np.isnan(dataset[i,1]):
-            temp[1] = dataset[-1-i,1]
-        elif np.isnan(dataset[-1-i,1]):
-            temp[1] = dataset[i,1]
-        else:
-#            temp[1] = (dataset[i,1]+dataset[-1-i,1])/2
-            temp[1] = dataset[i,1]
-        new_ds.append(temp)
-    return np.array(new_ds)
-
 def get_bounds(in_pt,spec_args):
-    TMD, P, rp, rl, ind_reduced, Pbc, Pdk = spec_args
+    rp, rl = spec_args[2:4]
     Bounds = []
     for i in range(in_pt.shape[0]):     #tb parameters
         if i == in_pt.shape[0]-3: #offset
@@ -458,58 +373,6 @@ def get_bounds(in_pt,spec_args):
         Bounds.append(temp)
     return Bounds
 
-def find_vec_k(k_scalar,cut,TMD):
-    """
-    Compute vector components from the (signed)modulus depending cut and TMD.
-    """
-    a_mono = cfs.dic_params_a_mono[TMD]
-    k_pts = np.zeros(2)
-    if cut == 'KGK':
-        k_pts[0] = k_scalar
-        k_pts[1] = 0
-    elif cut == 'KMKp':
-        M = np.array([np.pi,np.pi/np.sqrt(3)])/a_mono
-        K = np.array([4*np.pi/3,0])/a_mono
-        Kp = np.array([2*np.pi/3,2*np.pi/np.sqrt(3)])/a_mono
-        if k_scalar < 0:
-            k_pts = M + (K-M)*np.abs(k_scalar)/la.norm(K-M)
-        else:
-            k_pts = M + (Kp-M)*np.abs(k_scalar)/la.norm(Kp-M)
-    return k_pts
-
-def get_spec_args_txt(spec_args):
-    return spec_args[0]+'_'+"{:.3f}".format(spec_args[1]).replace('.',',')+'_'+"{:.3f}".format(spec_args[2]).replace('.',',')+'_'+"{:.3f}".format(spec_args[3]).replace('.',',')+'_'+str(spec_args[4])+'_'+str(spec_args[5])+'_'+str(spec_args[6])
-
-def get_exp_data_fn(TMD,cut,band,machine):
-    return get_exp_dn(machine)+'extracted_data_'+cut+'_'+TMD+'_band'+str(band)+'.npy'
-
-def get_exp_fn(TMD,cut,band,machine):
-    return get_exp_dn(machine)+cut+'_'+TMD+'_band'+str(band)+'.txt'
-
-def get_temp_fit_fn(chi,spec_args,ind_random,machine):
-    return get_temp_dn(machine,spec_args)+'temp_'+str(ind_random)+"_"+"{:.8f}".format(chi)+'.npy'
-
-def get_res_fn(TMD,machine):
-    return get_fig_dn(machine)+'result_'+TMD+'.npy'
-
-def get_fig_fn(spec_args,machine):
-    return get_fig_dn(machine)+'fig_'+get_spec_args_txt(spec_args)+'.png'
-
-def get_SOC_fn(TMD,machine):
-    return get_res_dn(machine)+TMD+'_SOC.npy'
-
-def get_exp_dn(machine):
-    return get_home_dn(machine)+'inputs/'
-
-def get_res_dn(machine):
-    return get_home_dn(machine)+'Data/'
-
-def get_fig_dn(machine):
-    return get_home_dn(machine)+'Figures/'
-
-def get_temp_dn(machine,spec_args):
-    return get_res_dn(machine)+'temp_'+get_spec_args_txt(spec_args)+'/'
-
 def get_home_dn(machine):
     if machine == 'loc':
         return '/home/dario/Desktop/git/MoireBands/Code/1_monolayer/'
@@ -522,9 +385,9 @@ def compute_parameter_distance(pars,TMD):
     DFT_values = np.array(cfs.initial_pt[TMD])
     len_tb = DFT_values.shape[0]
     if pars.shape[0]==len_tb:
-        return np.sum(np.absolute(pars[:-3]-DFT_values[:-3])**2) + np.sum(np.absolute(pars[-2:]-DFT[-2:])**2)
+        return np.sum(np.absolute((pars[:-3]-DFT_values[:-3])/DFT_values[:-3])**2) + np.sum(np.absolute((pars[-2:]-DFT_values[-2:])/DFT_values[-2:])**2)
     elif pars.shape[0]==len_tb-2:
-        return np.sum(np.absolute(pars-DFT_values[:-2])**2)
+        return np.sum(np.absolute((pars[:-1]-DFT_values[:-3])/DFT_values[:-3])**2)
     else:
         print("compute_parameter_distance error")
 
@@ -616,4 +479,149 @@ def get_table(spec_args,machine,fn=''):
 
 
 
+# Old functions to import experimental data
+def get_exp_data(TMD,machine):
+    """
+    For given material, takes the two cuts (KGK and KMKp) and the two bands and returns the lists of energy and momentum for the 2 top valence bands.
+    We take from the .txt experiment data which has value of |k| and energy and save it as a .npy matrix with values:
+        |k|, energy, kx, ky.
+    Need to handle some NANs in the energy -> that point is not available -> still keep it.
+    """
+    data = []
+    offset_exp = {
+        'WSe2':{'KGK':0,'KMKp':-0.0521},
+        'WS2':{'KGK':0,'KMKp':-0.0025}
+    } #To align the two cuts -> fixed on symmetrized data
+    for cut in ['KGK','KMKp']:
+        data.append([])
+        for band in range(1,3):
+            data_fn = get_exp_data_fn(TMD,cut,band,machine)     #.npy file saved
+            if Path(data_fn).is_file():
+                data[-1].append(np.load(data_fn))
+                continue
+            with open(get_exp_fn(TMD,cut,band,machine), 'r') as f:  #original .txt file
+                lines = f.readlines()
+            temp = []
+            for i in range(len(lines)):
+                ke = lines[i].split('\t')       #momentum modulus and energy
+                if ke[1] == 'NAN\n':
+                    temp.append([float(ke[0]),np.nan,*find_vec_k(float(ke[0]),cut,TMD)])
+                else:
+                    temp.append([float(ke[0]),float(ke[1])+offset_exp[TMD][cut],*find_vec_k(float(ke[0]),cut,TMD)])
+            data[-1].append(np.array(temp))
+            np.save(data_fn,np.array(temp))
+    return data
+
+def get_symm_data(exp_data):
+    """
+    Symmetrize experimental data from k to -k, for the 2 cuts and the 2 bands.
+    Experimental values of |k| are symmetric around 0, so each point has a symmetric one.
+    We average between the two. If one of them is nan keep only the other. If both are nan give nan.
+    We also put the data on a line G-K-M so the result is a 2xN matrix for the 2 bands.
+    """
+    Nkgk = len(exp_data[0][0])
+    Nkmk = len(exp_data[1][0])
+    symm_data = np.zeros((2,Nkgk//2+Nkmk//2+Nkmk%2,4))
+    for i in range(2):  #two bands
+        for ik in range(Nkgk//2,Nkgk):       #second half for kgk
+            if np.isnan(exp_data[0][i][ik][1]):
+                symm_data[i,ik-Nkgk//2] = exp_data[0][i][Nkgk-1-ik]
+            else:
+                if np.isnan(exp_data[0][i][Nkgk-1-ik][1]):
+                    symm_data[i][ik-Nkgk//2] = exp_data[0][i][ik]
+                else:       #actuall average
+                    symm_data[i,ik-Nkgk//2] = np.array([exp_data[0][i][ik][0],(exp_data[0][i][ik][1]+exp_data[0][i][Nkgk-1-ik][1])/2,exp_data[0][i][ik][2],exp_data[0][i][ik][3]])
+        for ik in range(Nkmk//2+Nkmk%2):       #first half for kmk
+            if np.isnan(exp_data[1][i][ik][1]):
+                symm_data[i,Nkgk//2+ik] = exp_data[1][i][Nkmk-1-ik]
+            else:
+                if np.isnan(exp_data[1][i][Nkmk-1-ik][1]):
+                    symm_data[i][ik+Nkgk//2] = exp_data[1][i][ik]
+                else:       #actuall average
+                    symm_data[i,ik+Nkgk//2] = np.array([exp_data[1][i][ik][0],(exp_data[1][i][ik][1]+exp_data[1][i][Nkmk-1-ik][1])/2,exp_data[1][i][ik][2],exp_data[1][i][ik][3]])
+        symm_data[i,Nkgk//2:,0] += symm_data[i,Nkgk//2-1,0] + exp_data[1][i][-1][0]
+    return symm_data
+
+def get_reduced_data(symm_data,ind):
+    """
+    Get reduced set of k-points for the comparison.
+    """
+    red_data = []
+    for i in range(2):
+        red_data.append(np.concatenate((symm_data[i][::ind],[symm_data[i][-1],]),axis=0))
+    return red_data
+
+def symmetrize(dataset):
+    """dataset has N k-entries, each containing a couple (k,E,kx,ky)"""
+    new_ds = []
+    len_ds = len(dataset)//2 if len(dataset)%2 == 0 else len(dataset)//2+1
+    for i in range(len_ds):
+        temp = np.zeros(4)
+        temp[0] = np.abs(dataset[i,0])#np.sqrt(dataset[i,2]**2+dataset[i,3]**2)
+        temp[2:] = dataset[i,2:]
+        if np.isnan(dataset[i,1]) and np.isnan(dataset[-1-i,1]):
+            temp[1] = np.nan
+        elif np.isnan(dataset[i,1]):
+            temp[1] = dataset[-1-i,1]
+        elif np.isnan(dataset[-1-i,1]):
+            temp[1] = dataset[i,1]
+        else:
+#            temp[1] = (dataset[i,1]+dataset[-1-i,1])/2
+            temp[1] = dataset[i,1]
+        new_ds.append(temp)
+    return np.array(new_ds)
+
+def find_vec_k(k_scalar,cut,TMD):
+    """
+    Compute vector components from the (signed)modulus depending cut and TMD.
+    """
+    a_mono = cfs.dic_params_a_mono[TMD]
+    k_pts = np.zeros(2)
+    if cut == 'KGK':
+        k_pts[0] = k_scalar
+        k_pts[1] = 0
+    elif cut == 'KMKp':
+        M = np.array([np.pi,np.pi/np.sqrt(3)])/a_mono
+        K = np.array([4*np.pi/3,0])/a_mono
+        Kp = np.array([2*np.pi/3,2*np.pi/np.sqrt(3)])/a_mono
+        if k_scalar < 0:
+            k_pts = M + (K-M)*np.abs(k_scalar)/la.norm(K-M)
+        else:
+            k_pts = M + (Kp-M)*np.abs(k_scalar)/la.norm(Kp-M)
+    return k_pts
+
+# All the stupid filenames
+
+def get_spec_args_txt(spec_args):
+    return spec_args[0]+'_'+"{:.3f}".format(spec_args[1]).replace('.',',')+'_'+"{:.3f}".format(spec_args[2]).replace('.',',')+'_'+"{:.3f}".format(spec_args[3]).replace('.',',')+'_'+str(spec_args[4])+'_'+str(spec_args[5])+'_'+str(spec_args[6])
+
+def get_exp_data_fn(TMD,cut,band,machine):
+    return get_exp_dn(machine)+'extracted_data_'+cut+'_'+TMD+'_band'+str(band)+'.npy'
+
+def get_exp_fn(TMD,cut,band,machine):
+    return get_exp_dn(machine)+cut+'_'+TMD+'_band'+str(band)+'.txt'
+
+def get_temp_fit_fn(chi,spec_args,ind_random,machine):
+    return get_temp_dn(machine,spec_args)+'temp_'+str(ind_random)+"_"+"{:.8f}".format(chi)+'.npy'
+
+def get_res_fn(TMD,machine):
+    return get_fig_dn(machine)+'result_'+TMD+'.npy'
+
+def get_fig_fn(spec_args,machine):
+    return get_fig_dn(machine)+'fig_'+get_spec_args_txt(spec_args)+'.png'
+
+def get_SOC_fn(TMD,machine):
+    return get_res_dn(machine)+TMD+'_SOC.npy'
+
+def get_exp_dn(machine):
+    return get_home_dn(machine)+'inputs/'
+
+def get_res_dn(machine):
+    return get_home_dn(machine)+'Data/'
+
+def get_fig_dn(machine):
+    return get_home_dn(machine)+'Figures/'
+
+#def get_temp_dn(machine,spec_args):
+#    return get_res_dn(machine)+'temp_'+get_spec_args_txt(spec_args)+'/'
 

@@ -1,14 +1,13 @@
 """Description of the script:
-py monolayer.py arg1 arg2
+py monolayer.py arg1
 arg1: index of specification arguments, which includes
     - M -> material
     - P -> parameter of chi2_1
     - rp -> bounds of energies and hoppings
     - rl -> bounds of SOC
-arg2: index of random realization within '5%' of DFT values
 
 Description of the code:
-We extract the experimental data, adjust it with an offset (and symmetrize it), finally we take 1 every ind_reduced points to speed up the computation.
+We extract the experimental data, adjust it with an offset (and symmetrize it), finally we take a subset of points to speed up the computation.
 We extract the DFT parameters and compute initial point and the bounds.
 Compute the chi squared function by evaluating the bands an minimizing it within the bounds.
 """
@@ -27,65 +26,41 @@ import functions_monolayer as fsm
 from pathlib import Path
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
-from time import time as ttt
-from datetime import timedelta
-machine = cfs.get_machine(os.getcwd())          #Machine on which the computation is happening
-
-if len(sys.argv) > 2:
-    print("Usage: py monolayer.py arg1",
-          "\narg1: index of parameter list (optional=0)")
-    exit()
-else:
-    argc = int(sys.argv[1])
-    if machine == 'maf':
-        argc -= 1
-    #Random initialization ondex
-    Number_random = 1      #number of random initializations
-    ind_spec_args = 0 if len(sys.argv)==1 else argc//Number_random
-    ind_random = argc%Number_random
-    #
-    spec_args = fsm.get_spec_args(ind_spec_args)
-    TMD = spec_args[0]
-    ind_reduced = spec_args[4]
+machine = cfs.get_machine(os.getcwd())
 
 disp = True                                     #Display messages during computation
-plot_exp = False                                #Plot experimental data for fit
 fit_off_SOC_separately = 0#False                    #Fit (offset and) SOC separately from tb parameters
 plot_off_SOC_fit = 0#False
-time_profile = 0#False                            #Profiling of different fitting steps
 max_eval = 1e6              #max number of chi2 evaluations
 
-if time_profile:
-    t_initial = ttt()
-
-#Experimental data of monolayer 
-#For each material, 2 TVB (because of SO) on the 2 cuts
-exp_data = fsm.get_exp_data(TMD,machine)
-symm_data = fsm.get_symm_data(exp_data)
-reduced_data = fsm.get_reduced_data(symm_data,ind_reduced)
-if disp:
-    print("------------CHOSEN PARAMETERS------------")
-    print(" TMD: ",spec_args[0],"\n chi2_1 parameter: ","{:.4f}".format(spec_args[1]),"\n Bound parameters: ","{:.2f}".format(spec_args[2]*100)+"%","\n Bounds SOC: ","{:.2f}".format(spec_args[3]*100)+"%","\n Index random evaluation: ",ind_random)
-    print(" Using 1 every ",ind_reduced," points, for a total of ",len(reduced_data[0])," points")
-if plot_exp: #plot experimental data and symmetrized points
-    plt.figure(figsize=(14,7))
-    plt.title(TMD)
-    KGK_end = exp_data[0][0][-1,0]
-    KMKp_beg = exp_data[1][0][0,0]
-    ikl = exp_data[0][0].shape[0]//2+1
-    for b in range(2):
-        plt.plot(exp_data[0][b][:,0],exp_data[0][b][:,1],color='b',marker='*',label='experiment' if b == 0 else '')
-        plt.plot(exp_data[1][b][:,0]+KGK_end-KMKp_beg,exp_data[1][b][:,1],color='b',marker='*')
-        #
-        plt.plot(reduced_data[b][:,0],reduced_data[b][:,1],color='r',marker='*',label='symmetrized' if b == 0 else '')
-    #
-    plt.xlabel(r'$A^{-1}$')
-    plt.ylabel('E(eV)')
-    plt.legend()
-    plt.show()
+if len(sys.argv) != 2:
+    print("Usage: py monolayer.py arg1",
+          "\narg1: index of parameter list")
     exit()
 
-#DFT values of tb parameters
+# Import spec_args
+argc = int(sys.argv[1])
+if machine == 'maf':
+    argc -= 1
+spec_args = fsm.get_spec_args(argc)
+TMD = spec_args[0]
+ptsPerPath = spec_args[-1]
+
+# Import experimental data of monolayer 
+dataObject = cfs.dataWS2() if TMD=="WS2" else cfs.dataWSe2()
+data = dataObject.getFitData(ptsPerPath)
+
+if disp:
+    print("------------CHOSEN PARAMETERS------------")
+    print(" TMD: ",spec_args[0],
+          "\n chi2_1 parameter: ","{:.4f}".format(spec_args[1]),
+          "\n Bound parameters: ","{:.2f}".format(spec_args[2]*100)+"%",
+          "\n Bounds SOC: ","{:.2f}".format(spec_args[3]*100)+"%",
+          #"\n Index random evaluation: ",ind_random
+          )
+    print(" Using ",ptsPerPath," points, for a total of ",data.shape[0]," points")
+
+# Import DFT values of tb parameters
 DFT_values = np.array(cfs.initial_pt[TMD])  #DFT values of tb parameters. Order is: e, t, offset, SOC
 
 """
@@ -151,29 +126,27 @@ else:
     print("Using offset and SOC parameters of DFT: ",off_SOC_pars)
 
 """
-We want a minimization of tb bands vs experiment which penalizes going away from DFT initial values.
 Here we fit the rest of the parameters.
+We want a minimization of tb bands vs experiment which penalizes going away from DFT initial values.
 """
-txt_SOC_fit = 'NOT including' if fit_off_SOC_separately else "including"
-print("Fitting of tb parameters "+txt_SOC_fit+" SOC parameters")
+if disp:
+    txt_SOC_fit = 'NOT including' if fit_off_SOC_separately else "including"
+    print("Fitting of tb parameters "+txt_SOC_fit+" SOC parameters")
 #
-temp_dn = fsm.get_temp_dn(machine,spec_args)
-if not Path(temp_dn).is_dir():
-    os.system("mkdir "+temp_dn)
 #
-rand_vals = np.random.rand(DFT_values.shape[0]-3)*0.1+0.95 #random value between 0.95 and 1.05
-rand_vals = np.append(rand_vals,np.ones(3))
-initial_point_full = np.append(DFT_values[:-3],off_SOC_pars)*rand_vals    #eps,t,off,lam
+#rand_vals = np.random.rand(DFT_values.shape[0]-3)*0.1+0.95 #random value between 0.95 and 1.05
+#rand_vals = np.append(rand_vals,np.ones(3))
+initial_point_full = np.append(DFT_values[:-3],off_SOC_pars)#*rand_vals    #eps,t,off,lam
 #
 Bounds_full = fsm.get_bounds(DFT_values,spec_args)
 if fit_off_SOC_separately or spec_args[3]==0:
     HSO = cfs.find_HSO(off_SOC_pars[-2:])
-    args_chi2 = (reduced_data,HSO,off_SOC_pars[-2:],machine,spec_args,ind_random,max_eval)
+    args_chi2 = (data,HSO,off_SOC_pars[-2:],machine,spec_args,max_eval)
     Bounds = Bounds_full[:-2]
     initial_point = initial_point_full[:-2]
     func = fsm.chi2_tb
 else:
-    args_chi2 = (reduced_data,machine,spec_args,ind_random,max_eval)
+    args_chi2 = (data,machine,spec_args,max_eval)
     Bounds = Bounds_full
     initial_point = initial_point_full
     func = fsm.chi2_full
@@ -193,10 +166,7 @@ result = minimize(func,
         )
 
 min_chi2 = result.fun
-print("Minimum chi2: ",min_chi2)
-if time_profile:
-    t_final = timedelta(seconds=ttt()-t_initial)
-    print("Total time: ",str(t_final))
+print("Minimization finished with optimal chi2: %.4f"%min_chi2)
 
 
 
