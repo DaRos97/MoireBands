@@ -31,7 +31,7 @@ machine = cfs.get_machine(os.getcwd())
 disp = True                                     #Display messages during computation
 fit_off_SOC_separately = 0#False                    #Fit (offset and) SOC separately from tb parameters
 plot_off_SOC_fit = 0#False
-max_eval = 1e6              #max number of chi2 evaluations
+max_eval = 1e8              #max number of chi2 evaluations
 
 if len(sys.argv) != 2:
     print("Usage: py monolayer.py arg1",
@@ -167,7 +167,18 @@ result = minimize(func,
 
 min_chi2 = result.fun
 print("Minimization finished with optimal chi2: %.4f"%min_chi2)
+print("Plotting results")
 
+if 0:   # To pòlot results if they weren't
+    import os, glob
+    home_dn = fsm.get_home_dn(machine)
+    temp_dn = cfs.getFilename(('temp',*spec_args),dirname=home_dn+'Data/')+'/'
+    npy_files = glob.glob(os.path.join(temp_dn, "*.npy"))
+    full_pars = np.load(npy_files[0])
+
+full_pars = np.array(list(result.x)+list(SOC_pars))
+best_en = cfs.energy(full_pars,HSO,data,spec_args[0])
+fsm.plotResults(full_pars,best_en,data,spec_args,machine,float(npy_files[0][-10:-4]))
 
 
 

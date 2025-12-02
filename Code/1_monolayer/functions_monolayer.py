@@ -15,8 +15,8 @@ evaluation_step = 0
 
 def get_spec_args(ind):
     lTMDs = ["WSe2", ]#cfs.TMDs    #TMDs
-    lP = [0.01,0.05,0.1,0.5,1,5]         #coefficient of parameters distance from DFT chi2
-    lrp = [0.1,0.2,0.3,0.5,0.7,1]         #tb bounds
+    lP = [0.01,0.05,0.1,0.2,0.3]         #coefficient of parameters distance from DFT chi2
+    lrp = [0.3,0.5,1,2]         #tb bounds
     lrl = [0,]          #SOC bounds
     #lReduced = [13,]
     lPbc = [10,]        #coefficient of band content chi2
@@ -95,10 +95,12 @@ def chi2_tb(pars_tb,*args):
     band_content = np.array(compute_band_content(full_pars,HSO,spec_args[0]))
     result += Pbc*(2-np.sum(np.absolute(band_content)**2))
     #chi2 of distance at Gamma and K
+    chiDK = 0
     for i in range(2):  #2 bands
         indexes = [0,np.argmax(data[~np.isnan(data[:,3]),3])]    #indexes of Gamma (first element) and K /(highest energy)
         for j in range(2):  #Gamma and K
-            result += Pdk*(np.absolute(tb_en[i,indexes[j]]-data[indexes[j],3+i])**2)
+            chiDK += Pdk*(np.absolute(tb_en[i,indexes[j]]-data[indexes[j],3+i])**2)
+    result += chiDK
     #Save temporary file if result goes down
     home_dn = get_home_dn(machine)
     temp_dn = cfs.getFilename(('temp',*spec_args),dirname=home_dn+'Data/')+'/'
@@ -110,7 +112,7 @@ def chi2_tb(pars_tb,*args):
     global min_chi2
     global evaluation_step
     evaluation_step += 1
-    if result < min_chi2:   #remove old temp and add new one
+    if result < min_chi2 and abs(result-min_chi2)>1e-4:   #remove old temp and add new one
         if not min_chi2==1e5:
             temp_fn = cfs.getFilename(('temp',min_chi2),dirname=temp_dn,extension='.npy')
             os.system('rm '+temp_fn)
@@ -122,22 +124,28 @@ def chi2_tb(pars_tb,*args):
         print("reached max number of evaluations, plotting results")
         best_fn = cfs.getFilename(('temp',min_chi2),dirname=temp_dn,extension='.npy')
         best_tb = np.load(best_fn)
-        best_en = cfs.energy(full_pars,HSO,data,spec_args[0])
-        plot_bands(best_en,data,title="chi2: %.8f"%result,figname=figname,show=False,TMD=spec_args[0])
-        plot_parameters(best_tb,spec_args,title="chi2: %.8f"%result,figname=figname2,show=False)
-        #
-        from plotOrbitalContent import plotOrbitalContent
-        plotOrbitalContent(best_tb,spec_args[0],figname=figname3,show=False)
+        best_en = cfs.energy(best_tb,HSO,data,spec_args[0])
+        plotResults(best_tb,best_en,data,spec_args,machine,result)
         exit()
-    #Plot figure every N steps to see how it is going
-    if machine=='loc' and 0:    #Plot each nnnn steps
-        nnnn = 1000
-        if evaluation_step%nnnn==0:
-            pars_full = np.array(list(pars_tb) + list(SOC_pars) )
-            plot_bands(tb_en,data,title="chi2: %.8f"%result,figname=figname,show=False,TMD=spec_args[0])
-            plot_parameters(pars_full,spec_args,title="chi2: %.8f"%result,figname=figname2,show=False)
-            print("New fig ",evaluation_step//nnnn,", chi2: %.8f"%result)
+    if machine=='loc' and evaluation_step%1000==0:
+        print("New figure")
+        plotResults(np.append(pars_tb,SOC_pars),tb_en,data,spec_args,machine,result,dn='temp')
     return result
+
+def plotResults(pars,ens,data,spec_args,machine,result='',dn=''):
+    home_dn = get_home_dn(machine)
+    if dn=='temp':
+        Dn = cfs.getFilename(('temp',*spec_args),dirname=home_dn+'Data/')+'/'
+    else:
+        Dn = home_dn + 'Data/'
+    fig1 = cfs.getFilename(('bands',*spec_args),dirname=Dn,extension='.png')
+    plot_bands(ens,data,title="chi2: %.8f"%result,figname=fig1,show=False,TMD=spec_args[0])
+    fig2 = cfs.getFilename(('pars',*spec_args),dirname=Dn,extension='.png')
+    plot_parameters(pars,spec_args,title="chi2: %.8f"%result,figname=fig2,show=False)
+    #
+    from plotOrbitalContent import plotOrbitalContent
+    fig3 = cfs.getFilename(('orbitals',*spec_args),dirname=Dn,extension='.png')
+    plotOrbitalContent(pars,spec_args[0],figname=fig3,show=False)
 
 def plot_bands(tb_en,data,dft_en=np.zeros(0),title='',figname='',show=False,TMD='WSe2'):
     fig = plt.figure(figsize=(20,20))
