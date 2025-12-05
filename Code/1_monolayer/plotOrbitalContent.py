@@ -77,6 +77,17 @@ def plotOrbitalContent(par_values,TMD,figname='',show=False):
             for ik in range(Nk):   #kpts
                 for iorb in inds_orb:
                     orbitals[orb,ib,ik] += np.linalg.norm(evs[ik,iorb,ib])**2 + np.linalg.norm(evs[ik,iorb+11,ib])**2
+    if 0:       # Print orbitals at M
+        vk = evs[Ngk+Nkm]
+        for ib in [10,11,12,13]:
+            print("Band %d"%ib)
+            v =vk[:,ib]
+            for iorb in range(22):
+                print("Orb #%d, %.4f"%(iorb,np.absolute(v[iorb])))
+            print("--------------------------")
+        print("Total values")
+        print(orbitals[:,13,Ngk+Nkm])
+        #exit()
     """ Plot """
     fig = plt.figure(figsize=(10,10))
     ax = fig.add_subplot()
@@ -125,6 +136,7 @@ def plotOrbitalContent(par_values,TMD,figname='',show=False):
 #    figname = "/home/dario/Desktop/git/MoireBands/FinalFigures/OrbitalContent"+TMD+'_'+ttt+".png"
 #    fig.savefig(figname)
     if figname!='':
+        print("Saving figure: "+figname)
         fig.savefig(figname)
     if show:
         plt.show()

@@ -15,9 +15,9 @@ evaluation_step = 0
 
 def get_spec_args(ind):
     lTMDs = ["WSe2", ]#cfs.TMDs    #TMDs
-    lP = [0.01,0.05,0.1,0.2,0.3]         #coefficient of parameters distance from DFT chi2
-    lrp = [0.3,0.5,1,2]         #tb bounds
-    lrl = [0,]          #SOC bounds
+    lP = [0.01,0.05,0.1]         #coefficient of parameters distance from DFT chi2
+    lrp = [0.1,0.5,1,2]         #tb bounds
+    lrl = [0.2,0.5,1]          #SOC bounds
     #lReduced = [13,]
     lPbc = [10,]        #coefficient of band content chi2
     lPdk = [20,]        #coefficient of distance at gamma and K chi2
@@ -29,46 +29,38 @@ def chi2_off_SOC(pars_SOC,*args):
     """
     Compute square difference of bands with exp data and compare G, K and maybe M point.
     """
-    reduced_data, other_pars, TMD, machine = args
-    HSO = cfs.find_HSO(pars_SOC[1:])
+    data, other_pars, spec_args, machine = args
+    HSO = cfs.find_HSO(pars_SOC[-2:])
     full_pars = np.append(other_pars,pars_SOC)
-    tb_en = cfs.energy(full_pars,HSO,reduced_data,TMD)
+    tb_en = cfs.energy(full_pars,HSO,data,spec_args[0])
     #
     result = 0
-    k_pts = len(reduced_data[0])
-    plot = False
-    if plot:
-        fig = plt.figure(figsize=(20,20))
-        ax = fig.add_subplot(1,1,1)
-    for b in range(2):
+    k_pts = data.shape[0]
+    for b in range(2):      #In bth cases since it's only about the first two bands anyway
         farg = np.zeros(4,dtype=int)
-        farg[0] = np.argmax(reduced_data[b][:k_pts//4,1])   #Max at Gamma
-        farg[1] = np.argmin(reduced_data[b][:k_pts//2,1])   #Min between Gamma and K
-        farg[2] = k_pts//2+np.argmax(reduced_data[b][k_pts//2:3*k_pts//4,1])    #max at K
-        farg[3] = k_pts-2   #Min at M, -1 because M might be a bit weird
-        #
-        if plot:
-            ax.plot(reduced_data[b][:,0],reduced_data[b][:,1],color='r',marker='*',label='new symm' if b == 0 else '')
-            ax.plot(reduced_data[b][farg,0],tb_en[b,farg],color='g',marker='^',ls='-',label='fit' if b == 0 else '')
+        farg[0] = 0#np.argmax(data[:k_pts//4,3+b])   #Max at Gamma
+        #farg[1] = np.argmin(data[:k_pts//2,3+b])   #Min between Gamma and K
+        farg[2] = spec_args[-1][0]#k_pts//2+np.argmax(data[k_pts//2:3*k_pts//4,3+b])    #max at K
+        #farg[3] = k_pts-1   #Min at M
         #
         for i in [0,2]:  #just the maxima at gamma and K
-            increase = np.absolute(tb_en[b,farg[i]]-reduced_data[b][farg[i],1])
+            increase = np.absolute(tb_en[b,farg[i]]-data[farg[i],3+b])
             result += increase
-            if plot:
-                print(np.absolute(tb_en[b,farg[i]]-reduced_data[b][farg[i],1]))
-                ax.scatter(reduced_data[b][farg[i],0],reduced_data[b][farg[i],1],c='k',marker='*',zorder=10,s=200)
-    if plot:
-        plt.show()
+    # Splittimg at M
+    if TMD == 'WSe2':
+        for k in [-1,-4]:   # Specific for (20,15,10) ptsPerPath
+            for b in range(4):
+                result += 0*np.absolute(tb_en[b,k] - data[k,3+b])
     return result
 
 def chi2_full(pars_full,*args):
     """
     Wrapper of chi2_tb with SOC paameters.
     """
-    reduced_data,machine,spec_args,ind_random,max_eval = args
+    data,machine,spec_args,max_eval = args
     SOC_pars = pars_full[-2:]
     HSO = cfs.find_HSO(SOC_pars)
-    args_chi2 = (reduced_data,HSO,SOC_pars,machine,spec_args,ind_random,max_eval)
+    args_chi2 = (data,HSO,SOC_pars,machine,spec_args,max_eval)
     pars_tb = pars_full[:-2]
     return chi2_tb(pars_tb,*args_chi2)
 
@@ -101,12 +93,10 @@ def chi2_tb(pars_tb,*args):
         for j in range(2):  #Gamma and K
             chiDK += Pdk*(np.absolute(tb_en[i,indexes[j]]-data[indexes[j],3+i])**2)
     result += chiDK
+    ## From here on just plotting and temporary save
     #Save temporary file if result goes down
     home_dn = get_home_dn(machine)
     temp_dn = cfs.getFilename(('temp',*spec_args),dirname=home_dn+'Data/')+'/'
-    figname = temp_dn+'figband.png'
-    figname2 = temp_dn+'figpar.png'
-    figname3 = temp_dn+'figorb.png'
     if not Path(temp_dn).is_dir():
         os.system("mkdir "+temp_dn)
     global min_chi2
@@ -121,31 +111,48 @@ def chi2_tb(pars_tb,*args):
         pars_full = np.append(pars_tb,SOC_pars)
         np.save(temp_fn,pars_full)
     if evaluation_step>max_eval:
-        print("reached max number of evaluations, plotting results")
+        print("Reached max number of evaluations, plotting results")
         best_fn = cfs.getFilename(('temp',min_chi2),dirname=temp_dn,extension='.npy')
         best_tb = np.load(best_fn)
         best_en = cfs.energy(best_tb,HSO,data,spec_args[0])
         plotResults(best_tb,best_en,data,spec_args,machine,result)
         exit()
     if machine=='loc' and evaluation_step%1000==0:
-        print("New figure")
+        print("New intermediate figure")
+        print(np.array(cfs.initial_pt[spec_args[0]])[-3:])
+        print("-->")
+        print(SOC_pars)
         plotResults(np.append(pars_tb,SOC_pars),tb_en,data,spec_args,machine,result,dn='temp')
+    # Band gap at G and K and M
+    Kpts = [0,spec_args[-1][0],-1]
+    DFT_pars = np.array(cfs.initial_pt[spec_args[0]])
+    enKDFT = cfs.energy(DFT_pars,cfs.find_HSO(DFT_pars[-2:]),data[Kpts,:],spec_args[0],bands=[13,14]) #
+    enK = cfs.energy(full_pars,HSO,data[Kpts,:],spec_args[0],bands=[13,14]) #
+    gapGDFT = np.absolute(enKDFT[0,0]-enKDFT[1,0])
+    gapKDFT = np.absolute(enKDFT[0,1]-enKDFT[1,1])
+    gapMDFT = np.absolute(enKDFT[0,2]-enKDFT[1,2])
+    gapG = np.absolute(enK[0,0]-enK[1,0])
+    gapK = np.absolute(enK[0,1]-enK[1,1])
+    gapM = np.absolute(enK[0,2]-enK[1,2])
+    result += np.absolute(gapGDFT-gapG)
+    result += np.absolute(gapKDFT-gapK)
+    result += np.absolute(gapMDFT-gapM)
     return result
 
-def plotResults(pars,ens,data,spec_args,machine,result='',dn=''):
+def plotResults(pars,ens,data,spec_args,machine,result='',dn='',show=False):
     home_dn = get_home_dn(machine)
     if dn=='temp':
         Dn = cfs.getFilename(('temp',*spec_args),dirname=home_dn+'Data/')+'/'
     else:
         Dn = home_dn + 'Data/'
     fig1 = cfs.getFilename(('bands',*spec_args),dirname=Dn,extension='.png')
-    plot_bands(ens,data,title="chi2: %.8f"%result,figname=fig1,show=False,TMD=spec_args[0])
+    plot_bands(ens,data,title="chi2: %.8f"%result,figname=fig1 if not show else '',show=show,TMD=spec_args[0])
     fig2 = cfs.getFilename(('pars',*spec_args),dirname=Dn,extension='.png')
-    plot_parameters(pars,spec_args,title="chi2: %.8f"%result,figname=fig2,show=False)
+    plot_parameters(pars,spec_args,title="chi2: %.8f"%result,figname=fig2 if not show else '',show=show)
     #
     from plotOrbitalContent import plotOrbitalContent
     fig3 = cfs.getFilename(('orbitals',*spec_args),dirname=Dn,extension='.png')
-    plotOrbitalContent(pars,spec_args[0],figname=fig3,show=False)
+    plotOrbitalContent(pars,spec_args[0],figname=fig3 if not show else '',show=show)
 
 def plot_bands(tb_en,data,dft_en=np.zeros(0),title='',figname='',show=False,TMD='WSe2'):
     fig = plt.figure(figsize=(20,20))
@@ -179,6 +186,7 @@ def plot_bands(tb_en,data,dft_en=np.zeros(0),title='',figname='',show=False,TMD=
     if not title=='':
         ax.set_title(title)
     if not figname=='':
+        print("Saving figure: "+figname)
         plt.savefig(figname)
         plt.close(fig)
     if show:
@@ -225,121 +233,7 @@ def plot_parameters(full_pars,spec_args,title='',figname='',show=False):
     if not title=='':
         ax1.set_title(title)
     if not figname=='':
-        plt.savefig(figname)
-        plt.close(fig)
-    if show:
-        plt.show()
-
-def plot_orbitals(full_pars,title='',figname='',show=False,TMD='WSe2'):
-    Ngk = 16
-    Nkm = Ngk//2#int(Nmg*1/np.sqrt(3))
-    Nk = Ngk+Nkm+1  #+1 so we compute G twice
-    N2 = 2
-    #
-    a_TMD = cfs.dic_params_a_mono[TMD]
-    K = np.array([4*np.pi/3/a_TMD,0])
-    M = np.array([np.pi/a_TMD,np.pi/np.sqrt(3)/a_TMD])
-    data_k = np.zeros((Nk,2))
-    list_k = np.linspace(0,K[0],Ngk,endpoint=False)
-    data_k[:Ngk,0] = list_k
-    for ik in range(Nkm+1):
-        data_k[Ngk+ik] = K + (M-K)/Nkm*ik
-    data_evals = np.zeros((2,Nk,22))
-    data_evecs = np.zeros((2,Nk,22,22),dtype=complex)
-    for p in range(2):
-        par_values = np.array(cfs.initial_pt[TMD])  if p == 0 else full_pars
-        #
-        hopping = cfs.find_t(par_values)
-        epsilon = cfs.find_e(par_values)
-        offset = par_values[-3]
-        #
-        HSO = cfs.find_HSO(par_values[-2:])
-        args_H = (hopping,epsilon,HSO,a_TMD,offset)
-        #
-        all_H = cfs.H_monolayer(data_k,*args_H)
-        ens = np.zeros((Nk,22))
-        evs = np.zeros((Nk,22,22),dtype=complex)
-        for i in range(Nk):
-            #index of TVB is 13, the other is 12 (out of 22: 11 bands times 2 for SOC. 7/11 are valence -> 14 is the TVB)
-            ens[i],evs[i] = np.linalg.eigh(all_H[i])
-        data_evals[p] = ens
-        data_evecs[p] = evs
-    #Actual plot
-    fig,axs = plt.subplots(nrows=2,ncols=1,figsize=(15,10),gridspec_kw={'hspace':0,'right':0.877,'left':0.05,'top':0.98,'bottom':0.05})
-    for subp in range(2):   #DFT and fit orbitals
-        ax = axs[subp]
-        color = ['g','','pink','m','','r','b','','pink','m','']
-        marker = ['s','','o','s','','o','^','','o','s','']
-        #d orbitals
-        xvals = np.linspace(0,Nk-1,Nk)
-        for i in range(22):
-            ax.plot(xvals,data_evals[subp,:,i],'k-',lw=0.3,zorder=0)
-            for orb in [5,6,0]:    #3 different d orbitals
-                for ko in range(0,Nk,N2):   #kpts
-                    orb_content = np.linalg.norm(data_evecs[subp,ko,orb,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+11,i])**2
-                    if orb in [6,0]:
-                        orb_content += np.linalg.norm(data_evecs[subp,ko,orb+1,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+1+11,i])**2
-                    ax.scatter(xvals[ko],data_evals[subp,ko,i],s=orb_content*100,edgecolor=color[orb],marker=marker[orb],facecolor='none',lw=2,zorder=1)
-        #p orbitals
-        xvals = np.linspace(Nk-1,2*Nk-2,Nk)
-        for i in range(22):
-            ax.plot(xvals,data_evals[subp,::-1,i],'k-',lw=0.3,zorder=0)
-#            orb_pzo = 2
-#            print("p_z^o at Gamma in band i=%i is %.6f"%(i,np.linalg.norm(data_evecs[subp,0,orb_pzo,i])**2 + np.linalg.norm(data_evecs[subp,0,orb_pzo+11,i])**2))
-#            orb_pze = 8
-#            print("p_z^e at Gamma in band i=%i is %.6f"%(i,np.linalg.norm(data_evecs[subp,0,orb_pze,i])**2 + np.linalg.norm(data_evecs[subp,0,orb_pze+11,i])**2))
-            for orb in [2,3]:    #3 different d orbitals
-                for ko in range(Nk-1,-1,-N2):   #kpts
-                    orb_content = np.linalg.norm(data_evecs[subp,ko,orb,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+11,i])**2
-                    orb_content += np.linalg.norm(data_evecs[subp,ko,orb+6,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+6+11,i])**2
-                    if orb in [3,]:
-                        orb_content += np.linalg.norm(data_evecs[subp,ko,orb+1,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+1+11,i])**2
-                        orb_content += np.linalg.norm(data_evecs[subp,ko,orb+6+1,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+1+6+11,i])**2
-                    ax.scatter(xvals[ko],data_evals[subp,Nk-1-ko,i],s=orb_content*100,edgecolor=color[orb],marker=marker[orb],facecolor='none',lw=2,zorder=1)
-        l_N = [0,Ngk,Ngk+Nkm,Ngk+Nkm+Nkm,2*Nk-2]
-        for l in range(len(l_N)):
-            ax.axvline(l_N[l],lw=0.5,color='k',zorder=0)
-            mm = np.min(data_evals[subp]) -0.2
-            MM = np.max(data_evals[subp]) +0.2
-            continue
-            for i in range(3):
-                if l==2 and i==1:
-                    break
-                ax.plot([l_N[i]+Nk*l,l_N[i]+Nk*l],[mm,MM],lw=0.5,color='k',zorder=0)
-        #
-        ax.set_xlim(0,2*Nk-2)
-        ax.set_ylim(mm,MM)
-        ax.yaxis.set_tick_params(labelsize=15)
-    #        ax.set_ylabel("Energy (eV)",fontsize=20)
-        if subp==0:
-            ax.set_xticks([])
-            #Legend 1
-            leg1 = []
-            name = [r'$d_{xz}+d_{yz}$','',r'$p_z$',r'$p_x+p_y$','',r'$d_{z^2}$',r'$d_{xy}+d_{x^2-y^2}$']
-            for i in [5,6,0]:
-                leg1.append( Line2D([0], [0], marker=marker[i], markeredgecolor=color[i], markeredgewidth=2, label=name[i],
-                                      markerfacecolor='none', markersize=10, lw=0)
-                                      )
-            legend1 = ax.legend(handles=leg1,loc=(1.003,0.01),
-                                fontsize=20,handletextpad=0.35,handlelength=0.5)
-            ax.add_artist(legend1)
-            #Legend2
-            leg2 = []
-            for i in [2,3]:
-                leg2.append( Line2D([0], [0], marker=marker[i], markeredgecolor=color[i], markeredgewidth=2, label=name[i],
-                                      markerfacecolor='none', markersize=10, lw=0)
-                                      )
-            legend2 = ax.legend(handles=leg2,loc=(1.003,-0.2),
-                                fontsize=20,handletextpad=0.35,handlelength=0.5)
-            ax.add_artist(legend2)
-        else:
-            ax.set_xticks(l_N,[r'$\Gamma$',r'$K$',r'$M$',r'$K$',r'$\Gamma$'],size=20)
-    box_dic = dict(boxstyle='round',facecolor='wheat',alpha=0.5)
-    axs[0].text(1.04,0.5,"DFT",size=30,bbox=box_dic,transform=axs[0].transAxes)
-    axs[1].text(1.04,0.5,"Fit",size=30,bbox=box_dic,transform=axs[1].transAxes)
-    if not title=='':
-        axs[0].set_title(title)
-    if not figname=='':
+        print("Saving figure: "+figname)
         plt.savefig(figname)
         plt.close(fig)
     if show:
@@ -373,7 +267,7 @@ def get_bounds(in_pt,spec_args):
         if i == in_pt.shape[0]-3: #offset
             temp = (-3,0)
         elif i == in_pt.shape[0]-2 or i == in_pt.shape[0]-1: #SOC
-            r = rl*in_pt[i]
+            r = abs(rl*in_pt[i])
             temp = (in_pt[i]-r,in_pt[i]+r)
         else:
             r = rp*abs(in_pt[i])
@@ -597,6 +491,122 @@ def find_vec_k(k_scalar,cut,TMD):
         else:
             k_pts = M + (Kp-M)*np.abs(k_scalar)/la.norm(Kp-M)
     return k_pts
+
+# Old plot_orbitals
+def plot_orbitals(full_pars,title='',figname='',show=False,TMD='WSe2'):
+    Ngk = 16
+    Nkm = Ngk//2#int(Nmg*1/np.sqrt(3))
+    Nk = Ngk+Nkm+1  #+1 so we compute G twice
+    N2 = 2
+    #
+    a_TMD = cfs.dic_params_a_mono[TMD]
+    K = np.array([4*np.pi/3/a_TMD,0])
+    M = np.array([np.pi/a_TMD,np.pi/np.sqrt(3)/a_TMD])
+    data_k = np.zeros((Nk,2))
+    list_k = np.linspace(0,K[0],Ngk,endpoint=False)
+    data_k[:Ngk,0] = list_k
+    for ik in range(Nkm+1):
+        data_k[Ngk+ik] = K + (M-K)/Nkm*ik
+    data_evals = np.zeros((2,Nk,22))
+    data_evecs = np.zeros((2,Nk,22,22),dtype=complex)
+    for p in range(2):
+        par_values = np.array(cfs.initial_pt[TMD])  if p == 0 else full_pars
+        #
+        hopping = cfs.find_t(par_values)
+        epsilon = cfs.find_e(par_values)
+        offset = par_values[-3]
+        #
+        HSO = cfs.find_HSO(par_values[-2:])
+        args_H = (hopping,epsilon,HSO,a_TMD,offset)
+        #
+        all_H = cfs.H_monolayer(data_k,*args_H)
+        ens = np.zeros((Nk,22))
+        evs = np.zeros((Nk,22,22),dtype=complex)
+        for i in range(Nk):
+            #index of TVB is 13, the other is 12 (out of 22: 11 bands times 2 for SOC. 7/11 are valence -> 14 is the TVB)
+            ens[i],evs[i] = np.linalg.eigh(all_H[i])
+        data_evals[p] = ens
+        data_evecs[p] = evs
+    #Actual plot
+    fig,axs = plt.subplots(nrows=2,ncols=1,figsize=(15,10),gridspec_kw={'hspace':0,'right':0.877,'left':0.05,'top':0.98,'bottom':0.05})
+    for subp in range(2):   #DFT and fit orbitals
+        ax = axs[subp]
+        color = ['g','','pink','m','','r','b','','pink','m','']
+        marker = ['s','','o','s','','o','^','','o','s','']
+        #d orbitals
+        xvals = np.linspace(0,Nk-1,Nk)
+        for i in range(22):
+            ax.plot(xvals,data_evals[subp,:,i],'k-',lw=0.3,zorder=0)
+            for orb in [5,6,0]:    #3 different d orbitals
+                for ko in range(0,Nk,N2):   #kpts
+                    orb_content = np.linalg.norm(data_evecs[subp,ko,orb,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+11,i])**2
+                    if orb in [6,0]:
+                        orb_content += np.linalg.norm(data_evecs[subp,ko,orb+1,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+1+11,i])**2
+                    ax.scatter(xvals[ko],data_evals[subp,ko,i],s=orb_content*100,edgecolor=color[orb],marker=marker[orb],facecolor='none',lw=2,zorder=1)
+        #p orbitals
+        xvals = np.linspace(Nk-1,2*Nk-2,Nk)
+        for i in range(22):
+            ax.plot(xvals,data_evals[subp,::-1,i],'k-',lw=0.3,zorder=0)
+#            orb_pzo = 2
+#            print("p_z^o at Gamma in band i=%i is %.6f"%(i,np.linalg.norm(data_evecs[subp,0,orb_pzo,i])**2 + np.linalg.norm(data_evecs[subp,0,orb_pzo+11,i])**2))
+#            orb_pze = 8
+#            print("p_z^e at Gamma in band i=%i is %.6f"%(i,np.linalg.norm(data_evecs[subp,0,orb_pze,i])**2 + np.linalg.norm(data_evecs[subp,0,orb_pze+11,i])**2))
+            for orb in [2,3]:    #3 different d orbitals
+                for ko in range(Nk-1,-1,-N2):   #kpts
+                    orb_content = np.linalg.norm(data_evecs[subp,ko,orb,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+11,i])**2
+                    orb_content += np.linalg.norm(data_evecs[subp,ko,orb+6,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+6+11,i])**2
+                    if orb in [3,]:
+                        orb_content += np.linalg.norm(data_evecs[subp,ko,orb+1,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+1+11,i])**2
+                        orb_content += np.linalg.norm(data_evecs[subp,ko,orb+6+1,i])**2 + np.linalg.norm(data_evecs[subp,ko,orb+1+6+11,i])**2
+                    ax.scatter(xvals[ko],data_evals[subp,Nk-1-ko,i],s=orb_content*100,edgecolor=color[orb],marker=marker[orb],facecolor='none',lw=2,zorder=1)
+        l_N = [0,Ngk,Ngk+Nkm,Ngk+Nkm+Nkm,2*Nk-2]
+        for l in range(len(l_N)):
+            ax.axvline(l_N[l],lw=0.5,color='k',zorder=0)
+            mm = np.min(data_evals[subp]) -0.2
+            MM = np.max(data_evals[subp]) +0.2
+            continue
+            for i in range(3):
+                if l==2 and i==1:
+                    break
+                ax.plot([l_N[i]+Nk*l,l_N[i]+Nk*l],[mm,MM],lw=0.5,color='k',zorder=0)
+        #
+        ax.set_xlim(0,2*Nk-2)
+        ax.set_ylim(mm,MM)
+        ax.yaxis.set_tick_params(labelsize=15)
+    #        ax.set_ylabel("Energy (eV)",fontsize=20)
+        if subp==0:
+            ax.set_xticks([])
+            #Legend 1
+            leg1 = []
+            name = [r'$d_{xz}+d_{yz}$','',r'$p_z$',r'$p_x+p_y$','',r'$d_{z^2}$',r'$d_{xy}+d_{x^2-y^2}$']
+            for i in [5,6,0]:
+                leg1.append( Line2D([0], [0], marker=marker[i], markeredgecolor=color[i], markeredgewidth=2, label=name[i],
+                                      markerfacecolor='none', markersize=10, lw=0)
+                                      )
+            legend1 = ax.legend(handles=leg1,loc=(1.003,0.01),
+                                fontsize=20,handletextpad=0.35,handlelength=0.5)
+            ax.add_artist(legend1)
+            #Legend2
+            leg2 = []
+            for i in [2,3]:
+                leg2.append( Line2D([0], [0], marker=marker[i], markeredgecolor=color[i], markeredgewidth=2, label=name[i],
+                                      markerfacecolor='none', markersize=10, lw=0)
+                                      )
+            legend2 = ax.legend(handles=leg2,loc=(1.003,-0.2),
+                                fontsize=20,handletextpad=0.35,handlelength=0.5)
+            ax.add_artist(legend2)
+        else:
+            ax.set_xticks(l_N,[r'$\Gamma$',r'$K$',r'$M$',r'$K$',r'$\Gamma$'],size=20)
+    box_dic = dict(boxstyle='round',facecolor='wheat',alpha=0.5)
+    axs[0].text(1.04,0.5,"DFT",size=30,bbox=box_dic,transform=axs[0].transAxes)
+    axs[1].text(1.04,0.5,"Fit",size=30,bbox=box_dic,transform=axs[1].transAxes)
+    if not title=='':
+        axs[0].set_title(title)
+    if not figname=='':
+        plt.savefig(figname)
+        plt.close(fig)
+    if show:
+        plt.show()
 
 # All the stupid filenames
 

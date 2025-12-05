@@ -14,7 +14,7 @@ J_MX_minus = ((4,1), (3,2), (5,2), (9,6), (11,6), (10,7), (9,8), (11,8))
 TMDs = ['WSe2','WS2']
 m_list = [[-1,1],[-1,0],[0,-1],[1,-1],[1,0],[0,1]]  #for computing mini-BZ hoppings in moirè potential
 
-def energy(parameters,HSO,data,TMD):
+def energy(parameters,HSO,data,TMD,bands=[]):
     """Compute energy along the two cuts of 2 TopValenceBand for all considered k.
 
     """
@@ -26,11 +26,18 @@ def energy(parameters,HSO,data,TMD):
     args_H = (hopping,epsilon,HSO,a_TMD,offset) #
     kpts = data.shape[0]
     all_H = H_monolayer(np.array(data[:,1:3]),*args_H)
-    nbands = 4 if TMD=='WSe2' else 4
+    if len(bands)==0:
+        nbands = 4 if TMD=='WSe2' else 4
+    else:
+        nbands = len(bands)
     ens = np.zeros((nbands,kpts))
     for i in range(kpts):
         #index of TVB is 13, the other is 12 (out of 22: 11 bands times 2 for SOC. 7/11 are valence -> 14 is the TVB)
-        ens[:,i] = la.eigvalsh(all_H[i])[14-nbands:14][::-1]
+        energies = la.eigvalsh(all_H[i])#[14-nbands:14][::-1]
+        if len(bands)==0:
+            ens[:,i] = energies[14-nbands:14][::-1]
+        else:
+            ens[:,i] = energies[bands][::-1]
     return ens
 
 def H_monolayer(K_p,*args):
