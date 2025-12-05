@@ -15,15 +15,16 @@ evaluation_step = 0
 
 def get_spec_args(ind):
     lTMDs = ["WSe2", ]#cfs.TMDs    #TMDs
-    lP = [0.01,0.05,0.1]         #coefficient of parameters distance from DFT chi2
-    lrp = [0.1,0.5,1,2]         #tb bounds
-    lrl = [0.2,0.5,1]          #SOC bounds
+    lP = list(np.linspace(0.01,0.2,5))#[0.01,0.05,0.1]         #coefficient of parameters distance from DFT chi2
+    lrp = [0.2,0.5,1]         #tb bounds
+    lrl = [0,0.2,0.5,1]          #SOC bounds
     #lReduced = [13,]
     lPbc = [10,]        #coefficient of band content chi2
     lPdk = [20,]        #coefficient of distance at gamma and K chi2
 
+    SOC_separate = [1,0]
     ptsPerPath = [(20,15,10),]
-    return list(itertools.product(*[lTMDs,lP,lrp,lrl,lPbc,lPdk,ptsPerPath]))[ind]
+    return list(itertools.product(*[lTMDs,lP,lrp,lrl,lPbc,lPdk,SOC_separate,ptsPerPath]))[ind]
 
 def chi2_off_SOC(pars_SOC,*args):
     """
@@ -47,7 +48,7 @@ def chi2_off_SOC(pars_SOC,*args):
             increase = np.absolute(tb_en[b,farg[i]]-data[farg[i],3+b])
             result += increase
     # Splittimg at M
-    if TMD == 'WSe2':
+    if spec_args[0] == 'WSe2':
         for k in [-1,-4]:   # Specific for (20,15,10) ptsPerPath
             for b in range(4):
                 result += 0*np.absolute(tb_en[b,k] - data[k,3+b])
