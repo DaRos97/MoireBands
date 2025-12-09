@@ -15,14 +15,15 @@ evaluation_step = 0
 
 def get_spec_args(ind):
     lTMDs = ["WSe2", ]#cfs.TMDs    #TMDs
-    lP = list(np.linspace(0.01,0.2,5))#[0.01,0.05,0.1]         #coefficient of parameters distance from DFT chi2
-    lrp = [0.2,0.5,1]         #tb bounds
-    lrl = [0,0.2,0.5,1]          #SOC bounds
+    lP = list(np.linspace(0.0,0.2,10))#[0.01,0.05,0.1]         #coefficient of parameters distance from DFT chi2
+    lrp = [0.1,0.2,0.3,0.5]         #tb bounds
+    lrl = [0,0.2,]          #SOC bounds
     #lReduced = [13,]
     lPbc = [10,]        #coefficient of band content chi2
     lPdk = [20,]        #coefficient of distance at gamma and K chi2
+    lPgap = [0,0.5,1,]
 
-    SOC_separate = [1,0]
+    SOC_separate = [0,]
     ptsPerPath = [(20,15,10),]
     return list(itertools.product(*[lTMDs,lP,lrp,lrl,lPbc,lPdk,SOC_separate,ptsPerPath]))[ind]
 
@@ -71,7 +72,7 @@ def chi2_tb(pars_tb,*args):
     Made for fitting WITHOUT SOC parameters -> HSO already computed.
     """
     data, HSO, SOC_pars, machine, spec_args, max_eval = args
-    Ppar, Pbc,Pdk = spec_args[1], spec_args[4], spec_args[5]
+    Ppar, Pbc, Pdk, Pgap = spec_args[1], spec_args[4], spec_args[5], spec_args[6]
     full_pars = np.append(pars_tb,SOC_pars)
     #Compute energy of new pars
     tb_en = cfs.energy(full_pars,HSO,data,spec_args[0])
@@ -135,9 +136,10 @@ def chi2_tb(pars_tb,*args):
     gapG = np.absolute(enK[0,0]-enK[1,0])
     gapK = np.absolute(enK[0,1]-enK[1,1])
     gapM = np.absolute(enK[0,2]-enK[1,2])
-    result += np.absolute(gapGDFT-gapG)
-    result += np.absolute(gapKDFT-gapK)
-    result += np.absolute(gapMDFT-gapM)
+    #
+    result += Pgap*np.absolute(gapGDFT-gapG)
+    result += Pgap*np.absolute(gapKDFT-gapK)
+    result += Pgap*np.absolute(gapMDFT-gapM)
     return result
 
 def plotResults(pars,ens,data,spec_args,machine,result='',dn='',show=False):

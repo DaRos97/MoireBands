@@ -142,7 +142,7 @@ rand_vals = np.append(rand_vals,np.ones(3))
 initial_point_full = np.append(DFT_values[:-3],off_SOC_pars)#*rand_vals    #eps,t,off,lam
 #
 Bounds_full = fsm.get_bounds(initial_point_full,spec_args)
-if 0:#fit_off_SOC_separately or spec_args[3]==0:
+if spec_args[3]==0:
     HSO = cfs.find_HSO(off_SOC_pars[-2:])
     args_chi2 = (data,HSO,off_SOC_pars[-2:],machine,spec_args,max_eval)
     Bounds = Bounds_full[:-2]
@@ -154,7 +154,7 @@ else:
     initial_point = initial_point_full
     func = fsm.chi2_full
 #
-if 1:
+if 0:
     result = minimize(func,
         args = args_chi2,
         x0 = initial_point,
