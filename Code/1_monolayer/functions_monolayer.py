@@ -24,7 +24,7 @@ def get_spec_args(ind):
 
     SOC_separate = [0,]
     ptsPerPath = [(20,15,10),]
-    return list(itertools.product(*[lTMDs,lP,lrp,lrl,lPbc,lPdk,SOC_separate,ptsPerPath]))[ind]
+    return list(itertools.product(*[lTMDs,lP,lrp,lrl,lPbc,lPdk,lPgap,SOC_separate,ptsPerPath]))[ind]
 
 def chi2_off_SOC(pars_SOC,*args):
     """
