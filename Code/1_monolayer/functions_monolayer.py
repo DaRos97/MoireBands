@@ -18,7 +18,6 @@ def get_spec_args(ind):
     lP = list(np.linspace(0.0,0.2,10))#[0.01,0.05,0.1]         #coefficient of parameters distance from DFT chi2
     lrp = [0.1,0.2,0.3,0.5]         #tb bounds
     lrl = [0,0.2,]          #SOC bounds
-    #lReduced = [13,]
     lPbc = [10,]        #coefficient of band content chi2
     lPdk = [20,]        #coefficient of distance at gamma and K chi2
     lPgap = [0,0.5,1,]

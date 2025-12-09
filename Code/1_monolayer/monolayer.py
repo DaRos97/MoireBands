@@ -154,7 +154,7 @@ else:
     initial_point = initial_point_full
     func = fsm.chi2_full
 #
-if 0:
+if 1:
     result = minimize(func,
         args = args_chi2,
         x0 = initial_point,
