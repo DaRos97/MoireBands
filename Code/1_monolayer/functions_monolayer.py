@@ -15,16 +15,19 @@ evaluation_step = 0
 
 def get_spec_args(ind):
     lTMDs = ["WSe2", ]#cfs.TMDs    #TMDs
-    lP = list(np.linspace(0.0,0.2,10))#[0.01,0.05,0.1]         #coefficient of parameters distance from DFT chi2
-    lrp = [0.1,0.2,0.3,0.5]         #tb bounds
-    lrl = [0,0.2,]          #SOC bounds
+    # Parameters of chi2
+    lPpar = list(np.linspace(0.0,0.2,5))#[0.01,0.05,0.1]         #coefficient of parameters distance from DFT chi2
     lPbc = [10,]        #coefficient of band content chi2
     lPdk = [20,]        #coefficient of distance at gamma and K chi2
-    lPgap = [0,0.5,1,]
-
-    SOC_separate = [0,]
+    lPgap = [0.1,0.5,1,]
+    # Bounds
+    lrp = [0.1,]         #tb bounds for general orbitals
+    lrpz = [0.3,0.5,]         #tb bounds for z orbitals -> indices 6 and 9
+    lrpxy = [1,]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
+    lrl = [0.1,]          #SOC bounds
+    # Points in fit
     ptsPerPath = [(20,15,10),]
-    return list(itertools.product(*[lTMDs,lP,lrp,lrl,lPbc,lPdk,lPgap,SOC_separate,ptsPerPath]))[ind]
+    return list(itertools.product(*[lTMDs,lPpar,lPbc,lPdk,lPgap,lrp,lrpz,lrpxy,lrl,ptsPerPath]))[ind]
 
 def chi2_off_SOC(pars_SOC,*args):
     """
@@ -71,7 +74,7 @@ def chi2_tb(pars_tb,*args):
     Made for fitting WITHOUT SOC parameters -> HSO already computed.
     """
     data, HSO, SOC_pars, machine, spec_args, max_eval = args
-    Ppar, Pbc, Pdk, Pgap = spec_args[1], spec_args[4], spec_args[5], spec_args[6]
+    Ppar, Pbc, Pdk, Pgap = spec_args[1:5]
     full_pars = np.append(pars_tb,SOC_pars)
     #Compute energy of new pars
     tb_en = cfs.energy(full_pars,HSO,data,spec_args[0])
@@ -263,17 +266,25 @@ def compute_band_content(parameters,HSO,TMD):
     return result
 
 def get_bounds(in_pt,spec_args):
-    rp, rl = spec_args[2:4]
+    rp, rpz, rpxy, rl = spec_args[5:9]
+    indOff = [40,]
+    indSOC = [41,42,]
+    indPz = [3,5,12,15,19,20,24,26,31,32,34,36,37,38]
+    indPxy = [4,6,13,14,16,17,25,27,33,35,39]
     Bounds = []
     for i in range(in_pt.shape[0]):     #tb parameters
-        if i == in_pt.shape[0]-3: #offset
+        if i == indOff: #offset
             temp = (-3,0)
-        elif i == in_pt.shape[0]-2 or i == in_pt.shape[0]-1: #SOC
+            continue
+        if i in indSOC: #SOC
             r = abs(rl*in_pt[i])
-            temp = (in_pt[i]-r,in_pt[i]+r)
+        elif i in indPz:
+            r = rpz*abs(in_pt[i])
+        elif i in indPxy:
+            r = rpxy*abs(in_pt[i])
         else:
             r = rp*abs(in_pt[i])
-            temp = (in_pt[i]-r,in_pt[i]+r)
+        temp = (in_pt[i]-r,in_pt[i]+r)
         Bounds.append(temp)
     return Bounds
 

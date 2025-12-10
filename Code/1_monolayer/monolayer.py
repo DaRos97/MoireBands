@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 machine = cfs.get_machine(os.getcwd())
 
 disp = True                                     #Display messages during computation
-#fit_off_SOC_separately = True                    #Fit (offset and) SOC separately from tb parameters
+fit_off_SOC_separately = False                    #Fit (offset and) SOC separately from tb parameters
 plot_off_SOC_fit = 0#True
 max_eval = 1e7              #max number of chi2 evaluations
 
@@ -44,7 +44,6 @@ if machine == 'maf':
     argc -= 1
 spec_args = fsm.get_spec_args(argc)
 TMD = spec_args[0]
-fit_off_SOC_separately = spec_args[-2]
 ptsPerPath = spec_args[-1]
 
 # Import experimental data of monolayer 
