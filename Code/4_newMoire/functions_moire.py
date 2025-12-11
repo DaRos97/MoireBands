@@ -6,26 +6,9 @@ import os
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 from scipy.special import wofz      #for fitting weights in EDC
-from lmfit import Model      #for fitting weights in EDC
+import lmfit      #for fitting weights in EDC
 
 machine = cfs.get_machine(os.getcwd())
-
-def get_pars(ind):
-    lMonolayer_type = ['fit',]
-    lSample = ['S3',]  #this and theta are related! Sample needed also for interlayer parameters' choice
-    lStacking = ['P',]
-    lW2p = [0.0]#np.linspace(-0.05,0.05,5)
-    lW2d = [0.0]#np.linspace(-0.05,0.05,5)
-    pars_Vgs = [0.0,]        #Moire potential at Gamma
-    pars_Vks = [0.007,]             #Moire potential at K
-    phi_G = [np.pi/3,]                #Phase at Gamma
-    phi_K = [-106*np.pi/180,]       #Phase at K
-    lnShells = [0,]                       #number of BZ circles
-    lCuts = ['Kp-G-K',]#'Kp-G-K',]          #'Kp-G-K-Kp'
-    lKpts = [100,]
-    #
-    ll = [lMonolayer_type,lStacking,lW2p,lW2d,pars_Vgs,pars_Vks,phi_G,phi_K,lSample,lnShells,lCuts,lKpts,]
-    return list(itertools.product(*ll))[ind]
 
 def import_monolayer_parameters(monolayer_type,machine):
     """Import monolayer parameters, either DFT or fit ones."""
@@ -296,25 +279,27 @@ def plot_rk(theta,kList,cut,save_plot_rk):
 
     plt.show()
 
-def voigt(x, amplitude, center, sigma, gamma):
-    """
-    Voigt profile: convolution of Lorentzian and Gaussian
-    - sigma: Gaussian standard deviation
-    - gamma: Lorentzian half-width at half-maximum
-    """
-    z = ((x - center) + 1j*gamma) / (sigma * np.sqrt(2))
-    return amplitude * np.real(wofz(z)) / (sigma * np.sqrt(2*np.pi))
+def voigt(x, center, amplitude, gamma, sigma):
+    """Single Voigt peak."""
+    z = ((x - center) + 1j*gamma) / (sigma*np.sqrt(2))
+    return amplitude * np.real(wofz(z)) / (sigma*np.sqrt(2*np.pi))
 
-def double_voigt(x, amp1, cen1, sig1, gam1, amp2, cen2, sig2, gam2):
-    return (voigt(x, amp1, cen1, sig1, gam1) +
-            voigt(x, amp2, cen2, sig2, gam2))
+def two_lorentzian_one_gaussian(x, amp1,cen1,gam1, amp2,cen2,gam2, sig):
+    """
+    Sum of two Lorentzians, both convolved with the SAME Gaussian.
+    Equivalent to two Voigt peaks with shared sigma.
+    """
+
+    peak1 = voigt(x, cen1, amp1, gam1, sig)
+    peak2 = voigt(x, cen2, amp2, gam2, sig)
+
+    return peak1 + peak2
 
 import warnings
 warnings.filterwarnings("ignore", message="Using UFloat objects with std_dev==0")
 
 def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
-    """
-    Compute energy distance of side bands crossing from main band.
+    """ Compute energy distance of side bands crossing from main band.
     We do it by diagonalizing the Hamiltonian at the desired k point.
     We evaluate and extract the weights BELOW the main band (carefull to the SOC degeneracy at Gamma).
     We spread the weights with a Lorentzian of width 30 meV.
@@ -338,50 +323,29 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
     # Define finer energy list for weight spreading: slightly larger for better spreading shape
     energyList = np.linspace(-1.0,-0.4,200)      #we chose this from experimental data
     weightList = np.zeros(len(energyList))
-    if np.max(fullWeightValues[:-2]) > weightMainBand and 1:     # Check the main band has higher weight
+    if np.max(fullWeightValues[:-2]) > weightMainBand:     # Check the main band has higher weight
         if disp:
             print("TVB weight is not the maximum -> clearly wrong")
-        else:
-            return -2
+        return -2,-2
     for i in range(len(fullEnergyValues)):
         weightList += spreadE/np.pi * fullWeightValues[i] / ((energyList-fullEnergyValues[i])**2+spreadE**2)
-    try:    # Fit the spreaded weights with two Lorentzian peaks convoluted with a Gaussian
-        model = Model(double_voigt, independent_vars=['x'])
-        # Initial guess and boundaries
-        params = model.make_params(amp1=1.57, cen1=peak0, sig1=0.005, gam1=0.03,
-                               amp2=0.41, cen2=peak1, sig2=0.005, gam2=0.03)
-        params['amp1'].set(min=1,max=5)
-#        params['amp1'].set(min=0.1,max=10)
-        params['sig1'].set(min=0,max=1)
-        params['cen1'].set(min=peak0-0.0025,max=peak0+0.0025)
-        params['gam1'].set(min=1e-5,max=0.08)
-        params['amp2'].set(min=0.3,max=1)
-#        params['amp2'].set(min=0.1,max=10)
-        params['sig2'].set(min=0,max=1)
-        params['cen2'].set(min=peak1-0.0025,max=peak1+0.0025)
-        params['gam2'].set(min=1e-5,max=0.08)
-        result = model.fit(weightList, params, x=energyList)
-        # Checks on the result
-        if result.chisqr > 7:     # Bad fit
-            if disp:
-                print("Chisqr high")
-            raise ValueError
-        if 1:
-            for name, param in result.params.items():   #check if parameetrs are hitting the boundaries I set
-                if (param.min is not None and abs(param.value - param.min) < 1e-8) or (param.max is not None and abs(param.value - param.max) < 1e-8):
-                    if disp:
-                        print("Par "+name+" at boundary: ",param)
-#                    break
-                    raise ValueError
-        distance = result.best_values['cen1'] - result.best_values['cen2']
-        fitSuccess = True
-        if disp:
-            print(result.fit_report())
-    except Exception as e:
-        if disp:
-            print("Fit didn't work, exception ", e)
-        distance = -1
-        fitSuccess = False
+    # Fit the spreaded weights with two Lorentzian peaks convoluted with a Gaussian
+    model = lmfit.Model(two_lorentzian_one_gaussian)#, independent_vars=['x'])
+    params = model.make_params(
+        amp1=1.57, cen1=peak0, gam1=0.03,
+        amp2=0.41, cen2=peak1, gam2=0.03,
+        sig=0.07,
+    )
+    params['sig'].set(min=1e-6, max=50)        # Gaussian width
+    params['gam1'].set(min=1e-6, max=50)       # Lorentzian widths
+    params['gam2'].set(min=1e-6, max=50)
+    params['amp1'].set(min=0)
+    params['amp2'].set(min=0)
+    result = model.fit(weightList, params, x=energyList)
+    distance = result.best_values['cen1'] - result.best_values['cen2']
+    if disp:
+        print(result.fit_report())
+
     if plot:
         imageAroundGamma = 0
         if imageAroundGamma:       #Compute image zoom around Gamma
@@ -445,19 +409,27 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
         ax.scatter(energyList,weightList,color='b')
         ax.scatter(fullEnergyValues,fullWeightValues,color='r')
         ax.set_xlim(-1,-0.4)
-        if fitSuccess:
+        if result.success:
             ax.plot(energyList,result.best_fit,color='g',ls='--',lw=2)
             ax.axvline(result.best_values['cen1'],color='r')
             ax.axvline(result.best_values['cen2'],color='r')
+        ax.axhline(0,lw=0.5,zorder=-10,color='k')
         ax.axvline(peak0,color='y',lw=2,zorder=-1)
         ax.axvline(peak1,color='y',lw=2,zorder=-1)
         fig.tight_layout()
         if not figname=='':
             fig.savefig(figname)
-        if disp:
+        if 1:
             plt.show()
-        return distance
-    return distance
+        plt.close()
+
+    cen1, cen2 = (result.best_values['cen1'], result.best_values['cen2']) if result.best_values['amp1']>result.best_values['amp2'] else (result.best_values['cen2'], result.best_values['cen1'])
+    if result.success:
+        return cen1, cen2
+    else:
+        if disp:
+            print("Unsuccessfull fitting at V=%.3f"%args[6][0])
+        return 0, 0
 
 
 """ FILENAME FUNCTIONS """
@@ -505,8 +477,7 @@ def get_home_dn(machine):
 """ LDOS FUNCTIONS """
 
 def LDOS_kList(kPts,G_M):
-    """
-    Here we have to define the grid of momentum points to sum over.
+    """ Here we have to define the grid of momentum points to sum over.
     Here now is a grid of the mini-BZ.
     """
     G1,G2 = G_M[1:3]
@@ -518,8 +489,8 @@ def LDOS_kList(kPts,G_M):
     return kFlat
 
 def LDOS_rList(rPts,a_M):
-    """
-    Here we have to define the real space points to compute.
+    """ Here we have to define the real space points to compute.
+    We take a cut: W/W -> Se/W -> W/S -> W/W
     """
     a1,a2 = a_M
     rList = np.zeros((rPts,2))
@@ -535,6 +506,31 @@ def get_rs_moire(G_M):
     a1 = a_M[:,0]
     a2 = cfs.R_z(np.pi/3) @ a1
     return [a1,a2]
+
+
+
+########################################################################################################
+########################################################################################################
+# OLD FUNCTIONS #
+########################################################################################################
+########################################################################################################
+def get_pars(ind):
+    """ Old, not for EDC. """
+    lMonolayer_type = ['fit',]
+    lSample = ['S3',]  #this and theta are related! Sample needed also for interlayer parameters' choice
+    lStacking = ['P',]
+    lW2p = [0.0]#np.linspace(-0.05,0.05,5)
+    lW2d = [0.0]#np.linspace(-0.05,0.05,5)
+    pars_Vgs = [0.0,]        #Moire potential at Gamma
+    pars_Vks = [0.007,]             #Moire potential at K
+    phi_G = [np.pi/3,]                #Phase at Gamma
+    phi_K = [-106*np.pi/180,]       #Phase at K
+    lnShells = [0,]                       #number of BZ circles
+    lCuts = ['Kp-G-K',]#'Kp-G-K',]          #'Kp-G-K-Kp'
+    lKpts = [100,]
+    #
+    ll = [lMonolayer_type,lStacking,lW2p,lW2d,pars_Vgs,pars_Vks,phi_G,phi_K,lSample,lnShells,lCuts,lKpts,]
+    return list(itertools.product(*ll))[ind]
 
 
 
