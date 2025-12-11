@@ -13,21 +13,28 @@ global evaluation_step
 min_chi2 = 1e5
 evaluation_step = 0
 
+indOff = [40,]
+indSOC = [41,42,]
+indPz = [3,5,12,15,19,20,24,26,31,32,34,36,37,38]
+indPxy = [4,6,13,14,16,17,25,27,33,35,39]
+
 def get_spec_args(ind):
     lTMDs = ["WSe2", ]#cfs.TMDs    #TMDs
     # Parameters of chi2
-    lPpar = list(np.linspace(0.0,0.1,5))#[0.01,0.05,0.1]         #coefficient of parameters distance from DFT chi2
+    lPpar = list(np.linspace(0.0,0.1,11))#[0.01,0.05,0.1]         #coefficient of parameters distance from DFT chi2
     lPbc = [10,]        #coefficient of band content chi2
     lPdk = [20,]        #coefficient of distance at gamma and K chi2
-    lPgap = [0.5,]
+    lPgap = [0.2,0.5,]
     # Bounds
-    lrp = [0.2,0.3]         #tb bounds for general orbitals
-    lrpz = [0.3,0.5,]         #tb bounds for z orbitals -> indices 6 and 9
-    lrpxy = [0.5,1,]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
-    lrl = [0.2,]          #SOC bounds
+    lrp = [0.1,0.2,0.3,0.4]         #tb bounds for general orbitals
+    lrpz = [0.1,0.3,0.5,]         #tb bounds for z orbitals -> indices 6 and 9
+    lrpxy = [0.1,0.3,0.5,0.7,1,]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
+    lrl = [0.1,0.2,0.3,0.4]          #SOC bounds
     # Points in fit
-    ptsPerPath = [(20,15,10),]
-    return list(itertools.product(*[lTMDs,lPpar,lPbc,lPdk,lPgap,lrp,lrpz,lrpxy,lrl,ptsPerPath]))[ind]
+    ptsPerPath = [(30,15,10),]
+    listPar = list(itertools.product(*[lTMDs,lPpar,lPbc,lPdk,lPgap,lrp,lrpz,lrpxy,lrl,ptsPerPath]))
+    print("Index %d / %d"%(ind,len(listPar)))
+    return listPar[ind]
 
 def chi2_off_SOC(pars_SOC,*args):
     """
@@ -126,7 +133,7 @@ def chi2_tb(pars_tb,*args):
         print(np.array(cfs.initial_pt[spec_args[0]])[-3:])
         print("-->")
         print(SOC_pars)
-        plotResults(np.append(pars_tb,SOC_pars),tb_en,data,spec_args,machine,result,dn='temp')
+        plotResults(np.append(pars_tb,SOC_pars),tb_en,data,spec_args,machine,result,dn='temp',show=False)
     # Band gap at G and K and M
     Kpts = [0,spec_args[-1][0],-1]
     DFT_pars = np.array(cfs.initial_pt[spec_args[0]])
@@ -151,15 +158,17 @@ def plotResults(pars,ens,data,spec_args,machine,result='',dn='',show=False):
     else:
         Dn = home_dn + 'Data/'
     fig1 = cfs.getFilename(('bands',*spec_args),dirname=Dn,extension='.png')
-    plot_bands(ens,data,title="chi2: %.8f"%result,figname=fig1 if not show else '',show=show,TMD=spec_args[0])
+    plot_bands(ens,data,spec_args=spec_args,title="chi2: %.8f"%result,figname=fig1 if not show else '',show=show,TMD=spec_args[0])
     fig2 = cfs.getFilename(('pars',*spec_args),dirname=Dn,extension='.png')
     plot_parameters(pars,spec_args,title="chi2: %.8f"%result,figname=fig2 if not show else '',show=show)
     #
-    from plotOrbitalContent import plotOrbitalContent
     fig3 = cfs.getFilename(('orbitals',*spec_args),dirname=Dn,extension='.png')
-    plotOrbitalContent(pars,spec_args[0],figname=fig3 if not show else '',show=show)
+    plot_orbitalContent(pars,spec_args[0],spec_args=spec_args,figname=fig3 if not show else '',show=show)
 
-def plot_bands(tb_en,data,dft_en=np.zeros(0),title='',figname='',show=False,TMD='WSe2'):
+def plot_bands(tb_en,data,spec_args=None,title='',figname='',show=False,TMD='WSe2'):
+    DFT_pars = np.array(cfs.initial_pt[TMD])
+    HSO_DFT = cfs.find_HSO(DFT_pars[-2:])
+    DFT_en = cfs.energy(DFT_pars,HSO_DFT,data,TMD)
     fig = plt.figure(figsize=(20,20))
     ax = fig.add_subplot()
     for b in range(data.shape[1]-3):
@@ -171,8 +180,8 @@ def plot_bands(tb_en,data,dft_en=np.zeros(0),title='',figname='',show=False,TMD=
         ax.plot(xline,tb_en[b,targ],color='skyblue',marker='s',ls='-',label='Fit' if b == 0 else '',zorder=3,
                 markersize=10,mew=1,mec='k',mfc='deepskyblue')
 #        ax.plot(reduced_data[b][targ,0],tb_en[b,targ],color='g',marker='^',ls='-',label='fit' if b == 0 else '')
-        if not dft_en.shape[0]==0:
-            ax.plot(xline,dft_en[b,targ],color='g',marker='^',ls='-',label='DFT' if b == 0 else '',zorder=2,
+        if 1:
+            ax.plot(xline,DFT_en[b,targ],color='g',marker='^',ls='-',label='DFT' if b == 0 else '',zorder=2,
                     markersize=10,mew=1,mec='k',mfc='darkgreen')
     #
     ks = [data[0,0],4/3*np.pi/cfs.dic_params_a_mono[TMD],xline[-1][0]]
@@ -187,6 +196,25 @@ def plot_bands(tb_en,data,dft_en=np.zeros(0),title='',figname='',show=False,TMD=
         label_y.append("{:.1f}".format(i))
     ax.set_yticks(ticks_y,label_y,size=20)
     plt.legend(fontsize=20)
+
+    if not spec_args is None:   #Additional text with parameters
+        rp,rpz,rpxy,rl = spec_args[5:9]
+        box_dic = dict(boxstyle='round',facecolor='white',alpha=1)
+        ax.text(
+            0.05,0.85,
+            "Bounds of parameters:\n"+"z:    %d"%(rpz*100) + "%\n"+"xy:   %d"%(rpxy*100) + "%\n"+"SOC:  %d"%(rl*100) + "%\n"+"others:%d"%(rp*100)+"%",
+            bbox = box_dic,
+            transform=ax.transAxes,
+            fontsize=15
+        )
+        Ppar,Pgap = spec_args[1], spec_args[4]
+        ax.text(
+            0.3,0.9,
+            "Chi2 parameters:\n"+"Ppar:%.4f"%Ppar + "\n"+"Pgap:%.4f"%Pgap,
+            bbox = box_dic,
+            transform=ax.transAxes,
+            fontsize=15
+        )
     #
     if not title=='':
         ax.set_title(title)
@@ -199,50 +227,198 @@ def plot_bands(tb_en,data,dft_en=np.zeros(0),title='',figname='',show=False,TMD=
 
 def plot_parameters(full_pars,spec_args,title='',figname='',show=False):
     TMD = spec_args[0]
+    rp,rpz,rpxy,rl = spec_args[5:9]
+    rmax = max([rp,rpz,rpxy,rl])
+    lenP = len(full_pars)
+    #
     DFT_values = cfs.initial_pt[TMD]
-    fig = plt.figure(figsize=(20,14))
+    fig = plt.figure(figsize=(26,12))
     ax1 = fig.add_subplot()
-    ax1.bar(np.arange(len(full_pars[:-3])),full_pars[:-3]-DFT_values[:-3],
-            color='r',width=0.4,align='edge')
+    ax1.bar(np.arange(lenP),full_pars-DFT_values,
+            color='r',width=0.4,align='edge',zorder=10)
     ax2 = ax1.twinx()
-    ax2.bar(np.arange(len(full_pars[:-3])),(full_pars[:-3]-DFT_values[:-3])/abs(np.array(DFT_values[:-3]))*100,
+    ax2.bar(np.arange(lenP),(full_pars-DFT_values)/abs(np.array(DFT_values))*100,
             color='b',
-            align='edge',width=-0.4
+            align='edge',width=-0.4,zorder=11
            )
+    for ip in range(lenP):
+        ax1.axvline(
+            ip,
+            ls='dashed',
+            lw=0.8
+        )
     #ax1 
-    ax1.set_ylim(-max(abs(full_pars[:-3]-DFT_values[:-3])),max(abs(full_pars[:-3]-DFT_values[:-3])))
-    ax1.set_xticks(np.arange(len(full_pars[:-3])),cfs.list_formatted_names_all[:-3],size=15)
-    ax1.tick_params(axis='y', labelsize=20,labelcolor='r')
-    ax1.set_xlim(-0.5,len(full_pars[:-3])-0.5)
+    ax1.set_ylim(-max(abs(full_pars-DFT_values)),max(abs(full_pars-DFT_values)))
+    ax1.set_ylabel("Absolute difference from DFT",size=18,color='r')
+    ax1.set_xticks(np.arange(lenP),cfs.list_formatted_names_all,size=15)
+    ax1.set_xlabel("Parameter name",size=18)
+    ax1.tick_params(axis='y', labelsize=15,labelcolor='r')
+    ax1.set_xlim(-0.5,lenP-0.5)
+    top_ax = ax1.secondary_xaxis('top')
+    top_ax.set_xticks(np.arange(lenP),["%d"%i for i in np.arange(lenP)],size=15)
+    top_ax.set_xlabel("Parameter index",size=18)
     #ax2
-    ticks_y = np.linspace(-spec_args[2]*100,spec_args[2]*100,5)
+    ticks_y = np.linspace(-rmax*100,rmax*100,5)
     label_y = ["{:.1f}".format(i)+r"%" for i in ticks_y]
-    ax2.set_yticks(ticks_y,label_y,size=20,color='b')
-    ax2.set_ylim(-spec_args[2]*100,spec_args[2]*100)
-    box_dic = dict(boxstyle='round',facecolor='none',alpha=0.5)
-    ax2.fill_between([-0.5,6.5],[-spec_args[2]*100,-spec_args[2]*100],[spec_args[2]*100,spec_args[2]*100],alpha=.1,color='g',zorder=-1)
-    ax2.text(0,-20,"Orbitals' on-site energy",size=20,color='g',bbox=box_dic)
-    ax2.fill_between([6.5,35.5],[-spec_args[2]*100,-spec_args[2]*100],[spec_args[2]*100,spec_args[2]*100],alpha=.1,color='r',zorder=-1)
-    if spec_args[0]=='WSe2':
-        ax2.text(12,-20,"Hopping parameters",size=20,color='salmon',bbox=box_dic)
-    else:
-        ax2.text(15,-20,"Hopping parameters",size=20,color='salmon',bbox=box_dic)
-    ax2.fill_between([35.5,40.5],[-spec_args[2]*100,-spec_args[2]*100],[spec_args[2]*100,spec_args[2]*100],alpha=.1,color='y',zorder=-1)
-    ax2.text(36,-20,"Further\nneighbor\nhoppings",size=20,color='y',bbox=box_dic)
-    #Legend
-    handles = [
-        Line2D([0,1], [0,1], color='r', linewidth=10, label="Parameter \'absolute\' difference"),
-        Line2D([0,1], [0,1], color='b', linewidth=10, label="Parameter relative difference"),  ]
-    ax2.legend(handles=handles,loc='upper left',fontsize=20,facecolor='w',framealpha=1)
-    fig.tight_layout()
+    ax2.set_yticks(ticks_y,label_y,size=15,color='b')
+    ax2.set_ylabel("Relative distance from DFT",size=18,color='b')
+    ax2.set_ylim(-rmax*100,rmax*100)
+    # Colors
+    cp = "g"
+    cpz = "r"
+    cpxy = "navy"
+    cpl = "aqua"
+    cOff = "gold"
+    for ip in range(lenP):
+        if ip in indOff:
+            c = cOff
+        elif ip in indPz:
+            c = cpz
+        elif ip in indPxy:
+            c = cpxy
+        elif ip in indSOC:
+            c = cpl
+        else:
+            c = cp
+        ax2.fill_between([ip-0.5,ip+0.5],[-rmax*100,-rmax*100],[rmax*100,rmax*100],alpha=.3,color=c,zorder=-5,lw=0)
+    box_dic = dict(boxstyle='round',facecolor='white',alpha=1)
+    ax2.text(0,rmax*80,r"Parameters with $p_z$ and $d_{z^2}$: %d "%(int(rpz*100))+'%',size=20,color=cpz,bbox=box_dic)
+    ax2.text(15,rmax*80,r"Parameters with $p_{xy}$ and $d_{x,y}$: %d "%(int(rpxy*100))+'%',size=20,color=cpxy,bbox=box_dic)
+    ax2.text(27,rmax*80,r"Other parameters: %d "%(int(rp*100))+'%',size=20,color=cp,bbox=box_dic)
+    ax2.text(36,rmax*80,r"Offset",size=20,color=cOff,bbox=box_dic)
+    ax2.text(39,rmax*80,r"SOC: %d "%(int(rl*100))+'%',size=20,color=cpl,bbox=box_dic)
     if not title=='':
-        ax1.set_title(title)
+        ax1.set_title(title,size=20)
     if not figname=='':
         print("Saving figure: "+figname)
         plt.savefig(figname)
         plt.close(fig)
     if show:
         plt.show()
+
+def plot_orbitalContent(full_pars,TMD,spec_args=None,figname='',show=False):
+    """ Parameters cut: G-K-M-G """
+    Ngk = 200
+    Nkm = int(Ngk/2)
+    Nmg = int(Ngk/2*np.sqrt(3))
+    Nk = Ngk+Nkm+Nmg+1  #+1 so we compute G twice
+    #
+    a_TMD = cfs.dic_params_a_mono[TMD]
+    K = np.array([4*np.pi/3/a_TMD,0])
+    M = np.array([np.pi/a_TMD,np.pi/np.sqrt(3)/a_TMD])
+    data_k = np.zeros((Nk,2))
+    # G-K
+    list_k = np.linspace(0,K[0],Ngk,endpoint=False)
+    data_k[:Ngk,0] = list_k
+    # K-M
+    for ik in range(Nkm):
+        data_k[Ngk+ik] = K + (M-K)/Nkm*ik
+    # M-G
+    for ik in range(Nmg+1):
+        data_k[Ngk+Nkm+ik] = M + M/Nmg*ik
+    """ Energies and evecs """
+    hopping = cfs.find_t(full_pars)
+    epsilon = cfs.find_e(full_pars)
+    offset = full_pars[-3]
+    #
+    HSO = cfs.find_HSO(full_pars[-2:])
+    args_H = (hopping,epsilon,HSO,a_TMD,offset)
+    #
+    all_H = cfs.H_monolayer(data_k,*args_H)
+    ens = np.zeros((Nk,22))
+    evs = np.zeros((Nk,22,22),dtype=complex)
+    for i in range(Nk):
+        #index of TVB is 13, the other is 12 (out of 22: 11 bands times 2 for SOC. 7/11 are valence -> 14 is the TVB)
+        ens[i],evs[i] = np.linalg.eigh(all_H[i])
+    """ Orbitals: d_xy, d_xz, d_z2, p_x, p_z """
+    orbitals = np.zeros((5,22,Nk))
+    list_orbs = ([6,7],[0,1],[5,],[3,4,9,10],[2,8])
+    for orb in range(5):
+        inds_orb = list_orbs[orb]
+        for ib in range(22):     #bands
+            for ik in range(Nk):   #kpts
+                for iorb in inds_orb:
+                    orbitals[orb,ib,ik] += np.linalg.norm(evs[ik,iorb,ib])**2 + np.linalg.norm(evs[ik,iorb+11,ib])**2
+    if 0:       # Print orbitals at M
+        vk = evs[Ngk+Nkm]
+        for ib in [10,11,12,13]:
+            print("Band %d"%ib)
+            v =vk[:,ib]
+            for iorb in range(22):
+                print("Orb #%d, %.4f"%(iorb,np.absolute(v[iorb])))
+            print("--------------------------")
+        print("Total values")
+        print(orbitals[:,13,Ngk+Nkm])
+        #exit()
+    """ Plot """
+    fig = plt.figure(figsize=(10,10))
+    ax = fig.add_subplot()
+
+    color = ['red','brown','blue','green','aqua']
+    labels = [r"$d_{xy}+d_{x^2-y^2}$",r"$d_{xz}+d_{yz}$",r"$d_{z^2}$",r"$p_x+p_y$",r"$p_z$"]
+
+    leg = []
+    xvals = np.linspace(0,Nk-1,Nk)
+    for orb in range(5):
+        for ib in range(22):
+            ax.scatter(xvals,ens[:,ib],s=(orbitals[orb,ib]*100),
+                       marker='o',
+                       facecolor=color[orb],
+                       lw=0,
+                       alpha=0.3,
+                       )
+        leg.append( Line2D([0], [0], marker='o',
+                           markeredgecolor='none',
+                           markerfacecolor=color[orb],
+                           markersize=10,
+                           label=labels[orb],
+                           lw=0)
+                   )
+    legend = ax.legend(handles=leg,
+                       loc=(0.7,0.45),
+                       fontsize=20,
+                       handletextpad=0.35,
+                       handlelength=0.5
+                       )
+    ax.add_artist(legend)
+
+    ax.set_ylim(-4,3)
+    ax.set_xlim(0,Nk-1)
+
+    ax.axvline(Ngk,color='k',lw=1,zorder=-1)
+    ax.axvline(Ngk+Nkm,color='k',lw=1,zorder=-1)
+    ax.axhline(0,color='k',lw=1,zorder=-1)
+
+    ax.set_xticks([0,Ngk-1,Ngk+Nkm-1,Nk-1],[r"$\Gamma$",r"$K$",r"$M$",r"$\Gamma$"],size=20)
+    ax.set_ylabel("Energy [eV]",size=20)
+
+    if not spec_args is None:   #Additional text with parameters
+        rp,rpz,rpxy,rl = spec_args[5:9]
+        box_dic = dict(boxstyle='round',facecolor='white',alpha=1)
+        ax.text(
+            0.05,0.85,
+            "Bounds of parameters:\n"+"z:    %d"%(rpz*100) + "%\n"+"xy:   %d"%(rpxy*100) + "%\n"+"SOC:  %d"%(rl*100) + "%\n"+"others:%d"%(rp*100)+"%",
+            bbox = box_dic,
+            transform=ax.transAxes,
+            fontsize=15
+        )
+        Ppar,Pgap = spec_args[1], spec_args[4]
+        ax.text(
+            0.7,0.9,
+            "Chi2 parameters:\n"+"Ppar:%.4f"%Ppar + "\n"+"Pgap:%.4f"%Pgap,
+            bbox = box_dic,
+            transform=ax.transAxes,
+            fontsize=15
+        )
+
+    fig.tight_layout()
+
+    if figname!='':
+        print("Saving figure: "+figname)
+        fig.savefig(figname)
+    if show:
+        plt.show()
+    plt.close()
 
 def compute_band_content(parameters,HSO,TMD):
     """
@@ -267,10 +443,6 @@ def compute_band_content(parameters,HSO,TMD):
 
 def get_bounds(in_pt,spec_args):
     rp, rpz, rpxy, rl = spec_args[5:9]
-    indOff = [40,]
-    indSOC = [41,42,]
-    indPz = [3,5,12,15,19,20,24,26,31,32,34,36,37,38]
-    indPxy = [4,6,13,14,16,17,25,27,33,35,39]
     Bounds = []
     for i in range(in_pt.shape[0]):     #tb parameters
         if i == indOff: #offset
@@ -288,14 +460,6 @@ def get_bounds(in_pt,spec_args):
         Bounds.append(temp)
     return Bounds
 
-def get_home_dn(machine):
-    if machine == 'loc':
-        return '/home/dario/Desktop/git/MoireBands/Code/1_monolayer/'
-    elif machine == 'hpc':
-        return '/home/users/r/rossid/1_monolayer/'
-    elif machine == 'maf':
-        return '/users/rossid/1_monolayer/'
-
 def compute_parameter_distance(pars,TMD):
     DFT_values = np.array(cfs.initial_pt[TMD])
     len_tb = DFT_values.shape[0]
@@ -306,6 +470,13 @@ def compute_parameter_distance(pars,TMD):
     else:
         print("compute_parameter_distance error")
 
+def get_home_dn(machine):
+    if machine == 'loc':
+        return '/home/dario/Desktop/git/MoireBands/Code/1_monolayer/'
+    elif machine == 'hpc':
+        return '/home/users/r/rossid/1_monolayer/'
+    elif machine == 'maf':
+        return '/users/rossid/1_monolayer/'
 ########################################################################################################
 ########################################################################################################
 ########################################################################################################
