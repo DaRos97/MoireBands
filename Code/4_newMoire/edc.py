@@ -9,7 +9,6 @@ An extension would be to do the same at K.
 """
 
 import sys,os
-import argparse
 import numpy as np
 import scipy
 cwd = os.getcwd()
@@ -30,20 +29,21 @@ import csv
 machine = cfs.get_machine(os.getcwd())
 
 """ Parameters and options """
-parser = argparse.ArgumentParser(description="Calculation of EDC")
-parser.add_argument("Index", help="Index of parameters (see list in code)", type=int)
-parser.add_argument("Sample", help="Sample to consider (S3 or S11)")
-parser.add_argument("Angle", help="Twist angle to use (-,0 or + for -0.3°,0° and +0.3° wrt LEED measured twist)")
-parser.add_argument("-v","--verbose", help="Enable verbose output", action="store_true")
-parser.add_argument("-s","--save", help="Save data at the end of calculation", action="store_true")
-inputArguments = parser.parse_args()
+if len(sys.argv)!=2:
+    print("Usage: python3 edc.py arg1")
+    print("arg1 is an int for the index of the parameter list")
+    exit()
 
-ind = inputArguments.Index      # Index of w1p and w1d
-sample = inputArguments.Sample
+ind = int(sys.argv[1])
+sample = "S11"
 ang_dic = {'-':-0.3, '0':0, '+':0.3}
-ang = ang_dic[inputArguments.Angle]
-disp = inputArguments.verbose
-save = inputArguments.save
+ang = ang_dic['0']      #Change here for \pm 0.3 degrees
+if machine =='maf':
+    disp = False
+    save = True
+else:
+    disp = True
+    save = False
 
 peak0 = -0.6948 if sample=='S3' else -0.6899
 peak1 = -0.7730 if sample=='S3' else -0.7831
