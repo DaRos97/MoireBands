@@ -1,7 +1,7 @@
 """ Here we go through all the single files and put them together since there should not be many results anyway.
 """
 import numpy as np
-import os
+import os,sys
 cwd = os.getcwd()
 if cwd[6:11] == 'dario':
     master_folder = cwd[:40]
@@ -13,8 +13,9 @@ sys.path.insert(1, master_folder)
 import CORE_functions as cfs
 import functions_moire as fsm
 from pathlib import Path
+machine = cfs.get_machine(cwd)
 
-save = True
+save = False
 sample = "S11"
 nShells = 2
 theta = 2.8 if sample=='S11' else 1.8    #twist angle, in degrees, from LEED eperiment
@@ -28,21 +29,57 @@ if Path(full_fn).is_file():
 else:
     folder = Path(data_dn)
     full_data = []
-    for f in folder.glob(".npy"):
+    for f in folder.glob("*.npy"):
         if f.is_file():
             data = np.load(f)
             name = f.name
             w1p = float(name.split('_')[1])
             w1d = float(name.split('_')[2])
-            for i in range(data.shape[0]):
+            nSolutions = data.shape[0]
+            for i in range(nSolutions):
                 full_data.append([w1p,w1d,listPhi[int(data[i,0])],data[i,1]])
 
+    full_data = np.array(full_data)
     if save:
-        np.save(full_fn,np.array(full_data))
+        np.save(full_fn,full_data)
 
 
 
+""" Quick plot of solutions """
+import matplotlib.pyplot as plt
 
+fig = plt.figure(figsize=(10,10))
+
+ns = full_data.shape[0]     #Num,ber of solutions
+print("%d solutions"%ns)
+
+ax = fig.add_subplot(1,3,1)
+for i in range(ns):
+    ax.scatter(
+        full_data[i,2]/np.pi*180,
+        full_data[i,3],
+        color='k',
+        marker='^'
+    )
+
+ax = fig.add_subplot(1,3,2)
+for i in range(ns):
+    ax.scatter(
+        full_data[i,0],
+        full_data[i,3],
+        color='k',
+        marker='^'
+    )
+
+ax = fig.add_subplot(1,3,3)
+for i in range(ns):
+    ax.scatter(
+        full_data[i,1],
+        full_data[i,3],
+        color='k',
+        marker='^'
+    )
+plt.show()
 
 
 

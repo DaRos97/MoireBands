@@ -47,8 +47,8 @@ else:
 
 peak0 = -0.6948 if sample=='S3' else -0.6899
 peak1 = -0.7730 if sample=='S3' else -0.7831
-#expVal = {'S3':0.078, 'S11':0.093}
-#expEDC = expVal[sample]
+expVal = {'S3':0.078, 'S11':0.093}
+expEDC = expVal[sample]
 
 if disp:
     from tqdm import tqdm
@@ -75,11 +75,11 @@ if disp:    #print what parameters we're using
     print("Energy spreading: %.3f eV"%spreadE)
 
 """ Variable parameters """
-listVg = np.linspace(0.001,0.05,99)     # Considered values of moirè potential
-listPhi = np.linspace(0,2*np.pi,72,endpoint=False)
+listVg = np.linspace(0.001,0.05,99)     # Considered values of moirè potential -> every .5 meV
+listPhi = np.linspace(0,np.pi,36,endpoint=False)
 nPhi = len(listPhi)
-listW1p = np.linspace(-1.625,-1.825,41)         # Values to change ##################################################
-listW1d = np.linspace(0.27,0.47,41)           # values to change ##################################################
+listW1p = np.linspace(-1.625,-1.825,41)         # every 5 meV
+listW1d = np.linspace(0.27,0.47,41)           # every 5 meV
 stacking = 'P'
 w1p,w1d = list(itertools.product(*[listW1p,listW1d]))[ind]
 w2p = w2d = 0
@@ -93,7 +93,7 @@ if disp:
 home_dn = fsm.get_home_dn(machine)
 data_dn = cfs.getFilename(('edc',*(sample,nShells,theta)),dirname=home_dn+"Data/newEDC/")+'/'
 data_fn = cfs.getFilename(('vbest',*(w1p,w1d,listPhi[0],listPhi[-1],nPhi)),dirname=data_dn,extension='.npy')
-if Path(data_fn).is_file():
+if Path(data_fn).is_file() and save:
     print("Already computed set of w1p and w1d for the same phases")
     exit()
 
@@ -108,8 +108,8 @@ for ip,phiG in enumerate(listPhi):
     for i in tqdm(range(len(listVg)),desc="Looping Vg"):
         Vg = listVg[i]
         args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', False, False)
-        fit_disp = 0#False
-        fit_plot = 0#False
+        fit_disp = False
+        fit_plot = False
         a = fsm.EDC(args,sample,spreadE=spreadE,disp=fit_disp,plot=fit_plot,figname='')
         if a[0]==-2:    # Weight became larger in lower band -> no coming back from that
             centers[i:,:] = np.nan
@@ -118,6 +118,9 @@ for ip,phiG in enumerate(listPhi):
 
         # We chose a good V if the centers are both within 2.5 meV of the experimental one
         if abs(a[0]-peak0)<0.0025 and abs(a[1]-peak1)<0.0025:
+            if disp:
+                print("found best ind at %.1f"%listVg[i])
+                a = fsm.EDC(args,sample,spreadE=spreadE,disp=True,plot=True,figname='')
             bestInds.append(i)
 
     if len(bestInds)==0:
@@ -127,7 +130,7 @@ for ip,phiG in enumerate(listPhi):
         bestInd = np.argmin( np.absolute(centers[bestInds,0]-peak0) + np.absolute(centers[bestInds,1]-peak1) )
         Vbest = listVg[bestInds[bestInd]]
 
-    if 0:   #plotting of distances over V
+    if foundVbest and disp:   #plotting of distances over V
         """ Plot and save result """
         fig = plt.figure()
         ax = fig.add_subplot()

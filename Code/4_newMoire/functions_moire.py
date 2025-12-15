@@ -423,8 +423,9 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
             plt.show()
         plt.close()
 
-    cen1, cen2 = (result.best_values['cen1'], result.best_values['cen2']) if result.best_values['amp1']>result.best_values['amp2'] else (result.best_values['cen2'], result.best_values['cen1'])
-    if result.success:
+    amp1, amp2 = result.best_values['amp1'], result.best_values['amp2']
+    cen1, cen2 = (result.best_values['cen1'], result.best_values['cen2']) if amp1>amp2 else (result.best_values['cen2'], result.best_values['cen1'])
+    if result.success and amp1>1e-2 and amp2>1e-2 and result.redchi<1e-2:
         return cen1, cen2
     else:
         if disp:
