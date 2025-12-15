@@ -67,11 +67,12 @@ if disp:
 
 # Import DFT values of tb parameters
 DFT_values = np.array(cfs.initial_pt[TMD])  #DFT values of tb parameters. Order is: e, t, offset, SOC
+DFT_values = np.load("Figures/result_WSe2.npy")
 if 0:   # Plot bands and orbital of DFT
     HSO = cfs.find_HSO(DFT_values[-2:])
     DFT_en = cfs.energy(DFT_values,HSO,data,spec_args[0])
     fsm.plotResults(DFT_values,DFT_en,data,spec_args,machine,0,show=True)
-#exit()
+    exit()
 
 """
 We start by computing offset and SOC parameters by fitting the energy of the 2 top bands at Gamma and K.

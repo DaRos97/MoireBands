@@ -21,15 +21,15 @@ indPxy = [4,6,13,14,16,17,25,27,33,35,39]
 def get_spec_args(ind):
     lTMDs = ["WSe2", ]#cfs.TMDs    #TMDs
     # Parameters of chi2
-    lPpar = list(np.linspace(0.05,0.2,4))#[0.01,0.05,0.1]         #coefficient of parameters distance from DFT chi2
+    lPpar = list(np.linspace(0.01,0.09,5))#[0.01,0.05,0.1]         #coefficient of parameters distance from DFT chi2
     lPbc = [100,]        #coefficient of band content chi2
     lPdk = [20,]        #coefficient of distance at gamma and K chi2
-    lPgap = [0.05,0.1,0.15]
+    lPgap = [0.1,0.2]
     # Bounds
     lrp = [0.2,]         #tb bounds for general orbitals
-    lrpz = [0.2,0.5,1]         #tb bounds for z orbitals -> indices 6 and 9
-    lrpxy = [0.5,1,2]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
-    lrl = [0.,0.2]          #SOC bounds
+    lrpz = [0.2,0.5]         #tb bounds for z orbitals -> indices 6 and 9
+    lrpxy = [0.2,0.5,1]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
+    lrl = [0.,]          #SOC bounds
     # Points in fit
     ptsPerPath = [(40,15,10),]
     listPar = list(itertools.product(*[lTMDs,lPpar,lPbc,lPdk,lPgap,lrp,lrpz,lrpxy,lrl,ptsPerPath]))
@@ -117,6 +117,7 @@ def chi2_tb(pars_tb,*args):
         indexes = [0,np.argmax(data[~np.isnan(data[:,3]),3])]    #indexes of Gamma (first element) and K /(highest energy)
         for j in range(2):  #Gamma and K
             chiDK += Pdk*(np.absolute(tb_en[i,indexes[j]]-data[indexes[j],3+i])**2)
+        chiDK += Pdk*(np.absolute(tb_en[1+i,-4]-data[-4,4+i])**2)
     result += chiDK
     # chi2 of band gap at G and K and M
     Kpts = [0,spec_args[-1][0],-1]
