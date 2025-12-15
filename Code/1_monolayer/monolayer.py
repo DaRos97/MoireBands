@@ -53,9 +53,14 @@ data = dataObject.getFitData(ptsPerPath)
 if disp:
     print("------------CHOSEN PARAMETERS------------")
     print(" TMD: ",spec_args[0],
-          "\n chi2_1 parameter: ","{:.4f}".format(spec_args[1]),
-          "\n Bound parameters: ","{:.2f}".format(spec_args[2]*100)+"%",
-          "\n Bounds SOC: ","{:.2f}".format(spec_args[3]*100)+"%",
+          "\n P_par: ","{:.4f}".format(spec_args[1]),
+          "\n P_bc: ","{:.4f}".format(spec_args[2]),
+          "\n P_dk: ","{:.4f}".format(spec_args[3]),
+          "\n P_gap: ","{:.4f}".format(spec_args[4]),
+          "\n Bound pars: ","{:.2f}".format(spec_args[5]*100)+"%",
+          "\n Bound z-pars: ","{:.2f}".format(spec_args[6]*100)+"%",
+          "\n Bound xy-pars: ","{:.2f}".format(spec_args[7]*100)+"%",
+          "\n Bounds SOC: ","{:.2f}".format(spec_args[8]*100)+"%",
           #"\n Index random evaluation: ",ind_random
           )
     print(" Using ",ptsPerPath," points, for a total of ",data.shape[0]," points")
@@ -65,7 +70,7 @@ DFT_values = np.array(cfs.initial_pt[TMD])  #DFT values of tb parameters. Order 
 if 0:   # Plot bands and orbital of DFT
     HSO = cfs.find_HSO(DFT_values[-2:])
     DFT_en = cfs.energy(DFT_values,HSO,data,spec_args[0])
-    fsm.plotResults(DFT_values,DFT_en,data,spec_args,machine,0,show=False)
+    fsm.plotResults(DFT_values,DFT_en,data,spec_args,machine,0,show=True)
 #exit()
 
 """
