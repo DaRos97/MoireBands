@@ -298,7 +298,7 @@ def two_lorentzian_one_gaussian(x, amp1,cen1,gam1, amp2,cen2,gam2, sig):
 import warnings
 warnings.filterwarnings("ignore", message="Using UFloat objects with std_dev==0")
 
-def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
+def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname='',show=False):
     """ Compute energy distance of side bands crossing from main band.
     We do it by diagonalizing the Hamiltonian at the desired k point.
     We evaluate and extract the weights BELOW the main band (carefull to the SOC degeneracy at Gamma).
@@ -307,6 +307,8 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
     """
     peak0 = -0.6948 if sample=='S3' else -0.6899
     peak1 = -0.7730 if sample=='S3' else -0.7831
+    expBottomEn = -1.0 if sample=='S3' else -1.35      #Position in energy of bottom band -> eV
+    expBottomSize = 0.005 if sample=='S3' else 0.0025   #Spread of bottom peak -> to give an error estimate -> eV
     nCells = args[1]
     # Evals, evecs and weights at Gamma
     e_, ev_ = diagonalize_matrix(*args)
@@ -342,7 +344,18 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
     params['amp1'].set(min=0)
     params['amp2'].set(min=0)
     result = model.fit(weightList, params, x=energyList)
-    distance = result.best_values['cen1'] - result.best_values['cen2']
+    # Check max of bottom layer band
+    bottomEnergyValues = evals  [indexMainBand-nCells*4+1:indexMainBand-nCells*2+1]
+    bottomWeightValues = weights[indexMainBand-nCells*4+1:indexMainBand-nCells*2+1]
+    bottomEnList = np.linspace(-1.5,-1.2,300)      #we chose this from experimental data
+    bottomWeList = np.zeros(len(bottomEnList))
+    for i in range(len(bottomEnergyValues)):
+        bottomWeList += spreadE/np.pi * bottomWeightValues[i] / ((bottomEnList-bottomEnergyValues[i])**2+spreadE**2)
+    maxBottomEn = bottomEnList[ np.argmax(bottomWeList) ]
+    if abs(maxBottomEn-expBottomEn) < expBottomSize:
+        goodBottomPosition = True
+    else:
+        goodBottomPosition = False
     if disp:
         print(result.fit_report())
 
@@ -351,7 +364,7 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
         if imageAroundGamma:       #Compute image zoom around Gamma
             fig = plt.figure(figsize=(20,13))
             import matplotlib.gridspec as gridspec
-            gs = gridspec.GridSpec(2, 2, width_ratios=[1, 0.5])
+            gs = gridspec.GridSpec(2, 2, width_ratios=[1, 0.8])
             # Need to compute some points around Gamma
             kPts = 101 #has to be odd
             range_k = 0.6
@@ -384,12 +397,12 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
             ax = fig.add_subplot(gs[1,0])
             E_list = np.linspace(-1.6,-0.4,150)
             spread = np.zeros((kPts,len(E_list)))
-            pars_spread = (0.001,0.03,'Lorentz')
+            pars_spread = (0.001,spreadE,'Lorentz')
             for i in range(kPts):
                 for n in range(indexMainBand-nCells*4+1,indexMainBand+1):
                     spread += weight_spreading(weights2[i,n],kList[i],evals2[i,n],kList,E_list[None,:],pars_spread)
             spread /= np.max(spread)        #0 to 1
-            map_ = 'gray_r'
+            map_ = 'viridis'
             ax.imshow(spread.T[::-1,:]**0.5,
               cmap=map_,
               aspect=kPts/len(E_list)*0.45,     #to coincide by eye between the two images
@@ -398,10 +411,10 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
             ax.set_xticks([])
             ax.set_xlabel('K')
             #
-            ax = fig.add_subplot(gs[1,1])
-            ax.plot(E_list,spread[kPts//2,:])
-            ax.set_xlim(-1,-0.4)
-            ax = fig.add_subplot(gs[0,1])
+            #ax = fig.add_subplot(gs[1,1])
+            #ax.plot(E_list,spread[kPts//2,:])
+            #ax.set_xlim(-1,-0.4)
+            ax = fig.add_subplot(gs[:,1])
         else:
             fig = plt.figure(figsize=(10,10))
             ax = fig.add_subplot()
@@ -416,20 +429,30 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname=''):
         ax.axhline(0,lw=0.5,zorder=-10,color='k')
         ax.axvline(peak0,color='y',lw=2,zorder=-1)
         ax.axvline(peak1,color='y',lw=2,zorder=-1)
+        if not imageAroundGamma:
+            w1p = args[4]['w1p']
+            w1d = args[4]['w1d']
+            Vg,phiG = args[6][0], args[6][2]
+            ax.text(
+                0.05,0.8,
+                "w_1p=%.3f eV\nw_1d=%.3f eV\nphiG=%d°\nV=%.1f meV"%(w1p,w1d,int(phiG/np.pi*180),Vg*1000),
+                size=20,
+                transform=ax.transAxes
+            )
         fig.tight_layout()
         if not figname=='':
             fig.savefig(figname)
-        if 1:
+        if show:
             plt.show()
         plt.close()
 
     amp1, amp2 = result.best_values['amp1'], result.best_values['amp2']
     cen1, cen2 = (result.best_values['cen1'], result.best_values['cen2']) if amp1>amp2 else (result.best_values['cen2'], result.best_values['cen1'])
-    if result.success and amp1>1e-2 and amp2>1e-2 and result.redchi<1e-2:
+    if result.success and amp1>1e-2 and amp2>1e-2 and result.redchi<1e-2 and goodBottomPosition:
         return cen1, cen2
     else:
         if disp:
-            print("Unsuccessfull fitting at V=%.3f"%args[6][0])
+            print("Unsuccessfull fitting or bad position of bottom band at V=%.3f"%args[6][0])
         return 0, 0
 
 

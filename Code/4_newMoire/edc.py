@@ -75,13 +75,18 @@ if disp:    #print what parameters we're using
     print("Energy spreading: %.3f eV"%spreadE)
 
 """ Variable parameters """
+specificValues = (175/180*np.pi,-1.72,0.38)
 listVg = np.linspace(0.001,0.05,99)     # Considered values of moirè potential -> every .5 meV
-listPhi = np.linspace(0,np.pi,36,endpoint=False)
-nPhi = len(listPhi)
-listW1p = np.linspace(-1.625,-1.825,41)         # every 5 meV
-listW1d = np.linspace(0.27,0.47,41)           # every 5 meV
+if specificValues is None:
+    listPhi = np.linspace(0,2*np.pi,72,endpoint=False)
+    listW1p = np.linspace(-1.625,-1.825,41)         # every 5 meV
+    listW1d = np.linspace(0.27,0.47,41)           # every 5 meV
+    w1p,w1d = list(itertools.product(*[listW1p,listW1d]))[ind]
+else:
+    phiG,w1p,w1d = specificValues
+    listPhi = [phiG,]
 stacking = 'P'
-w1p,w1d = list(itertools.product(*[listW1p,listW1d]))[ind]
+nPhi = len(listPhi)
 w2p = w2d = 0
 parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
 if disp:

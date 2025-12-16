@@ -23,10 +23,19 @@ listPhi = np.linspace(0,2*np.pi,72,endpoint=False)
 home_dn = fsm.get_home_dn(machine)
 data_dn = cfs.getFilename(('edc',*(sample,nShells,theta)),dirname=home_dn+"Data/newEDC/")+'/'
 full_fn = data_dn + "full.npy"
+checkBottomBand = True
 
 if Path(full_fn).is_file():
     full_data = np.load(full_fn)
 else:
+    if checkBottomBand:
+        nCells = int(1+3*nShells*(nShells+1))
+        kListG = np.array([np.zeros(2),])
+        spreadE = 0.03      # in eV
+        monolayer_type = 'fit'
+        w2p = w2d = 0
+        stacking = 'P'
+        Vk,phiK = (0.007,-106/180*np.pi)
     folder = Path(data_dn)
     full_data = []
     for f in folder.glob("*.npy"):
@@ -35,50 +44,102 @@ else:
             name = f.name
             w1p = float(name.split('_')[1])
             w1d = float(name.split('_')[2])
+            if checkBottomBand:
+                parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
             nSolutions = data.shape[0]
             for i in range(nSolutions):
-                full_data.append([w1p,w1d,listPhi[int(data[i,0])],data[i,1]])
+                phiG,Vg = listPhi[int(data[i,0])], data[i,1]
+                if checkBottomBand:
+                    args = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', False, False)
+                    a = fsm.EDC(
+                        args,sample,spreadE=spreadE,
+                        disp=False,
+                        plot=False,
+                        #figname=figname,
+                        show=False
+                    )
+                    if a[0]==0 and a[1]==0:
+                        goodBottomBand = False
+                    else:
+                        goodBottomBand = True
+                if not checkBottomBand or (checkBottomBand and goodBottomBand):
+                    full_data.append([w1p,w1d,phiG,Vg])
 
     full_data = np.array(full_data)
     if save:
         np.save(full_fn,full_data)
 
-
+if machine=='maf':
+    exit()
 
 """ Quick plot of solutions """
 import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
+from matplotlib.cm import ScalarMappable
 
-fig = plt.figure(figsize=(10,10))
+cmap = plt.get_cmap('plasma_r')
+wpmin = np.min(full_data[:,0])
+wpmax = np.max(full_data[:,0])
+norm = Normalize(vmin=wpmin, vmax=wpmax)
 
-ns = full_data.shape[0]     #Num,ber of solutions
+wdmin = np.min(full_data[:,1])
+wdmax = np.max(full_data[:,1])
+sizes = 30+300*(full_data[:,1]-wdmin)/(wdmax-wdmin)
+
+fig = plt.figure(figsize=(20,10))
+
+ns = full_data.shape[0]     #Number of solutions
 print("%d solutions"%ns)
 
-ax = fig.add_subplot(1,3,1)
+phiMin = 172/180*np.pi
+phiMax = 177/180*np.pi
+
+s_ = 20
+ax1 = fig.add_subplot(1,3,1)
+ax2 = fig.add_subplot(1,3,2)
+ax3 = fig.add_subplot(1,3,3)
 for i in range(ns):
-    ax.scatter(
+    if full_data[i,2] < phiMin or full_data[i,2] > phiMax:
+        continue
+    ax1.scatter(
         full_data[i,2]/np.pi*180,
         full_data[i,3],
-        color='k',
-        marker='^'
+        color=cmap(norm(full_data[i,0])),
+        marker='^',
+        s=sizes[i],
+        alpha=0.5,
+        lw=0
     )
 
-ax = fig.add_subplot(1,3,2)
-for i in range(ns):
-    ax.scatter(
+    ax2.scatter(
         full_data[i,0],
         full_data[i,3],
-        color='k',
-        marker='^'
+        color=cmap(norm(full_data[i,0])),
+        marker='^',
+        s=sizes[i],
+        alpha=0.5,
+        lw=0
     )
 
-ax = fig.add_subplot(1,3,3)
-for i in range(ns):
-    ax.scatter(
+    ax3.scatter(
         full_data[i,1],
         full_data[i,3],
-        color='k',
-        marker='^'
+        color=cmap(norm(full_data[i,0])),
+        marker='^',
+        s=sizes[i],
+        alpha=0.5,
+        lw=0
     )
+
+ax1.set_xlim(phiMin/np.pi*180,phiMax/np.pi*180)
+ax1.set_ylabel("V moiré",size=s_)
+ax1.set_xlabel("phase (°)",size=s_)
+ax2.set_xlabel(r"$w_1^p$",size=s_)
+ax3.set_xlabel(r"$w_1^d$",size=s_)
+
+sm = ScalarMappable(norm=norm,cmap=cmap)
+cax = fig.add_subplot([0.93,0.12,0.02,0.78])
+plt.colorbar(sm,cax=cax)
 plt.show()
 
 
