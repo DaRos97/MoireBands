@@ -138,10 +138,15 @@ for i in range(ns):
     )
 
 ax1.set_xlim(phiMin/np.pi*180,phiMax/np.pi*180)
+ax1.set_ylim(0.01,0.02)
 ax1.set_ylabel("V moiré",size=s_)
 ax1.set_xlabel("phase (°)",size=s_)
 ax2.set_xlabel(r"$w_1^p$",size=s_)
+ax2.set_xlim(-1.68,-1.61)
+ax2.set_ylim(0.01,0.02)
 ax3.set_xlabel(r"$w_1^d$",size=s_)
+ax3.set_xlim(0.3,0.34)
+ax3.set_ylim(0.01,0.02)
 
 sm = ScalarMappable(norm=norm,cmap=cmap)
 cax = fig.add_subplot([0.93,0.12,0.02,0.78])

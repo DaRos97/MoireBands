@@ -79,11 +79,11 @@ if disp:    #print what parameters we're using
 
 """ Variable parameters """
 specificValues = None#(175/180*np.pi,-1.72,0.38)
-listVg = np.linspace(0.010,0.020,51)     # Considered values of moirè potential -> every .2 meV
+listVg = np.linspace(0.013,0.020,36)     # Considered values of moirè potential -> every .2 meV
 if specificValues is None:
-    listPhi = np.linspace(160/180*np.pi,200/180*np.pi,41,endpoint=True)
-    listW1p = np.linspace(-1.610,-1.680,36)         # every 2 meV
-    listW1d = np.linspace(0.300,0.340,21)           # every 2 meV
+    listPhi = np.linspace(0/180*np.pi,360/180*np.pi,360,endpoint=False)
+    listW1p = np.linspace(-1.620,-1.680,31)         # every 2 meV
+    listW1d = np.linspace(0.310,0.340,16)           # every 2 meV
     w1p,w1d = list(itertools.product(*[listW1p,listW1d]))[ind]
 else:
     phiG,w1p,w1d = specificValues
