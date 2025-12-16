@@ -19,11 +19,12 @@ save = False
 sample = "S11"
 nShells = 2
 theta = 2.8 if sample=='S11' else 1.8    #twist angle, in degrees, from LEED eperiment
-listPhi = np.linspace(0,2*np.pi,72,endpoint=False)
+#listPhi = np.linspace(0,2*np.pi,72,endpoint=False)
+listPhi = np.linspace(160/180*np.pi,200/180*np.pi,41,endpoint=True)
 home_dn = fsm.get_home_dn(machine)
 data_dn = cfs.getFilename(('edc',*(sample,nShells,theta)),dirname=home_dn+"Data/newEDC/")+'/'
 full_fn = data_dn + "full.npy"
-checkBottomBand = True
+checkBottomBand = False     #Already done at edc.py level
 
 if Path(full_fn).is_file():
     full_data = np.load(full_fn)
@@ -91,8 +92,8 @@ fig = plt.figure(figsize=(20,10))
 ns = full_data.shape[0]     #Number of solutions
 print("%d solutions"%ns)
 
-phiMin = 172/180*np.pi
-phiMax = 177/180*np.pi
+phiMin = 160/180*np.pi
+phiMax = 200/180*np.pi
 
 s_ = 20
 ax1 = fig.add_subplot(1,3,1)
