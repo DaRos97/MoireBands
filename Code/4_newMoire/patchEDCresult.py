@@ -23,7 +23,7 @@ theta = 2.8 if sample=='S11' else 1.8    #twist angle, in degrees, from LEED epe
 listPhi = np.linspace(160/180*np.pi,200/180*np.pi,41,endpoint=True)
 home_dn = fsm.get_home_dn(machine)
 data_dn = cfs.getFilename(('edc',*(sample,nShells,theta)),dirname=home_dn+"Data/newEDC/")+'/'
-full_fn = data_dn + "full.npy"
+full_fn = cfs.getFilename(('full',*(listPhi[0],listPhi[-1],len(listPhi))),dirname=data_dn,extension='.npy')
 checkBottomBand = False     #Already done at edc.py level
 
 if Path(full_fn).is_file():
@@ -43,6 +43,11 @@ else:
         if f.is_file():
             data = np.load(f)
             name = f.name
+            phiIn = float(name.split('_')[3])
+            phiFin = float(name.split('_')[4])
+            phiN = float(name.split('_')[5][:-4])
+            if abs(phiIn-listPhi[0])>1e-5 or abs(phiFin-listPhi[-1])>1e-5 or abs(phiN-len(listPhi))>1e-5:
+                continue
             w1p = float(name.split('_')[1])
             w1d = float(name.split('_')[2])
             if checkBottomBand:

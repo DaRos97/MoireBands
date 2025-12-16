@@ -2,5 +2,6 @@
 
 Here we take the monolayer tight-binding parameters and compute the full spectrum by using the correct form of interlayer coupling.
 We also perform analysis regarding:
-    - EDC for best amplitude and phase      -> edc.py
+    - EDC for best amplitude and phase of moirè potential at Gamma     -> edc.py
+    - kEDC for best amplitude and phase of moirè potential at K     -> Kedc.py
     - DOS and LDOS to have spacial resolution   -> ldos.py

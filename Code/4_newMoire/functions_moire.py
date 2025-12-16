@@ -298,17 +298,15 @@ def two_lorentzian_one_gaussian(x, amp1,cen1,gam1, amp2,cen2,gam2, sig):
 import warnings
 warnings.filterwarnings("ignore", message="Using UFloat objects with std_dev==0")
 
-def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname='',show=False):
+def EDC(args,sample,peaks,spreadE=0.03,disp=False,plot=False,figname='',show=False):
     """ Compute energy distance of side bands crossing from main band.
     We do it by diagonalizing the Hamiltonian at the desired k point.
     We evaluate and extract the weights BELOW the main band (carefull to the SOC degeneracy at Gamma).
     We spread the weights with a Lorentzian of width 30 meV.
     We fit the intensity profile with 2 Lorentzians (convoluted with a Gaussian).
     """
-    peak0 = -0.6948 if sample=='S3' else -0.6899
-    peak1 = -0.7730 if sample=='S3' else -0.7831
-    expBottomEn = -1.0 if sample=='S3' else -1.35      #Position in energy of bottom band -> eV
-    expBottomSize = 0.005 if sample=='S3' else 0.0025   #Spread of bottom peak -> to give an error estimate -> eV
+    edcPoint = 'Gamma' if np.linalg.norm(args[2][0])==0 else 'K'
+    peak0, peak1 = peaks
     nCells = args[1]
     # Evals, evecs and weights at Gamma
     e_, ev_ = diagonalize_matrix(*args)
@@ -320,10 +318,18 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname='',show=False):
     indexMainBand = 28*nCells - 1
     energyMainBand = evals[indexMainBand]
     weightMainBand = weights[indexMainBand]
-    fullEnergyValues = evals  [indexMainBand-nCells*2+1:indexMainBand+1]
-    fullWeightValues = weights[indexMainBand-nCells*2+1:indexMainBand+1]
+    if edcPoint=='Gamma':
+        fullEnergyValues = evals  [indexMainBand-nCells*2+1:indexMainBand+1]
+        fullWeightValues = weights[indexMainBand-nCells*2+1:indexMainBand+1]
+    else:
+        nCellsK = int(1+3*1*(1+1))
+        fullEnergyValues = evals  [indexMainBand-nCellsK+1:indexMainBand+1]
+        fullWeightValues = weights[indexMainBand-nCellsK+1:indexMainBand+1]
     # Define finer energy list for weight spreading: slightly larger for better spreading shape
-    energyList = np.linspace(-1.0,-0.4,200)      #we chose this from experimental data
+    if edcPoint=='Gamma':
+        energyList = np.linspace(-1.0,-0.4,200)      #we chose this from experimental data
+    else:
+        energyList = np.linspace(-1,-0.1,200)      #we chose this from experimental data
     weightList = np.zeros(len(energyList))
     if np.max(fullWeightValues[:-2]) > weightMainBand:     # Check the main band has higher weight
         if disp:
@@ -345,31 +351,50 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname='',show=False):
     params['amp2'].set(min=0)
     result = model.fit(weightList, params, x=energyList)
     # Check max of bottom layer band
-    bottomEnergyValues = evals  [indexMainBand-nCells*4+1:indexMainBand-nCells*2+1]
-    bottomWeightValues = weights[indexMainBand-nCells*4+1:indexMainBand-nCells*2+1]
-    bottomEnList = np.linspace(-1.5,-1.2,300)      #we chose this from experimental data
-    bottomWeList = np.zeros(len(bottomEnList))
-    for i in range(len(bottomEnergyValues)):
-        bottomWeList += spreadE/np.pi * bottomWeightValues[i] / ((bottomEnList-bottomEnergyValues[i])**2+spreadE**2)
-    maxBottomEn = bottomEnList[ np.argmax(bottomWeList) ]
-    if abs(maxBottomEn-expBottomEn) < expBottomSize:
-        goodBottomPosition = True
+    if edcPoint=='Gamma':
+        expBottomEn = -1.0 if sample=='S3' else -1.35      #Position in energy of bottom band -> eV
+        expBottomSize = 0.005 if sample=='S3' else 0.0025   #Spread of bottom peak -> to give an error estimate -> eV
+        bottomEnergyValues = evals  [indexMainBand-nCells*4+1:indexMainBand-nCells*2+1]
+        bottomWeightValues = weights[indexMainBand-nCells*4+1:indexMainBand-nCells*2+1]
+        bottomEnList = np.linspace(-1.5,-1.2,300)      #we chose this from experimental data
+        bottomWeList = np.zeros(len(bottomEnList))
+        for i in range(len(bottomEnergyValues)):
+            bottomWeList += spreadE/np.pi * bottomWeightValues[i] / ((bottomEnList-bottomEnergyValues[i])**2+spreadE**2)
+        maxBottomEn = bottomEnList[ np.argmax(bottomWeList) ]
+        if abs(maxBottomEn-expBottomEn) < expBottomSize:
+            goodBottomPosition = True
+        else:
+            goodBottomPosition = False
     else:
-        goodBottomPosition = False
+        goodBottomPosition = True
     if disp:
         print(result.fit_report())
 
     if plot:
-        imageAroundGamma = 0
-        if imageAroundGamma:       #Compute image zoom around Gamma
+        imageBands = 0
+        if imageBands:       #Compute image zoom around Gamma
             fig = plt.figure(figsize=(20,13))
             import matplotlib.gridspec as gridspec
             gs = gridspec.GridSpec(2, 2, width_ratios=[1, 0.8])
             # Need to compute some points around Gamma
-            kPts = 101 #has to be odd
-            range_k = 0.6
-            kList = np.zeros((kPts,2))
-            kList[:,0] = np.linspace(-range_k,range_k,kPts)
+            if edcPoint=='Gamma':
+                kPts = 31 #has to be odd
+                kList = np.zeros((kPts,2))
+                range_k = 0.6
+                kList[:,0] = np.linspace(-range_k,range_k,kPts)
+                kLine = kList[:,0]
+            else:
+                kPts = 100 #has to be odd
+                kList = np.zeros((kPts,2))
+                range_k = 0.6
+                K = args[2][0]
+                kList[:kPts//2,0] = K[0] + np.linspace(-range_k,0,kPts//2)
+                a_TMD = cfs.dic_params_a_mono['WSe2']
+                M = np.array([np.pi/a_TMD,np.pi/np.sqrt(3)/a_TMD])
+                for i in range(kPts//2):
+                    kList[i] = K - np.array([range_k*(kPts//2-i)/(kPts//2),0])
+                    kList[kPts//2+i] = K + (M-K)*range_k/(kPts//2)*i
+                kLine = np.arange(kPts)
             nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, moir_pars, _, __, disp = args
             args2 = (nShells, nCells, kList, monolayer_type, parsInterlayer, theta, moir_pars, '', False, True)
             evals2, evecs2 = diagonalize_matrix(*args2)
@@ -379,23 +404,32 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname='',show=False):
                 weights2[i,:] = np.sum(ab2[:22,:],axis=0) + np.sum(ab2[22*nCells:22*(1+nCells),:],axis=0)
             #Figure of points
             ax = fig.add_subplot(gs[0,0])
-            kLine = kList[:,0]
             for n in range(10*nCells,28*nCells):
                 ax.plot(kLine,evals2[:,n],color='r',lw=0.3,zorder=1)
                 ax.scatter(kLine,evals2[:,n], s=weights2[:,n]*100,
                            color='b',lw=0,zorder=3)
-            ax.set_ylim(-1.6,-0.4)
-            ax.set_xlim(-range_k,range_k)
+            if edcPoint=='Gamma':
+                ax.set_ylim(-1.6,-0.4)
+                ax.set_xlim(-range_k,range_k)
+                V = args[6][0]
+                phiG = args[6][2]/np.pi*180
+                w1p = args[4]['w1p']
+                w1d = args[4]['w1d']
+                stacking = args[4]['stacking']
+                ax.text(0.1,0.9,r"stacking: %s, V=%.4f eV, $\varphi$=%.1f°, $w_1^p$=%.4f eV, $w_1^d$=%.4f eV"%(stacking,V,phiG,w1p,w1d),size=20,transform=ax.transAxes)
+            else:
+                ax.set_ylim(-1.2,-0.1)
+                ax.set_xlim(0,kPts)
+                V = args[6][1]
+                phiK = args[6][3]/np.pi*180
+                ax.text(0.1,0.9,r"V=%.4f eV, $\varphi$=%.1f°"%(V,phiK),size=20,transform=ax.transAxes)
             ax.set_ylabel("eV")
-            V = args[6][0]
-            phiG = args[6][2]/np.pi*180
-            w1p = args[4]['w1p']
-            w1d = args[4]['w1d']
-            stacking = args[4]['stacking']
-            ax.text(0.1,0.9,r"stacking: %s, V=%.4f eV, $\varphi$=%.1f°, $w_1^p$=%.4f eV, $w_1^d$=%.4f eV"%(stacking,V,phiG,w1p,w1d),size=20,transform=ax.transAxes)
             #Figure of spread
             ax = fig.add_subplot(gs[1,0])
-            E_list = np.linspace(-1.6,-0.4,150)
+            if edcPoint=='Gamma':
+                E_list = np.linspace(-1.6,-0.4,150)
+            else:
+                E_list = np.linspace(-1.2,-0.1,150)
             spread = np.zeros((kPts,len(E_list)))
             pars_spread = (0.001,spreadE,'Lorentz')
             for i in range(kPts):
@@ -421,7 +455,7 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname='',show=False):
         # Plot weight spreading
         ax.scatter(energyList,weightList,color='b')
         ax.scatter(fullEnergyValues,fullWeightValues,color='r')
-        ax.set_xlim(-1,-0.4)
+        ax.set_xlim(energyList[0],energyList[-1])
         if result.success:
             ax.plot(energyList,result.best_fit,color='g',ls='--',lw=2)
             ax.axvline(result.best_values['cen1'],color='r')
@@ -429,16 +463,17 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname='',show=False):
         ax.axhline(0,lw=0.5,zorder=-10,color='k')
         ax.axvline(peak0,color='y',lw=2,zorder=-1)
         ax.axvline(peak1,color='y',lw=2,zorder=-1)
-        if not imageAroundGamma:
-            w1p = args[4]['w1p']
-            w1d = args[4]['w1d']
-            Vg,phiG = args[6][0], args[6][2]
-            ax.text(
-                0.05,0.8,
-                "w_1p=%.3f eV\nw_1d=%.3f eV\nphiG=%d°\nV=%.1f meV"%(w1p,w1d,int(phiG/np.pi*180),Vg*1000),
-                size=20,
-                transform=ax.transAxes
-            )
+        if not imageBands:
+            if edcPoint=='Gamma':
+                w1p = args[4]['w1p']
+                w1d = args[4]['w1d']
+                Vg,phiG = args[6][0], args[6][2]
+                ax.text(
+                    0.05,0.8,
+                    "w_1p=%.3f eV\nw_1d=%.3f eV\nphiG=%d°\nV=%.1f meV"%(w1p,w1d,int(phiG/np.pi*180),Vg*1000),
+                    size=20,
+                    transform=ax.transAxes
+                )
         fig.tight_layout()
         if not figname=='':
             fig.savefig(figname)
@@ -448,7 +483,7 @@ def EDC(args,sample,spreadE=0.03,disp=False,plot=False,figname='',show=False):
 
     amp1, amp2 = result.best_values['amp1'], result.best_values['amp2']
     cen1, cen2 = (result.best_values['cen1'], result.best_values['cen2']) if amp1>amp2 else (result.best_values['cen2'], result.best_values['cen1'])
-    if result.success and amp1>1e-2 and amp2>1e-2 and result.redchi<1e-2 and goodBottomPosition:
+    if result.success and amp1>1e-3 and amp2>1e-3 and result.redchi<1e-2 and goodBottomPosition:
         return cen1, cen2
     else:
         if disp:
