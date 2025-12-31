@@ -67,7 +67,7 @@ if disp:
 
 # Import DFT values of tb parameters
 DFT_values = np.array(cfs.initial_pt[TMD])  #DFT values of tb parameters. Order is: e, t, offset, SOC
-DFT_values = np.load("Figures/result_WSe2.npy")
+#DFT_values = np.load("Figures/result_WSe2.npy")
 if 0:   # Plot bands and orbital of DFT
     HSO = cfs.find_HSO(DFT_values[-2:])
     DFT_en = cfs.energy(DFT_values,HSO,data,spec_args[0])
@@ -147,7 +147,8 @@ rand_vals = np.append(rand_vals,np.ones(3))
 initial_point_full = np.append(DFT_values[:-3],off_SOC_pars)#*rand_vals    #eps,t,off,lam
 #
 Bounds_full = fsm.get_bounds(initial_point_full,spec_args)
-if spec_args[3]==0:
+if fit_off_SOC_separately:
+    print("Fitting only tb (excluding SOC)")
     HSO = cfs.find_HSO(off_SOC_pars[-2:])
     args_chi2 = (data,HSO,off_SOC_pars[-2:],machine,spec_args,max_eval)
     Bounds = Bounds_full[:-2]

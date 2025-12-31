@@ -27,7 +27,7 @@ def energy(parameters,HSO,data,TMD,bands=[]):
     kpts = data.shape[0]
     all_H = H_monolayer(np.array(data[:,1:3]),*args_H)
     if len(bands)==0:
-        nbands = 4 if TMD=='WSe2' else 4
+        nbands = 6 if TMD=='WSe2' else 2
     else:
         nbands = len(bands)
     ens = np.zeros((nbands,kpts))
@@ -373,7 +373,7 @@ def get_kList(cut,kPts):
 
 """Utility functions"""
 
-def getFilename(*args,dirname='',extension='',floatPrecision=4):
+def getFilename(*args,dirname='',extension='',floatPrecision=6):
     """ Get filename for set of parameters.
 
     Parameters
@@ -826,16 +826,26 @@ class monolayerData():
     def __init__(self,TMD):
         self.TMD = TMD
         self.paths = ['KGK','KMKp']
+        self.nbands = {'WSe2':{'KGK':6,'KMKp':4},'WS2':{'KGK':2,'KMKp':2}}[TMD]
         self.raw_data = self._getRaw()
         self.sym_data = self._getSym()
         self.kpoints_sym = self._getKpoints()
         self.offset = {'WSe2':-0.052,'WS2':0.01}
 
     def _getRaw(self):
+        """ Raw data comes from:
+            'Inputs/' folder for the first two bands of KGK
+            'Inputs/fitM/' folder for the KMKp path -> 2 bands close to K and 4 bands close to M
+            'Inputs/fitGammaLower/' folder for the additional 4 bands below G in the KGK path -> these are ony for negative momenta so no need to symmetrize them.
+        """
         raw = {}
         for path in self.paths:
             raw[path] = []
-            nbands = 6 if (self.TMD=='WSe2' and path=='KMKp') else 2
+            nbands = self.nbands[path]
+            if nbands==6:
+                nbands = 2
+            if nbands==4:
+                nbands = 6
             for ib in range(nbands):
                 if nbands==2:
                     fn = Path('Inputs/'+path+'_'+self.TMD+'_band%d'%(ib+1)+'.txt')
@@ -860,15 +870,33 @@ class monolayerData():
                     raw[path][oldb] = np.concatenate([raw[path][oldb],temp])
             if (self.TMD=='WSe2' and path=='KMKp'):
                 raw[path][0], raw[path][1] = raw[path][1], raw[path][0]
+            if path=='KGK':
+                for ib in range(4):
+                    fn = Path('Inputs/fitGammaLower/'+'Band%d'%(ib+1)+'.txt')
+                    with open(fn,'r') as f:
+                        lines = f.readlines()
+                    temp = []
+                    for il in range(len(lines)):
+                        k,e = lines[il].split('\t')
+                        #print(k,e)
+                        if e=='NAN\n' or e=='\n':
+                            temp.append([float(k),np.nan])
+                        else:
+                            temp.append([abs(float(k)),float(e)])
+                    temp = np.array(temp)
+                    raw[path].append(temp)
         return raw
 
     def _getSym(self):
         sym = {}
         for path in self.paths:
             sym[path] = []
-            nbands = 4 if (self.TMD=='WSe2' and path=='KMKp') else 2
+            nbands = self.nbands[path]
             for ib in range(nbands):
                 rd = self.raw_data[path][ib]
+                if ib>=2 and path=='KGK':
+                    sym[path].append(self.raw_data[path][ib])
+                    continue
                 nk = rd.shape[0]
                 nkl = nk//2
                 nkr = nk//2 if nk%2==0 else nk//2+1
@@ -898,7 +926,7 @@ class monolayerData():
         Kp = np.array([2*np.pi/3,2*np.pi/np.sqrt(3)])/dic_params_a_mono[self.TMD]
         for path in self.paths:
             kpts[path] = []
-            nbands = 4 if (self.TMD=='WSe2' and path=='KMKp') else 2
+            nbands = self.nbands[path]
             for ib in range(nbands):
                 sd = self.sym_data[path][ib]
                 temp = np.zeros((sd.shape[0],2))
@@ -968,7 +996,7 @@ class dataWSe2(monolayerData):
 
     def getFitData(self,ptsPerPath=(20,20,20)):
         """ Here we compute the final array to give for the fitting.
-        It has (ptsPerPath * #paths) elements, each with 7 entries:
+        It has (ptsPerPath * #paths) elements, each with 9 entries:
             - |k| (shfted by |K| for the KMKp path -> for plotting)
             - kx
             - ky
@@ -976,13 +1004,16 @@ class dataWSe2(monolayerData):
             - energy band 2
             - energy band 3
             - energy band 4
-        Bands 3 and 4 are NAN except for |k| close to M.
+            - energy band 5
+            - energy band 6
+        Bands 3 and 4 are NAN except for |k| close to M and to Gamma.
+        Bands 5 and 6 just close to Gamma.
         """
         M = np.array([np.pi,np.pi/np.sqrt(3)])/dic_params_a_mono[self.TMD]
         K = np.array([4*np.pi/3,0])/dic_params_a_mono[self.TMD]
         modM = la.norm(M-K)
         modK = la.norm(K)
-        data = np.zeros((ptsPerPath[0]+ptsPerPath[1]+ptsPerPath[2],7))
+        data = np.zeros((ptsPerPath[0]+ptsPerPath[1]+ptsPerPath[2],9))
         # KGK
         sd = self.sym_data[self.paths[0]]
         kk = self.kpoints_sym[self.paths[0]]
@@ -993,7 +1024,20 @@ class dataWSe2(monolayerData):
         data[:ptsPerPath[0],2] = np.interp( kvals, sd[0][:,0], kk[0][:,1] )
         data[:ptsPerPath[0],3] = np.interp( kvals, sd[0][:,0], sd[0][:,1] )
         data[:ptsPerPath[0],4] = np.interp( kvals, sd[1][:,0], sd[1][:,1] )
-        data[:ptsPerPath[0],5:7] = np.nan
+        # bands 34
+        mask34 = kvals <= sd[2][0,0]        #ordered backwards
+        kvals34 = kvals[mask34]
+        maskNan = ~np.isnan(sd[3][::-1,1])
+        data[:kvals34.shape[0],5] = np.interp( kvals34, sd[3][::-1,0][maskNan], sd[3][::-1,1][maskNan] )
+        data[:kvals34.shape[0],6] = np.interp( kvals34, sd[2][::-1,0], sd[2][::-1,1] )
+        data[kvals34.shape[0]:ptsPerPath[0],5:7] = np.nan
+        # bands 56
+        mask56 = kvals <= sd[4][0,0]        #ordered backwards
+        kvals56 = kvals[mask56]
+        maskNan = ~np.isnan(sd[4][::-1,1])
+        data[:kvals56.shape[0],7] = np.interp( kvals56, sd[5][::-1,0], sd[5][::-1,1] )
+        data[:kvals56.shape[0],8] = np.interp( kvals56, sd[4][::-1,0][maskNan], sd[4][::-1,1][maskNan] )
+        data[kvals56.shape[0]:ptsPerPath[0],7:9] = np.nan
         # KMKp
         sd = self.sym_data[self.paths[1]]
         kk = self.kpoints_sym[self.paths[1]]
@@ -1004,8 +1048,8 @@ class dataWSe2(monolayerData):
         data[ptsPerPath[0]:ptsPerPath[0]+ptsPerPath[1],2] = np.interp( kvals, sd[0][:,0], kk[0][:,1] )
         data[ptsPerPath[0]:ptsPerPath[0]+ptsPerPath[1],3] = np.interp( kvals, sd[0][:,0], sd[0][:,1] )
         data[ptsPerPath[0]:ptsPerPath[0]+ptsPerPath[1],4] = np.interp( kvals, sd[1][:,0], sd[1][:,1] )
-        data[ptsPerPath[0]:ptsPerPath[0]+ptsPerPath[1],5:7] = np.nan
-
+        data[ptsPerPath[0]:ptsPerPath[0]+ptsPerPath[1],5:9] = np.nan
+        # KMKp close to M
         kmin,kmax = (sd[3][-1,0],sd[3][0,0])
         kvals = np.linspace(kmin,kmax,ptsPerPath[2])
         data[ptsPerPath[0]+ptsPerPath[1]:,0] = modK + modM - kvals
@@ -1015,6 +1059,7 @@ class dataWSe2(monolayerData):
         data[ptsPerPath[0]+ptsPerPath[1]:,4] = np.interp( kvals, sd[1][:,0], sd[1][:,1] )
         data[ptsPerPath[0]+ptsPerPath[1]:,5] = np.interp( kvals, sd[2][:,0], sd[2][:,1] )
         data[ptsPerPath[0]+ptsPerPath[1]:,6] = np.interp( kvals, sd[3][:,0], sd[3][:,1] )
+        data[ptsPerPath[0]+ptsPerPath[1]:,7:9] = np.nan
 
         # Order bands of index 1 and 2 which shifts at some point
         pp = ptsPerPath[0]+ptsPerPath[1]

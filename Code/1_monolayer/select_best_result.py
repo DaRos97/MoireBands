@@ -115,8 +115,8 @@ tb_en = cfs.energy(result_pars,cfs.find_HSO(result_pars[-2:]),reduced_data,TMD)
 dft_en = cfs.energy(cfs.initial_pt[TMD],cfs.find_HSO(result_pars[-2:]),reduced_data,TMD)
 #
 title = 'Final pars '+TMD+': P='+"{:.3f}".format(pars_selected[0])+', rp='+"{:.3f}".format(pars_selected[1])+', rl='+"{:.3f}".format(pars_selected[2])
-fsm.plot_bands(tb_en,reduced_data,dft_en,title=title,show=True,TMD=TMD)
-fsm.plot_parameters(result_pars,spec_args,title=title,show=True)
+#fsm.plot_bands(tb_en,reduced_data,dft_en,title=title,show=True,TMD=TMD)
+#fsm.plot_parameters(result_pars,spec_args,title=title,show=True)
 fsm.plot_orbitals(result_pars,title=title,show=True,TMD=TMD)
 
 #Save

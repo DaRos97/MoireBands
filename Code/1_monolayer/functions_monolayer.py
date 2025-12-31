@@ -23,13 +23,13 @@ def get_spec_args(ind):
     # Parameters of chi2
     lPpar = list(np.linspace(0.01,0.09,5))#[0.01,0.05,0.1]         #coefficient of parameters distance from DFT chi2
     lPbc = [100,]        #coefficient of band content chi2
-    lPdk = [20,]        #coefficient of distance at gamma and K chi2
-    lPgap = [0.1,0.2]
+    lPdk = [20,100]        #coefficient of distance at gamma and K chi2
+    lPgap = [0.1,0.5,1]
     # Bounds
     lrp = [0.2,]         #tb bounds for general orbitals
     lrpz = [0.2,0.5]         #tb bounds for z orbitals -> indices 6 and 9
     lrpxy = [0.2,0.5,1]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
-    lrl = [0.,]          #SOC bounds
+    lrl = [0.,0.2]          #SOC bounds
     # Points in fit
     ptsPerPath = [(40,15,10),]
     listPar = list(itertools.product(*[lTMDs,lPpar,lPbc,lPdk,lPgap,lrp,lrpz,lrpxy,lrl,ptsPerPath]))
@@ -111,7 +111,7 @@ def chi2_tb(pars_tb,*args):
     bc_Kcond = np.absolute( 0.9306-np.absolute(evecs[5,7]) )**2
     band_content = Pbc*(bc_Gval + bc_Kval + bc_Kcond)
     result += band_content
-    # chi2 of distance at Gamma and K
+    # chi2 of distance at Gamma and K and bands 1-2 point close to M -> specific for 10 pts
     chiDK = 0
     for i in range(2):  #2 bands
         indexes = [0,np.argmax(data[~np.isnan(data[:,3]),3])]    #indexes of Gamma (first element) and K /(highest energy)
@@ -119,7 +119,7 @@ def chi2_tb(pars_tb,*args):
             chiDK += Pdk*(np.absolute(tb_en[i,indexes[j]]-data[indexes[j],3+i])**2)
         chiDK += Pdk*(np.absolute(tb_en[1+i,-4]-data[-4,4+i])**2)
     result += chiDK
-    # chi2 of band gap at G and K and M
+    # chi2 of band gap (to conduction band) at G and K and M
     Kpts = [0,spec_args[-1][0],-1]
     DFT_pars = np.array(cfs.initial_pt[spec_args[0]])
     enKDFT = cfs.energy(DFT_pars,cfs.find_HSO(DFT_pars[-2:]),data[Kpts,:],spec_args[0],bands=[13,14]) #
@@ -196,17 +196,15 @@ def plot_bands(tb_en,data,spec_args=None,title='',figname='',show=False,TMD='WSe
         xline = data[targ,0]
         ax.plot(xline,data[targ,3+b],color='r',marker='o',label='ARPES' if b == 0 else '',zorder=1,
                 markersize=10,mew=1,mec='k',mfc='firebrick')
-#        ax.plot(reduced_data[b][:,0],reduced_data[b][:,1],color='r',marker='*',label='new symm' if b == 0 else '')
         ax.plot(xline,tb_en[b,targ],color='skyblue',marker='s',ls='-',label='Fit' if b == 0 else '',zorder=3,
                 markersize=10,mew=1,mec='k',mfc='deepskyblue')
-#        ax.plot(reduced_data[b][targ,0],tb_en[b,targ],color='g',marker='^',ls='-',label='fit' if b == 0 else '')
-        if 1:
+        if 0:
             ax.plot(xline,DFT_en[b,targ],color='g',marker='^',ls='-',label='DFT' if b == 0 else '',zorder=2,
                     markersize=10,mew=1,mec='k',mfc='darkgreen')
     #
-    ks = [data[0,0],4/3*np.pi/cfs.dic_params_a_mono[TMD],xline[-1][0]]
+    ks = [data[0,0],4/3*np.pi/cfs.dic_params_a_mono[TMD],data[-1,0]]
     ax.set_xticks(ks,[r"$\Gamma$",r"$K$",r"$M$"],size=20)
-    for i in range(3):
+    for i in range(len(ks)):
         ax.axvline(ks[i],color='k',lw=0.5)
     ax.set_xlim(ks[0],ks[-1])
     ax.set_ylabel('energy (eV)',size=30)

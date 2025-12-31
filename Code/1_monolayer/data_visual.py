@@ -16,17 +16,17 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 TMD = 'WSe2'
-ptsPerPath = (20,20) if TMD=="WS2" else (20,20,20)
+ptsPerPath = (20,20) if TMD=="WS2" else (40,20,20)
 
 data = cfs.dataWS2() if TMD=='WS2' else cfs.dataWSe2()
 paths = data.paths
 raw_data = data.raw_data
 
-if 1:   #Plot raw
+if 0:   #Plot raw
     fig,axs = plt.subplots(1,2,figsize=(20,10))
     for ip,path in enumerate(paths):
         ax = axs[ip]
-        nbands = 4 if (TMD=='WSe2' and path=='KMKp') else 2
+        nbands = data.nbands[path]
         for ib in range(nbands):
             ax.plot(
                 raw_data[path][ib][:,0],
@@ -44,11 +44,11 @@ if 1:   #Plot raw
 """ Symmetrize """
 sym_data = data.sym_data
 
-if 1:   #Plot symm
+if 0:   #Plot symm
     fig,axs = plt.subplots(1,2,figsize=(20,10))
     for ip,path in enumerate(paths):
         ax = axs[ip]
-        nbands = 4 if (TMD=='WSe2' and path=='KMKp') else 2
+        nbands = data.nbands[path]
         for ib in range(nbands):
             ax.plot(
                 sym_data[path][ib][:,0],
@@ -68,7 +68,7 @@ mer_data = data.getFitData(ptsPerPath)
 if 1:   #Plot mer
     fig = plt.figure(figsize=(20,10))
     ax = fig.add_subplot()
-    nbands = 4 if TMD=="WSe2" else 2
+    nbands = 6 if TMD=='WSe2' else 2
     for ib in range(nbands):
         ax.plot(
             mer_data[:,0],
@@ -79,6 +79,7 @@ if 1:   #Plot mer
         )
 
     plt.suptitle("Merged and reduced data "+TMD,size=30)
+    plt.legend()
     fig.tight_layout()
 
 

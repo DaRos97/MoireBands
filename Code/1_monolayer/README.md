@@ -23,9 +23,10 @@ Usually the minimization does not finish so we save the intermediate results.
 
 The final function we minimize has:
 - bands distance from experiment one -> standard chi2 with coefficient 1
-- distance of fitting parameters wrt to DFT ones with coefficient P -> best at 0.05 (depends on number of considered momentum points, here 1/13)
+- distance of fitting parameters wrt to DFT ones with coefficient P  #-> best at 0.05 (depends on number of considered momentum points, here 1/13)
 - distance of Gamma and K point of the two bands from the experiment with coefficient Pdk=20
 - orbital content at Gamma and K to be the DFT one with coefficient Pbc=10
+- gap difference wrt DFT one, to avoid completely irrealistic values -> maybe better to put the actual gap value at K (to look in the literature)
 
 We add `rp` as the percentage max distance from the DT parameters -> best at 50%.
 

@@ -132,9 +132,6 @@ def plotOrbitalContent(par_values,TMD,figname='',show=False):
 
     fig.tight_layout()
 
-#    ttt = 'dft' if useDFT else 'fit'
-#    figname = "/home/dario/Desktop/git/MoireBands/FinalFigures/OrbitalContent"+TMD+'_'+ttt+".png"
-#    fig.savefig(figname)
     if figname!='':
         print("Saving figure: "+figname)
         fig.savefig(figname)
