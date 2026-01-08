@@ -68,6 +68,7 @@ if disp:
 # Import DFT values of tb parameters
 DFT_values = np.array(cfs.initial_pt[TMD])  #DFT values of tb parameters. Order is: e, t, offset, SOC
 #DFT_values = np.load("Figures/result_WSe2.npy")
+#DFT_values = np.load("Figures/result_newyear_0.01_100_20_0.5_0.2_0.2_1_0.2.npy")
 if 0:   # Plot bands and orbital of DFT
     HSO = cfs.find_HSO(DFT_values[-2:])
     DFT_en = cfs.energy(DFT_values,HSO,data,spec_args[0])

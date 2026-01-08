@@ -21,10 +21,10 @@ indPxy = [4,6,13,14,16,17,25,27,33,35,39]
 def get_spec_args(ind):
     lTMDs = ["WSe2", ]#cfs.TMDs    #TMDs
     # Parameters of chi2
-    lPpar = list(np.linspace(0.01,0.09,5))#[0.01,0.05,0.1]         #coefficient of parameters distance from DFT chi2
-    lPbc = [100,]        #coefficient of band content chi2
-    lPdk = [20,100]        #coefficient of distance at gamma and K chi2
-    lPgap = [0.1,0.5,1]
+    lPpar = [0.01,0.05,0.1]         #coefficient of parameters distance from DFT chi2
+    lPbc = [10,100,]        #coefficient of band content chi2
+    lPdk = [20,]        #coefficient of distance at gamma and K and M-crossing chi2
+    lPgap = [0.1,1,]
     # Bounds
     lrp = [0.2,]         #tb bounds for general orbitals
     lrpz = [0.2,0.5]         #tb bounds for z orbitals -> indices 6 and 9
@@ -95,7 +95,7 @@ def chi2_tb(pars_tb,*args):
     # chi2 of parameters distance
     par_dis = Ppar*compute_parameter_distance(pars_tb,spec_args[0])
     result += par_dis
-    # chi2 of band content in Gamma valence, K valence and K conduction bands
+    # chi2 of orbital band content in Gamma valence, K valence and K conduction bands
     args_H = (cfs.find_t(full_pars),cfs.find_e(full_pars),HSO,cfs.dic_params_a_mono[spec_args[0]],full_pars[-3])
     k_pts = np.array([
         np.zeros(2),        #Gamma
@@ -108,7 +108,7 @@ def chi2_tb(pars_tb,*args):
     ## K
     evals,evecs = np.linalg.eigh(Ham[1,:11,:11])
     bc_Kval = 1-(np.absolute( (evecs[7,6]+1j*evecs[6,6])/np.sqrt(2) )**2 + np.absolute( -(evecs[9,6]+1j*evecs[10,6])/np.sqrt(2) )**2 )
-    bc_Kcond = np.absolute( 0.9306-np.absolute(evecs[5,7]) )**2
+    bc_Kcond = np.absolute( 0.9306-np.absolute(evecs[5,7])**2 )
     band_content = Pbc*(bc_Gval + bc_Kval + bc_Kcond)
     result += band_content
     # chi2 of distance at Gamma and K and bands 1-2 point close to M -> specific for 10 pts
@@ -183,7 +183,7 @@ def plotResults(pars,ens,data,spec_args,machine,result='',dn='',show=False):
     plot_parameters(pars,spec_args,title="chi2: %.8f"%result,figname=fig2 if not show else '',show=False)
     #
     fig3 = cfs.getFilename(('orbitals',*spec_args),dirname=Dn,extension='.png')
-    plot_orbitalContent(pars,spec_args[0],spec_args=spec_args,figname=fig3 if not show else '',show=show)
+    plot_orbitalContent(pars,spec_args[0],spec_args=spec_args,title="chi2: %.8f"%result,figname=fig3 if not show else '',show=show)
 
 def plot_bands(tb_en,data,spec_args=None,title='',figname='',show=False,TMD='WSe2'):
     DFT_pars = np.array(cfs.initial_pt[TMD])
@@ -220,15 +220,15 @@ def plot_bands(tb_en,data,spec_args=None,title='',figname='',show=False,TMD='WSe
         box_dic = dict(boxstyle='round',facecolor='white',alpha=1)
         ax.text(
             0.05,0.85,
-            "Bounds of parameters:\n"+"z:    %d"%(rpz*100) + "%\n"+"xy:   %d"%(rpxy*100) + "%\n"+"SOC:  %d"%(rl*100) + "%\n"+"others:%d"%(rp*100)+"%",
+            "Bounds of parameters:\n"+"gen:%d"%(rp*100)+"%\n"+"z:    %d"%(rpz*100) + "%\n"+"xy:   %d"%(rpxy*100) + "%\n"+"SOC:  %d"%(rl*100),
             bbox = box_dic,
             transform=ax.transAxes,
             fontsize=15
         )
-        Ppar,Pgap = spec_args[1], spec_args[4]
+        Ppar,Pbc,Pdk,Pgap = spec_args[1:5]
         ax.text(
-            0.3,0.9,
-            "Chi2 parameters:\n"+"Ppar:%.4f"%Ppar + "\n"+"Pgap:%.4f"%Pgap,
+            0.3,0.83,
+            "Chi2 parameters:\n"+"Ppar:  %.3f"%Ppar + "\n"+"Pbc:  %d"%Pbc + "\n"+"Pdk:  %d"%Pdk + "\n"+"Pgap:  %.3f"%Pgap,
             bbox = box_dic,
             transform=ax.transAxes,
             fontsize=15
@@ -314,7 +314,7 @@ def plot_parameters(full_pars,spec_args,title='',figname='',show=False):
     if show:
         plt.show()
 
-def plot_orbitalContent(full_pars,TMD,spec_args=None,figname='',show=False):
+def plot_orbitalContent(full_pars,TMD,spec_args=None,title='',figname='',show=False):
     """ Parameters cut: G-K-M-G """
     Ngk = 200
     Nkm = int(Ngk/2)
@@ -414,16 +414,16 @@ def plot_orbitalContent(full_pars,TMD,spec_args=None,figname='',show=False):
         rp,rpz,rpxy,rl = spec_args[5:9]
         box_dic = dict(boxstyle='round',facecolor='white',alpha=1)
         ax.text(
-            0.05,0.85,
+            0.45,0.87,
             "Bounds of parameters:\n"+"z:    %d"%(rpz*100) + "%\n"+"xy:   %d"%(rpxy*100) + "%\n"+"SOC:  %d"%(rl*100) + "%\n"+"others:%d"%(rp*100)+"%",
             bbox = box_dic,
             transform=ax.transAxes,
             fontsize=15
         )
-        Ppar,Pgap = spec_args[1], spec_args[4]
+        Ppar,Pbc,Pdk,Pgap = spec_args[1:5]
         ax.text(
-            0.7,0.9,
-            "Chi2 parameters:\n"+"Ppar:%.4f"%Ppar + "\n"+"Pgap:%.4f"%Pgap,
+            0.05,0.5,
+            "Chi2 parameters:\n"+"Ppar:  %.3f"%Ppar + "\n"+"Pbc:  %d"%Pbc + "\n"+"Pdk:  %d"%Pdk + "\n"+"Pgap:  %.3f"%Pgap,
             bbox = box_dic,
             transform=ax.transAxes,
             fontsize=15
@@ -431,6 +431,8 @@ def plot_orbitalContent(full_pars,TMD,spec_args=None,figname='',show=False):
 
     fig.tight_layout()
 
+    if not title=='':
+        ax.set_title(title,size=13)
     if figname!='':
         print("Saving figure: "+figname)
         fig.savefig(figname)
