@@ -35,14 +35,15 @@ for folder in data_dn.glob("temp*"):
         ptsPerPath = tuple([int(tok) for tok in tokens[-3:]])
         values.append(ptsPerPath)
         spec_args = tuple(values)
-        s_a.append(spec_args)
         # Tight-binding parameters
         npy_file = next(folder.glob("*.npy"), None)
-        tb = np.load(npy_file)
-        pars.append(tb)
-        # Chi2
-        chi2 = float(npy_file.name.split('_')[1][:-4])
-        c2.append(chi2)
+        if not npy_file is None:
+            s_a.append(spec_args)
+            tb = np.load(npy_file)
+            pars.append(tb)
+            # Chi2
+            chi2 = float(npy_file.name.split('_')[1][:-4])
+            c2.append(chi2)
 
 # Sort chi2 and corresponding parameters and spec_args
 Npars =len(c2)

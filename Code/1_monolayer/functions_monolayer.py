@@ -22,14 +22,14 @@ def get_spec_args(ind):
     lTMDs = ["WSe2", ]#cfs.TMDs    #TMDs
     # Parameters of chi2
     lPpar = [0,0.01,0.1,1]         #coefficient of parameters distance from DFT chi2
-    lPbc = [10,100]        #coefficient of band content chi2
+    lPbc = [1,10,50]        #coefficient of band content chi2
     lPdk = [20,]        #coefficient of distance at gamma and K and M-crossing chi2
     lPgap = [1,]
     # Bounds
-    lrp = [0.2,]         #tb bounds for general orbitals
-    lrpz = [0.2,0.5,1]         #tb bounds for z orbitals -> indices 6 and 9
+    lrp = [0.2,0.5]         #tb bounds for general orbitals
+    lrpz = [0.2,0.5,1,2]         #tb bounds for z orbitals -> indices 6 and 9
     lrpxy = [0.5,1,2,]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
-    lrl = [0.2]          #SOC bounds
+    lrl = [0.2,0.5]          #SOC bounds
     # Points in fit
     ptsPerPath = [(40,15,10),]
     listPar = list(itertools.product(*[lTMDs,lPpar,lPbc,lPdk,lPgap,lrp,lrpz,lrpxy,lrl,ptsPerPath]))
@@ -97,9 +97,13 @@ def chi2_tb(pars_tb,*args):
     result += par_dis
     # chi2 of orbital band content in Gamma valence, K valence and K conduction bands
     args_H = (cfs.find_t(full_pars),cfs.find_e(full_pars),HSO,cfs.dic_params_a_mono[spec_args[0]],full_pars[-3])
+    b2 = 4*np.pi/np.sqrt(3)/cfs.dic_params_a_mono[spec_args[0]] * np.array([0,1])
+    b1 = cfs.R_z(-np.pi/3) @ b2
+    M = b1/2
     k_pts = np.array([
         np.zeros(2),        #Gamma
-        cfs.R_z(np.pi/3)@np.array([4/3*np.pi/cfs.dic_params_a_mono[spec_args[0]],0])     #K
+        cfs.R_z(np.pi/3)@np.array([4/3*np.pi/cfs.dic_params_a_mono[spec_args[0]],0]),     #K
+        M,          #M
     ])
     Ham = cfs.H_monolayer(k_pts,*args_H)
     ## Gamma
@@ -109,7 +113,12 @@ def chi2_tb(pars_tb,*args):
     evals,evecs = np.linalg.eigh(Ham[1,:11,:11])
     bc_Kval = 1-(np.absolute( (evecs[7,6]+1j*evecs[6,6])/np.sqrt(2) )**2 + np.absolute( -(evecs[9,6]+1j*evecs[10,6])/np.sqrt(2) )**2 )
     bc_Kcond = np.absolute( 0.9306-np.absolute(evecs[5,7])**2 )
-    band_content = Pbc*(bc_Gval + bc_Kval + bc_Kcond)
+    ## M
+    evals,evecs = np.linalg.eigh(Ham[2,:11,:11])
+    bc_M = 0
+    for b in [3,4,5,6]:     #top 4 bands because they do not change with interlayer coupling -> no z-orbitals
+        bc_M += np.absolute(evecs[5,b])**2 + np.absolute(evecs[8,b])**2
+    band_content = Pbc*(bc_Gval + bc_Kval + bc_Kcond + bc_M)
     result += band_content
     # chi2 of distance at Gamma and K and bands 1-2 point close to M -> specific for 10 pts
     chiDK = 0
