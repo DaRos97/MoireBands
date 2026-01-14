@@ -21,15 +21,15 @@ indPxy = [4,6,13,14,16,17,25,27,33,35,39]
 def get_spec_args(ind):
     lTMDs = ["WSe2", ]#cfs.TMDs    #TMDs
     # Parameters of chi2
-    lPpar = [0,0.01,0.1,1]         #coefficient of parameters distance from DFT chi2
-    lPbc = [1,10,50]        #coefficient of band content chi2
+    lPpar = [0.01,0.1,1]         #coefficient of parameters distance from DFT chi2
+    lPbc = [1,10]        #coefficient of band content chi2
     lPdk = [20,]        #coefficient of distance at gamma and K and M-crossing chi2
-    lPgap = [1,]
+    lPgap = [0.5,1]
     # Bounds
-    lrp = [0.2,0.5]         #tb bounds for general orbitals
+    lrp = [0.2]         #tb bounds for general orbitals
     lrpz = [0.2,0.5,1,2]         #tb bounds for z orbitals -> indices 6 and 9
-    lrpxy = [0.5,1,2,]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
-    lrl = [0.2,0.5]          #SOC bounds
+    lrpxy = [0.2,0.5,1,2,]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
+    lrl = [0.2]          #SOC bounds
     # Points in fit
     ptsPerPath = [(40,15,10),]
     listPar = list(itertools.product(*[lTMDs,lPpar,lPbc,lPdk,lPgap,lrp,lrpz,lrpxy,lrl,ptsPerPath]))
@@ -106,19 +106,53 @@ def chi2_tb(pars_tb,*args):
         M,          #M
     ])
     Ham = cfs.H_monolayer(k_pts,*args_H)
+    # Ham is 0 to 21. TVB is 13
     ## Gamma
-    evals,evecs = np.linalg.eigh(Ham[0,:11,:11])
-    bc_Gval = 1-(np.absolute(evecs[5,6])**2 + np.absolute(evecs[8,6])**2 )      # d0 and p0e
+    evals,evecs = np.linalg.eigh(Ham[0])
+    bc_Gval = 1.869-(
+        np.absolute(evecs[5,13])**2         #p_ze
+        + np.absolute(evecs[8,13])**2       #d_z2
+        + np.absolute(evecs[16,13])**2
+        + np.absolute(evecs[19,13])**2
+        + np.absolute(evecs[5,12])**2       #p_ze
+        + np.absolute(evecs[8,12])**2       #d_z2
+        + np.absolute(evecs[16,12])**2
+        + np.absolute(evecs[19,12])**2
+    )
     ## K
-    evals,evecs = np.linalg.eigh(Ham[1,:11,:11])
-    bc_Kval = 1-(np.absolute( (evecs[7,6]+1j*evecs[6,6])/np.sqrt(2) )**2 + np.absolute( -(evecs[9,6]+1j*evecs[10,6])/np.sqrt(2) )**2 )
-    bc_Kcond = np.absolute( 0.9306-np.absolute(evecs[5,7])**2 )
+    evals,evecs = np.linalg.eigh(Ham[1])
+    bc_Kval = 2-(
+        np.absolute( (evecs[7,13]+1j*evecs[6,13])/np.sqrt(2) )**2       #d_xy and d_x2y2
+        + np.absolute( -(evecs[9,13]+1j*evecs[10,13])/np.sqrt(2) )**2   #p_xe and p_ye
+        + np.absolute( (evecs[18,13]+1j*evecs[17,13])/np.sqrt(2) )**2       #d_xy and d_x2y2
+        + np.absolute( -(evecs[20,13]+1j*evecs[21,13])/np.sqrt(2) )**2   #p_xe and p_ye
+        #
+        + np.absolute( (evecs[7,12]+1j*evecs[6,12])/np.sqrt(2) )**2       #d_xy and d_x2y2
+        + np.absolute( -(evecs[9,12]+1j*evecs[10,12])/np.sqrt(2) )**2   #p_xe and p_ye
+        + np.absolute( (evecs[18,12]+1j*evecs[17,12])/np.sqrt(2) )**2       #d_xy and d_x2y2
+        + np.absolute( -(evecs[20,12]+1j*evecs[21,12])/np.sqrt(2) )**2   #p_xe and p_ye
+    )
+    bc_Kcond = 2*0.866 - (
+        np.absolute(evecs[5,14])**2         #d_z2
+        + np.absolute(evecs[16,14])**2
+        + np.absolute(evecs[5,15])**2
+        + np.absolute(evecs[16,15])**2
+    )
     ## M
-    evals,evecs = np.linalg.eigh(Ham[2,:11,:11])
-    bc_M = 0
-    for b in [3,4,5,6]:     #top 4 bands because they do not change with interlayer coupling -> no z-orbitals
-        bc_M += np.absolute(evecs[5,b])**2 + np.absolute(evecs[8,b])**2
-    band_content = Pbc*(bc_Gval + bc_Kval + bc_Kcond + bc_M)
+    evals,evecs = np.linalg.eigh(Ham[2])
+    if 0:
+        for b in range(4):
+            print("Valence %d"%b)
+            for i in range(22):
+                print("Index %d: %.4f"%(i,np.absolute(evecs[i,13-b])**2))
+        exit()
+    bc_Mval = 0
+    for b in range(4):
+        for orb in [2,5,8]:       # p_zo, d_z2, p_ze
+            for soc in[0,11]:
+                bc_Mval += np.absolute(evecs[orb+soc,13-b])**2         #p_ze
+    ## All together
+    band_content = Pbc*(bc_Gval + bc_Kval + bc_Kcond + bc_Mval)
     result += band_content
     # chi2 of distance at Gamma and K and bands 1-2 point close to M -> specific for 10 pts
     chiDK = 0
@@ -180,19 +214,34 @@ def chi2_tb(pars_tb,*args):
         plotResults(np.append(pars_tb,SOC_pars),tb_en,data,spec_args,machine,result,dn='temp',show=False)
     return result
 
-def plotResults(pars,ens,data,spec_args,machine,result='',dn='',show=False):
+def plotResults(pars,ens,data,spec_args,machine,result='',dn='',show=False,which='all'):
+    if which=='all':
+        plot1 = plot2 = plot3 = True
+    else:
+        plot1 = False
+        plot2 = False
+        plot3 = False
+        if 'orb' in which:
+            plot3 = True
+        if 'pars' in which:
+            plot2 = True
+        if 'band' in which:
+            plot1 = True
     home_dn = get_home_dn(machine)
     if dn=='temp':
         Dn = cfs.getFilename(('temp',*spec_args),dirname=home_dn+'Data/')+'/'
     else:
         Dn = home_dn + 'Data/'
-    fig1 = cfs.getFilename(('bands',*spec_args),dirname=Dn,extension='.png')
-    plot_bands(ens,data,spec_args=spec_args,title="chi2: %.8f"%result,figname=fig1 if not show else '',show=False,TMD=spec_args[0])
-    fig2 = cfs.getFilename(('pars',*spec_args),dirname=Dn,extension='.png')
-    plot_parameters(pars,spec_args,title="chi2: %.8f"%result,figname=fig2 if not show else '',show=False)
+    if plot1:
+        fig1 = cfs.getFilename(('bands',*spec_args),dirname=Dn,extension='.png')
+        plot_bands(ens,data,spec_args=spec_args,title="chi2: %.8f"%result,figname=fig1 if not show else '',show=False,TMD=spec_args[0])
+    if plot2:
+        fig2 = cfs.getFilename(('pars',*spec_args),dirname=Dn,extension='.png')
+        plot_parameters(pars,spec_args,title="chi2: %.8f"%result,figname=fig2 if not show else '',show=False)
     #
-    fig3 = cfs.getFilename(('orbitals',*spec_args),dirname=Dn,extension='.png')
-    plot_orbitalContent(pars,spec_args[0],spec_args=spec_args,title="chi2: %.8f"%result,figname=fig3 if not show else '',show=show)
+    if plot3:
+        fig3 = cfs.getFilename(('orbitals',*spec_args),dirname=Dn,extension='.png')
+        plot_orbitalContent(pars,spec_args[0],spec_args=spec_args,title="chi2: %.8f"%result,figname=fig3 if not show else '',show=show)
 
 def plot_bands(tb_en,data,spec_args=None,title='',figname='',show=False,TMD='WSe2'):
     DFT_pars = np.array(cfs.initial_pt[TMD])

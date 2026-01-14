@@ -143,9 +143,10 @@ else:
 Here we fit the rest of the parameters.
 We want a minimization of tb bands vs experiment which penalizes going away from DFT initial values.
 """
-rand_vals = np.random.rand(DFT_values.shape[0]-3)*0.1+0.95 #random value between 0.95 and 1.05 of initial DFT value
-rand_vals = np.append(rand_vals,np.ones(3))
+#rand_vals = np.random.rand(DFT_values.shape[0]-3)*0.1+0.95 #random value between 0.95 and 1.05 of initial DFT value
+#rand_vals = np.append(rand_vals,np.ones(3))
 initial_point_full = np.append(DFT_values[:-3],off_SOC_pars)#*rand_vals    #eps,t,off,lam
+#initial_point_full = DFT_values
 #
 Bounds_full = fsm.get_bounds(initial_point_full,spec_args)
 if fit_off_SOC_separately:
@@ -160,6 +161,10 @@ else:
     Bounds = Bounds_full
     initial_point = initial_point_full
     func = fsm.chi2_full
+    if 0:
+        print("Test run")
+        func(initial_point,*args_chi2)
+        exit()
 #
 if 1:
     result = minimize(func,
