@@ -21,8 +21,8 @@ indPxy = [4,6,13,14,16,17,25,27,33,35,39]
 def get_spec_args(ind):
     lTMDs = ["WSe2", ]#cfs.TMDs    #TMDs
     # Parameters of chi2
-    lPpar = [0.01,0.1,1]         #coefficient of parameters distance from DFT chi2
-    lPbc = [1,10]        #coefficient of band content chi2
+    lPpar = [0,0.01,0.1,1]         #coefficient of parameters distance from DFT chi2
+    lPbc = [5,10]        #coefficient of band content chi2
     lPdk = [20,]        #coefficient of distance at gamma and K and M-crossing chi2
     lPgap = [0.5,1]
     # Bounds
@@ -84,7 +84,7 @@ def chi2_tb(pars_tb,*args):
     Ppar, Pbc, Pdk, Pgap = spec_args[1:5]
     full_pars = np.append(pars_tb,SOC_pars)
     # Compute energy of new pars
-    tb_en = cfs.energy(full_pars,HSO,data,spec_args[0])
+    tb_en, cond_en = cfs.energy(full_pars,HSO,data,spec_args[0],conduction=True)
     nbands = tb_en.shape[0]
     result = 0
     # chi2 of bands distance
@@ -162,6 +162,12 @@ def chi2_tb(pars_tb,*args):
             chiDK += Pdk*(np.absolute(tb_en[i,indexes[j]]-data[indexes[j],3+i])**2)
         chiDK += Pdk*(np.absolute(tb_en[1+i,-4]-data[-4,4+i])**2)
     result += chiDK
+    # chi2 of having minimum of conduction at K -> just add 10 if it's not there
+    if np.argmin(cond_en) == spec_args[-1][0]-1:
+        chiCond = 0
+    else:
+        chiCond = 10
+    result += chiCond
     # chi2 of band gap (to conduction band) at G and K and M
     Kpts = [0,spec_args[-1][0],-1]
     DFT_pars = np.array(cfs.initial_pt[spec_args[0]])
