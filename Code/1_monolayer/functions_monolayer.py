@@ -109,7 +109,7 @@ def chi2_tb(pars_tb,*args):
     # Ham is 0 to 21. TVB is 13
     ## Gamma
     evals,evecs = np.linalg.eigh(Ham[0])
-    bc_Gval = 1.869-(
+    bc_Gval = abs(1.869-(
         np.absolute(evecs[5,13])**2         #p_ze
         + np.absolute(evecs[8,13])**2       #d_z2
         + np.absolute(evecs[16,13])**2
@@ -118,10 +118,10 @@ def chi2_tb(pars_tb,*args):
         + np.absolute(evecs[8,12])**2       #d_z2
         + np.absolute(evecs[16,12])**2
         + np.absolute(evecs[19,12])**2
-    )
+    ))
     ## K
     evals,evecs = np.linalg.eigh(Ham[1])
-    bc_Kval = 2-(
+    bc_Kval = abs(2-(
         np.absolute( (evecs[7,13]+1j*evecs[6,13])/np.sqrt(2) )**2       #d_xy and d_x2y2
         + np.absolute( -(evecs[9,13]+1j*evecs[10,13])/np.sqrt(2) )**2   #p_xe and p_ye
         + np.absolute( (evecs[18,13]+1j*evecs[17,13])/np.sqrt(2) )**2       #d_xy and d_x2y2
@@ -131,13 +131,13 @@ def chi2_tb(pars_tb,*args):
         + np.absolute( -(evecs[9,12]+1j*evecs[10,12])/np.sqrt(2) )**2   #p_xe and p_ye
         + np.absolute( (evecs[18,12]+1j*evecs[17,12])/np.sqrt(2) )**2       #d_xy and d_x2y2
         + np.absolute( -(evecs[20,12]+1j*evecs[21,12])/np.sqrt(2) )**2   #p_xe and p_ye
-    )
-    bc_Kcond = 2*0.866 - (
+    ))
+    bc_Kcond = abs(2*0.866 - (
         np.absolute(evecs[5,14])**2         #d_z2
         + np.absolute(evecs[16,14])**2
         + np.absolute(evecs[5,15])**2
         + np.absolute(evecs[16,15])**2
-    )
+    ))
     ## M
     evals,evecs = np.linalg.eigh(Ham[2])
     if 0:
