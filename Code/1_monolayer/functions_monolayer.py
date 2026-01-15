@@ -21,15 +21,15 @@ indPxy = [4,6,13,14,16,17,25,27,33,35,39]
 def get_spec_args(ind):
     lTMDs = ["WSe2", ]#cfs.TMDs    #TMDs
     # Parameters of chi2
-    lPpar = [0,0.01,0.1,1]         #coefficient of parameters distance from DFT chi2
+    lPpar = np.linspace(0.0,1,21)#[0,0.01,0.1,1]         #coefficient of parameters distance from DFT chi2
     lPbc = [5,10]        #coefficient of band content chi2
     lPdk = [20,]        #coefficient of distance at gamma and K and M-crossing chi2
-    lPgap = [0.5,1]
+    lPgap = [1,]
     # Bounds
-    lrp = [0.2]         #tb bounds for general orbitals
-    lrpz = [0.2,0.5,1,2]         #tb bounds for z orbitals -> indices 6 and 9
-    lrpxy = [0.2,0.5,1,2,]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
-    lrl = [0.2]          #SOC bounds
+    lrp = [3,]         #tb bounds for general orbitals
+    lrpz = [3,]         #tb bounds for z orbitals -> indices 6 and 9
+    lrpxy = [3,]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
+    lrl = [0,3,]          #SOC bounds
     # Points in fit
     ptsPerPath = [(40,15,10),]
     listPar = list(itertools.product(*[lTMDs,lPpar,lPbc,lPdk,lPgap,lrp,lrpz,lrpxy,lrl,ptsPerPath]))
@@ -169,16 +169,19 @@ def chi2_tb(pars_tb,*args):
         chiCond = 10
     result += chiCond
     # chi2 of band gap (to conduction band) at G and K and M
-    Kpts = [0,spec_args[-1][0],-1]
+    Kpts = [0,spec_args[-1][0]-1,-1]
     DFT_pars = np.array(cfs.initial_pt[spec_args[0]])
     enKDFT = cfs.energy(DFT_pars,cfs.find_HSO(DFT_pars[-2:]),data[Kpts,:],spec_args[0],bands=[13,14]) #
-    enK = cfs.energy(full_pars,HSO,data[Kpts,:],spec_args[0],bands=[13,14]) #
     gapGDFT = np.absolute(enKDFT[0,0]-enKDFT[1,0])
     gapKDFT = np.absolute(enKDFT[0,1]-enKDFT[1,1])
     gapMDFT = np.absolute(enKDFT[0,2]-enKDFT[1,2])
-    gapG = np.absolute(enK[0,0]-enK[1,0])
-    gapK = np.absolute(enK[0,1]-enK[1,1])
-    gapM = np.absolute(enK[0,2]-enK[1,2])
+    #
+    indG = 0
+    indK = spec_args[-1][0]-1
+    indM = -1
+    gapG = abs(cond_en[indG] - tb_en[0,indG])
+    gapK = abs(cond_en[indK] - tb_en[0,indK])
+    gapM = abs(cond_en[indM] - tb_en[0,indM])
     #
     gap_difference = Pgap * (np.absolute(gapGDFT-gapG) + np.absolute(gapKDFT-gapK) + np.absolute(gapMDFT-gapM) )
     result += gap_difference
