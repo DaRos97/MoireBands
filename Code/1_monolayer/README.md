@@ -55,8 +55,22 @@ The result used now is in big5.zip and saved in new_year result in Figures
 There is another one, the best of big7.zip, which is better but has much larger parameter space and Ppar=0, so very distant from DFT.
 
 ## Mafalda
-big from 1 to 7.
+### WSe2
+big from 1 to 8.
+big9:
+    - Adjusted orbital content with SOC bands instead of just 11 orbitals. Hopefully fixes problem of conduction band.
+big11:
+    - Result of chi2=1.285622 -> good but saturates bounds
+big12:
+    - Very good result for 0.05_5_20_1 3_3_3_0 and 0.05_5_20_1 3_3_3_3
+big13:
+    - Making finer grid in Ppar
+    - 10_3 -> 0.035
+    - 5_3 -> 0.015  -> BEST
+    - 5_0 all kind of ok
+    - 10_0 -> 0.02 
 
+### WS2
 
 
 

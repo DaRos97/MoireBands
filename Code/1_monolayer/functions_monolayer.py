@@ -19,9 +19,9 @@ indPz = [3,5,12,15,19,20,24,26,31,32,34,36,37,38]
 indPxy = [4,6,13,14,16,17,25,27,33,35,39]
 
 def get_spec_args(ind):
-    lTMDs = ["WSe2", ]#cfs.TMDs    #TMDs
+    lTMDs = ["WS2", ]#cfs.TMDs    #TMDs
     # Parameters of chi2
-    lPpar = np.linspace(0.0,1,21)#[0,0.01,0.1,1]         #coefficient of parameters distance from DFT chi2
+    lPpar = np.linspace(0.005,0.1,20)#[0,0.01,0.1,1]         #coefficient of parameters distance from DFT chi2
     lPbc = [5,10]        #coefficient of band content chi2
     lPdk = [20,]        #coefficient of distance at gamma and K and M-crossing chi2
     lPgap = [1,]
@@ -31,7 +31,7 @@ def get_spec_args(ind):
     lrpxy = [3,]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
     lrl = [0,3,]          #SOC bounds
     # Points in fit
-    ptsPerPath = [(40,15,10),]
+    ptsPerPath = [(40,15,10),] if lTMDs[0]=="WSe2" else [(30,15,10),]
     listPar = list(itertools.product(*[lTMDs,lPpar,lPbc,lPdk,lPgap,lrp,lrpz,lrpxy,lrl,ptsPerPath]))
     print("Index %d / %d"%(ind,len(listPar)))
     return listPar[ind]
@@ -109,7 +109,8 @@ def chi2_tb(pars_tb,*args):
     # Ham is 0 to 21. TVB is 13
     ## Gamma
     evals,evecs = np.linalg.eigh(Ham[0])
-    bc_Gval = abs(1.869-(
+    bc_G_DFT = 1.869 if spec_args[0]=="WSe2" else 1.955
+    bc_Gval = abs(bc_G_DFT-(
         np.absolute(evecs[5,13])**2         #p_ze
         + np.absolute(evecs[8,13])**2       #d_z2
         + np.absolute(evecs[16,13])**2
@@ -121,7 +122,8 @@ def chi2_tb(pars_tb,*args):
     ))
     ## K
     evals,evecs = np.linalg.eigh(Ham[1])
-    bc_Kval = abs(2-(
+    bc_Kval_DFT = 2
+    bc_Kval = abs(bc_Kval_DFT-(
         np.absolute( (evecs[7,13]+1j*evecs[6,13])/np.sqrt(2) )**2       #d_xy and d_x2y2
         + np.absolute( -(evecs[9,13]+1j*evecs[10,13])/np.sqrt(2) )**2   #p_xe and p_ye
         + np.absolute( (evecs[18,13]+1j*evecs[17,13])/np.sqrt(2) )**2       #d_xy and d_x2y2
@@ -132,7 +134,8 @@ def chi2_tb(pars_tb,*args):
         + np.absolute( (evecs[18,12]+1j*evecs[17,12])/np.sqrt(2) )**2       #d_xy and d_x2y2
         + np.absolute( -(evecs[20,12]+1j*evecs[21,12])/np.sqrt(2) )**2   #p_xe and p_ye
     ))
-    bc_Kcond = abs(2*0.866 - (
+    bc_Kcond_DFT = 2*0.866 if spec_args[0]=="WSe2" else 1.7176
+    bc_Kcond = abs(bc_Kcond_DFT - (
         np.absolute(evecs[5,14])**2         #d_z2
         + np.absolute(evecs[16,14])**2
         + np.absolute(evecs[5,15])**2
@@ -141,6 +144,10 @@ def chi2_tb(pars_tb,*args):
     ## M
     evals,evecs = np.linalg.eigh(Ham[2])
     if 0:
+        print(bc_Kcond)
+        for i in range(22):
+            print("band %d: %.4f"%(i,np.absolute(evecs[i,14])**2))
+            print("band %d: %.4f"%(i,np.absolute(evecs[i,15])**2))
         for b in range(4):
             print("Valence %d"%b)
             for i in range(22):
@@ -160,7 +167,9 @@ def chi2_tb(pars_tb,*args):
         indexes = [0,np.argmax(data[~np.isnan(data[:,3]),3])]    #indexes of Gamma (first element) and K /(highest energy)
         for j in range(2):  #Gamma and K
             chiDK += Pdk*(np.absolute(tb_en[i,indexes[j]]-data[indexes[j],3+i])**2)
-        chiDK += Pdk*(np.absolute(tb_en[1+i,-4]-data[-4,4+i])**2)
+        # Crossing before M -> only for WSe2
+        if spec_args[0]=="WSe2":        #Specific for points (40,15,10)
+            chiDK += Pdk*(np.absolute(tb_en[1+i,-4]-data[-4,4+i])**2)
     result += chiDK
     # chi2 of having minimum of conduction at K -> just add 10 if it's not there
     if np.argmin(cond_en) == spec_args[-1][0]-1:
@@ -276,10 +285,11 @@ def plot_bands(tb_en,data,spec_args=None,title='',figname='',show=False,TMD='WSe
     ax.set_xlim(ks[0],ks[-1])
     ax.set_ylabel('energy (eV)',size=30)
     label_y = []
-    ticks_y = np.linspace(np.max(data[:,3])+0.2,np.min(data[~np.isnan(data[:,6]),6])-0.2,5)
-    for i in ticks_y:
-        label_y.append("{:.1f}".format(i))
-    ax.set_yticks(ticks_y,label_y,size=20)
+    if data.shape[1]==9:
+        ticks_y = np.linspace(np.max(data[:,3])+0.2,np.min(data[~np.isnan(data[:,6]),6])-0.2,5)
+        for i in ticks_y:
+            label_y.append("{:.1f}".format(i))
+        ax.set_yticks(ticks_y,label_y,size=20)
     plt.legend(fontsize=20)
 
     if not spec_args is None:   #Additional text with parameters
@@ -287,7 +297,7 @@ def plot_bands(tb_en,data,spec_args=None,title='',figname='',show=False,TMD='WSe
         box_dic = dict(boxstyle='round',facecolor='white',alpha=1)
         ax.text(
             0.05,0.85,
-            "Bounds of parameters:\n"+"gen:%d"%(rp*100)+"%\n"+"z:    %d"%(rpz*100) + "%\n"+"xy:   %d"%(rpxy*100) + "%\n"+"SOC:  %d"%(rl*100),
+            "Bounds of parameters:\n"+"gen:  %d"%(rp*100)+"%\n"+"z:      %d"%(rpz*100) + "%\n"+"xy:    %d"%(rpxy*100) + "%\n"+"SOC:  %d"%(rl*100)+"%",
             bbox = box_dic,
             transform=ax.transAxes,
             fontsize=15
@@ -295,7 +305,7 @@ def plot_bands(tb_en,data,spec_args=None,title='',figname='',show=False,TMD='WSe
         Ppar,Pbc,Pdk,Pgap = spec_args[1:5]
         ax.text(
             0.3,0.83,
-            "Chi2 parameters:\n"+"Ppar:  %.3f"%Ppar + "\n"+"Pbc:  %d"%Pbc + "\n"+"Pdk:  %d"%Pdk + "\n"+"Pgap:  %.3f"%Pgap,
+            "Chi2 parameters:\n"+"Ppar:  %.3f"%Ppar + "\n"+"Pbc:   %d"%Pbc + "\n"+"Pdk:   %d"%Pdk + "\n"+"Pgap:  %.3f"%Pgap,
             bbox = box_dic,
             transform=ax.transAxes,
             fontsize=15
@@ -482,7 +492,7 @@ def plot_orbitalContent(full_pars,TMD,spec_args=None,title='',figname='',show=Fa
         box_dic = dict(boxstyle='round',facecolor='white',alpha=1)
         ax.text(
             0.45,0.87,
-            "Bounds of parameters:\n"+"z:    %d"%(rpz*100) + "%\n"+"xy:   %d"%(rpxy*100) + "%\n"+"SOC:  %d"%(rl*100) + "%\n"+"others:%d"%(rp*100)+"%",
+            "Bounds of parameters:\n"+"gen:  %d"%(rp*100)+"%\n"+"z:      %d"%(rpz*100) + "%\n"+"xy:    %d"%(rpxy*100) + "%\n"+"SOC:  %d"%(rl*100)+"%",
             bbox = box_dic,
             transform=ax.transAxes,
             fontsize=15
@@ -490,7 +500,7 @@ def plot_orbitalContent(full_pars,TMD,spec_args=None,title='',figname='',show=Fa
         Ppar,Pbc,Pdk,Pgap = spec_args[1:5]
         ax.text(
             0.05,0.5,
-            "Chi2 parameters:\n"+"Ppar:  %.3f"%Ppar + "\n"+"Pbc:  %d"%Pbc + "\n"+"Pdk:  %d"%Pdk + "\n"+"Pgap:  %.3f"%Pgap,
+            "Chi2 parameters:\n"+"Ppar:  %.3f"%Ppar + "\n"+"Pbc:   %d"%Pbc + "\n"+"Pdk:   %d"%Pdk + "\n"+"Pgap:  %.3f"%Pgap,
             bbox = box_dic,
             transform=ax.transAxes,
             fontsize=15

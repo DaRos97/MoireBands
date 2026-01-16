@@ -15,14 +15,15 @@ import functions_monolayer as fsm
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-TMD = 'WSe2'
-ptsPerPath = (20,20) if TMD=="WS2" else (40,20,20)
+TMD = 'WS2'
+ptsPerPath = (30,15,10) if TMD=="WS2" else (40,20,20)
 
 data = cfs.dataWS2() if TMD=='WS2' else cfs.dataWSe2()
 paths = data.paths
-raw_data = data.raw_data
 
-if 0:   #Plot raw
+""" Raw """
+if 1:   #Plot raw
+    raw_data = data.raw_data
     fig,axs = plt.subplots(1,2,figsize=(20,10))
     for ip,path in enumerate(paths):
         ax = axs[ip]
@@ -42,9 +43,8 @@ if 0:   #Plot raw
     fig.tight_layout()
 
 """ Symmetrize """
-sym_data = data.sym_data
-
-if 0:   #Plot symm
+if 1:   #Plot symm
+    sym_data = data.sym_data
     fig,axs = plt.subplots(1,2,figsize=(20,10))
     for ip,path in enumerate(paths):
         ax = axs[ip]
@@ -63,12 +63,11 @@ if 0:   #Plot symm
     fig.tight_layout()
 
 """ Merge """
-mer_data = data.getFitData(ptsPerPath)
-
 if 1:   #Plot mer
+    mer_data = data.getFitData(ptsPerPath)
     fig = plt.figure(figsize=(20,10))
     ax = fig.add_subplot()
-    nbands = 6 if TMD=='WSe2' else 2
+    nbands = 6 #if TMD=='WSe2' else 6
     for ib in range(nbands):
         ax.plot(
             mer_data[:,0],

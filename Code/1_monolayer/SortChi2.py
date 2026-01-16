@@ -55,18 +55,33 @@ s_a_sorted = [s_a[i] for i in order]
 # Plot in order
 for ip in range(Npars):
     spec_args = s_a_sorted[ip]
+    if not (          #Chose specific set: 1
+        spec_args[1]==0.015 and      #Ppar
+        spec_args[2]==5 and         #Pbc
+        #spec_args[3]==20 and        #Pdk
+        #spec_args[4]==1 and       #Pgap
+        #spec_args[5]==3 and        #rp
+        #spec_args[6]==3 and        #rpz
+        #spec_args[7]==3 and        #rpxy
+        spec_args[8]==3             #rpl
+    ):
+        continue
+    print(spec_args)
     full_pars = pars_sorted[ip]
     chi2 = c2_sorted[ip]
     # Import data
     TMD = spec_args[0]
     ptsPerPath = spec_args[-1]
-    print(ptsPerPath)
     dataObject = cfs.dataWS2() if TMD=="WS2" else cfs.dataWSe2()
     data = dataObject.getFitData(ptsPerPath)
     # Plot
     HSO = cfs.find_HSO(full_pars[-2:])
     best_en = cfs.energy(full_pars,HSO,data,spec_args[0])
-    fsm.plotResults(full_pars,best_en,data,spec_args,machine,chi2,show=True)
+    fsm.plotResults(
+        full_pars,best_en,data,spec_args,machine,chi2,
+        show=True,
+        #which=['orb',]#band']
+    )
 
-    if not input("Show next best? [y/N]")=='y':
+    if input("Show next best? [Y/n]")=='n':
         exit()

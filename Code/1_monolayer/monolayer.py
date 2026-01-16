@@ -31,7 +31,7 @@ machine = cfs.get_machine(os.getcwd())
 disp = True                                     #Display messages during computation
 fit_off_SOC_separately = False                    #Fit (offset and) SOC separately from tb parameters
 plot_off_SOC_fit = 0#True
-max_eval = 1e7              #max number of chi2 evaluations
+max_eval = 5e6              #max number of chi2 evaluations
 
 if len(sys.argv) != 2:
     print("Usage: py monolayer.py arg1",

@@ -27,7 +27,7 @@ def energy(parameters,HSO,data,TMD,bands=[],conduction=False):
     kpts = data.shape[0]
     all_H = H_monolayer(np.array(data[:,1:3]),*args_H)
     if len(bands)==0:
-        nbands = 6 if TMD=='WSe2' else 2
+        nbands = 6# if TMD=='WSe2' else 2
     else:
         nbands = len(bands)
     ens = np.zeros((nbands,kpts))
@@ -831,7 +831,7 @@ class monolayerData():
     def __init__(self,TMD):
         self.TMD = TMD
         self.paths = ['KGK','KMKp']
-        self.nbands = {'WSe2':{'KGK':6,'KMKp':4},'WS2':{'KGK':2,'KMKp':2}}[TMD]
+        self.nbands = {'WSe2':{'KGK':6,'KMKp':4},'WS2':{'KGK':6,'KMKp':4}}[TMD]
         self.raw_data = self._getRaw()
         self.sym_data = self._getSym()
         self.kpoints_sym = self._getKpoints()
@@ -872,12 +872,14 @@ class monolayerData():
                     raw[path].append(temp)
                 if ib in [4,5]:
                     oldb = 3 if ib==4 else 2
+                    if self.TMD=='WS2':
+                        temp = temp[::-1]
                     raw[path][oldb] = np.concatenate([raw[path][oldb],temp])
             if (self.TMD=='WSe2' and path=='KMKp'):
                 raw[path][0], raw[path][1] = raw[path][1], raw[path][0]
             if path=='KGK':
                 for ib in range(4):
-                    fn = Path('Inputs/fitGammaLower/'+'Band%d'%(ib+1)+'.txt')
+                    fn = Path('Inputs/fitGammaLower/'+'KGK_%s_band%d'%(self.TMD,ib+1)+'.txt')
                     with open(fn,'r') as f:
                         lines = f.readlines()
                     temp = []
@@ -947,52 +949,83 @@ class dataWS2(monolayerData):
     def __init__(self):
         super().__init__(TMD='WS2')
 
-    def getFitData(self,ptsPerPath=(20,20)):
+    def getFitData(self,ptsPerPath=(40,20,20)):
         """ Here we compute the final array to give for the fitting.
-        It has (ptsPerPath * #paths) elements, each with 5 entries:
+        It has (ptsPerPath * #paths) elements, each with 9 entries:
             - |k| (shfted by |K| for the KMKp path -> for plotting)
             - kx
             - ky
             - energy band 1
             - energy band 2
+            - energy band 3
+            - energy band 4
+            - energy band 5
+            - energy band 6
+        Bands 3 and 4 are NAN except for |k| close to M and to Gamma.
+        Bands 5 and 6 just close to Gamma.
         """
         M = np.array([np.pi,np.pi/np.sqrt(3)])/dic_params_a_mono[self.TMD]
         K = np.array([4*np.pi/3,0])/dic_params_a_mono[self.TMD]
         modM = la.norm(M-K)
         modK = la.norm(K)
-        data = np.zeros((ptsPerPath[0]+ptsPerPath[1],5))
-        for ip,path in enumerate(self.paths):
-            sd = self.sym_data[path]
-            kk = self.kpoints_sym[path]
-            kmin,kmax = (sd[0][0,0],sd[0][-1,0]) if ip==0 else (sd[0][-1,0],sd[0][0,0])
-            kvals = np.linspace(kmin,kmax,ptsPerPath[ip])
-            if ip==0:
-                data[ptsPerPath[0]*ip:ptsPerPath[ip]*(ip+1),0] = kvals
-            else:
-                data[ptsPerPath[0]*ip:ptsPerPath[ip]*(ip+1),0] = modK + modM - kvals
-            data[ptsPerPath[0]*ip:ptsPerPath[ip]*(ip+1),1] = np.interp(
-                kvals,
-                sd[0][:,0],
-                kk[0][:,0],
-            )
-            data[ptsPerPath[0]*ip:ptsPerPath[ip]*(ip+1),2] = np.interp(
-                kvals,
-                sd[0][:,0],
-                kk[0][:,1],
-            )
-            data[ptsPerPath[0]*ip:ptsPerPath[ip]*(ip+1),3] = np.interp(
-                kvals,
-                sd[0][:,0],
-                sd[0][:,1]
-            )
-            data[ptsPerPath[0]*ip:ptsPerPath[ip]*(ip+1),4] = np.interp(
-                kvals,
-                sd[1][:,0],
-                sd[1][:,1]
-            )
-        # Offset
+        data = np.zeros((ptsPerPath[0]+ptsPerPath[1]+ptsPerPath[2],9))
+        # KGK
+        sd = self.sym_data[self.paths[0]]
+        kk = self.kpoints_sym[self.paths[0]]
+        kmin,kmax = (sd[0][0,0],sd[0][-1,0])
+        kvals = np.linspace(kmin,kmax,ptsPerPath[0])
+        data[:ptsPerPath[0],0] = kvals
+        data[:ptsPerPath[0],1] = np.interp( kvals, sd[0][:,0], kk[0][:,0] )
+        data[:ptsPerPath[0],2] = np.interp( kvals, sd[0][:,0], kk[0][:,1] )
+        data[:ptsPerPath[0],3] = np.interp( kvals, sd[0][:,0], sd[0][:,1] )
+        data[:ptsPerPath[0],4] = np.interp( kvals, sd[1][:,0], sd[1][:,1] )
+        # bands 34
+        mask34 = kvals <= sd[2][0,0]        #ordered backwards
+        kvals34 = kvals[mask34]
+        maskNan = ~np.isnan(sd[3][::-1,1])
+        data[:kvals34.shape[0],5] = np.interp( kvals34, sd[3][::-1,0][maskNan], sd[3][::-1,1][maskNan] )
+        data[:kvals34.shape[0],6] = np.interp( kvals34, sd[2][::-1,0], sd[2][::-1,1] )
+        data[kvals34.shape[0]:ptsPerPath[0],5:7] = np.nan
+        # bands 56
+        mask56 = kvals <= sd[4][0,0]        #ordered backwards
+        kvals56 = kvals[mask56]
+        maskNan = ~np.isnan(sd[4][::-1,1])
+        data[:kvals56.shape[0],7] = np.interp( kvals56, sd[5][::-1,0], sd[5][::-1,1] )
+        data[:kvals56.shape[0],8] = np.interp( kvals56, sd[4][::-1,0][maskNan], sd[4][::-1,1][maskNan] )
+        data[kvals56.shape[0]:ptsPerPath[0],7:9] = np.nan
+        # KMKp
+        sd = self.sym_data[self.paths[1]]
+        kk = self.kpoints_sym[self.paths[1]]
+        kmin,kmax = (sd[0][-1,0],sd[3][-1,0])
+        kvals = np.linspace(kmin,kmax,ptsPerPath[1])
+        data[ptsPerPath[0]:ptsPerPath[0]+ptsPerPath[1],0] = modK + modM - kvals
+        data[ptsPerPath[0]:ptsPerPath[0]+ptsPerPath[1],1] = np.interp( kvals, sd[0][:,0], kk[0][:,0] )
+        data[ptsPerPath[0]:ptsPerPath[0]+ptsPerPath[1],2] = np.interp( kvals, sd[0][:,0], kk[0][:,1] )
+        data[ptsPerPath[0]:ptsPerPath[0]+ptsPerPath[1],3] = np.interp( kvals, sd[0][:,0], sd[0][:,1] )
+        data[ptsPerPath[0]:ptsPerPath[0]+ptsPerPath[1],4] = np.interp( kvals, sd[1][:,0], sd[1][:,1] )
+        data[ptsPerPath[0]:ptsPerPath[0]+ptsPerPath[1],5:9] = np.nan
+        # KMKp close to M
+        kmin,kmax = (sd[3][-1,0],sd[3][0,0])
+        kvals = np.linspace(kmin,kmax,ptsPerPath[2])
+        data[ptsPerPath[0]+ptsPerPath[1]:,0] = modK + modM - kvals
+        data[ptsPerPath[0]+ptsPerPath[1]:,1] = np.interp( kvals, sd[0][:,0], kk[0][:,0] )
+        data[ptsPerPath[0]+ptsPerPath[1]:,2] = np.interp( kvals, sd[0][:,0], kk[0][:,1] )
+        data[ptsPerPath[0]+ptsPerPath[1]:,3] = np.interp( kvals, sd[0][:,0], sd[0][:,1] )
+        data[ptsPerPath[0]+ptsPerPath[1]:,4] = np.interp( kvals, sd[1][:,0], sd[1][:,1] )
+        data[ptsPerPath[0]+ptsPerPath[1]:,5] = np.interp( kvals, sd[2][:,0], sd[2][:,1] )
+        data[-5:,5] = np.nan        #specific for (30,15,10)
+        data[ptsPerPath[0]+ptsPerPath[1]:,6] = np.interp( kvals, sd[3][:,0], sd[3][:,1] )
+        data[ptsPerPath[0]+ptsPerPath[1]:,7:9] = np.nan
+
+        # Order bands of index 1 and 2 which shifts at some point
+        pp = ptsPerPath[0]+ptsPerPath[1]
+        mask = data[pp:,4]<data[pp:,5]
+        data[pp:,4][mask], data[pp:,5][mask] = data[pp:,5][mask], data[pp:,4][mask]
+        # Shift of KMKp
         data[ptsPerPath[0]:,3] += self.offset[self.TMD]
         data[ptsPerPath[0]:,4] += self.offset[self.TMD]
+        data[ptsPerPath[0]:,5] += self.offset[self.TMD]
+        data[ptsPerPath[0]:,6] += self.offset[self.TMD]
         return data
 
 class dataWSe2(monolayerData):
