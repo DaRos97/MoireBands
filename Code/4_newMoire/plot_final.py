@@ -1,5 +1,6 @@
 """
 Here we plot the final image, given some spread and other parameters.
+On the left the experimental image and on the right the theoretical result.
 """
 
 import sys,os
@@ -26,7 +27,7 @@ machine = cfs.get_machine(os.getcwd())
 parser = argparse.ArgumentParser(description="Plotting of final image")
 parser.add_argument("Sample", help="Sample to consider (S3 or S11)")
 parser.add_argument("powInd", help="Power to which elevate weights in theoretical image (1 for right weights, 0.5 for enhanced side bands)", type=float)
-parser.add_argument("spread_E", help="Spreadin", type=float)
+parser.add_argument("spread_E", help="Spreading in energy (eV) -> 0.03 is 30 meV", type=float)
 parser.add_argument("-v","--verbose", help="Enable verbose output", action="store_true")
 inputArguments = parser.parse_args()
 
@@ -35,21 +36,18 @@ powInd = inputArguments.powInd
 spread_E = inputArguments.spread_E
 disp = inputArguments.verbose
 
-
-""" Fixed parameters """
+""" Fixed parameters of theoretical image """
 nShells = 2
 monolayer_type = 'fit'
 Vk,phiK = (0.007,-106/180*np.pi)
 nCells = int(1+3*nShells*(nShells+1))
 theta = 2.8 if sample=='S11' else 1.8    #twist angle, in degrees
-
-w1p = -1.7 if sample=='S3' else -1.73
+w1p = -1.7 if sample=='S3' else -1.73       #interlayer
 w1d = 0.38 if sample=='S3' else 0.39
 stacking = 'P'
 w2p=w2d = 0
-phiG = 60/180*np.pi
+phiG = np.pi/3
 parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
-
 if disp:    #print what parameters we're using
     print("-----------FIXED PARAMETRS CHOSEN-----------")
     print("Monolayers' tight-binding parameters: ",monolayer_type)
@@ -77,7 +75,7 @@ if Vg==-1:
     print("Values of stacking,w1p,w1d and phiG not found in fit: %s, %.3f, %.3f, %.1f"%(stacking,w1p,w1d,phiG/np.pi*180))
     quit()
 
-"""Left half experimental image"""
+""" Left half experimental image"""
 from PIL import Image
 E_max, E_min, pKi, pKf, pEmax, pEmin = cfs.dic_pars_samples[sample]
 fig_fn = fsm.get_inputs_dn(machine) + sample + '_KGK.png'
@@ -115,8 +113,8 @@ if sample=='S11':
 
 """ Spread """
 spread_K = 0.001
-#spread_type = 'Lorentz'
-spread_type = 'Gauss'
+spread_type = 'Lorentz'
+#spread_type = 'Gauss'
 Epts = exp_pic.shape[0]
 args_s_data = (sample,nShells,monolayer_type,Vk,phiK,theta,stacking,w2p,w2d,phiG,spread_E,spread_K,spread_type,kPts)
 th_s_data_fn = 'Data/final_data_s_'+fsm.get_fn(*args_s_data)+'.npy'
@@ -132,18 +130,28 @@ if not Path(th_s_data_fn).is_file():
 else:
     spread = np.load(th_s_data_fn)
 
-th_pic = (spread.T[::-1,:]/np.max(spread) )**powInd
+""" Figure """
+# Truncate energy window
+eminInd = 1150 if sample == 'S11' else 1100
+emaxInd = 300 if sample == 'S11' else 80   #150
+spread = spread.T[::-1,:]
+spread = spread[emaxInd:eminInd]
+exp_pic = exp_pic[emaxInd:eminInd]
+# Normalize
+the_pic = (spread/np.max(spread) )**powInd
 exp_pic = (255-exp_pic[:,:,0])/255
 exp_pic = (exp_pic + exp_pic[:,::-1] )/2
 exp_pic = exp_pic[:,:exp_pic.shape[1]//2]
 
+# Resize pics to put them in the same plot
 from skimage.transform import resize
 w1 = 100
 w2 = 100
 A_resized = resize(exp_pic, (Epts, w1), preserve_range=True, anti_aliasing=True)
-B_resized = resize(th_pic, (Epts, w2), preserve_range=True, anti_aliasing=True)
+A_resized /= np.max(A_resized)
+B_resized = resize(the_pic, (Epts, w2), preserve_range=True, anti_aliasing=True)
+B_resized /= np.max(B_resized[emaxInd:eminInd])
 combined = np.hstack([A_resized, B_resized]) + 1
-
 
 from matplotlib.colors import LogNorm
 norm = LogNorm(vmin=np.min(combined),vmax=np.max(combined))
@@ -153,17 +161,16 @@ ax = fig.add_subplot()
 ax.imshow(
     combined,
     cmap='viridis',
+#    cmap='plasma',
     aspect='auto',
-#    norm=norm,
+    norm=norm,
 )
 
 ax.text(0.2,0.8,"Experiment",transform=ax.transAxes,color='lawngreen',fontsize=20)
 ax.text(0.7,0.8,"Theory",transform=ax.transAxes,color='lawngreen',fontsize=20)
 ax.set_title("Sample %s"%sample[1:],size=30)
-if sample=='S3':
-    ax.set_ylim(1100,150)
-else:
-    ax.set_ylim(1150,300)
+#ax.set_ylim(eminInd,emaxInd)
+
 ax.axis('off')
 
 plt.tight_layout()

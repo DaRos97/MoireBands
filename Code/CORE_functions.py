@@ -341,7 +341,7 @@ def find_HSO(SO_pars):
     HSOf = HSOf[:,[6,7,10,8,9,0,2,1,5,3,4,17,18,21,19,20,11,13,12,16,14,15]]
     return HSOf
 
-def get_kList(cut,kPts):
+def get_kList(cut,kPts,returnNorm=False):
     """
     Get cut in BZ to compute.
     The cut is composed of a list of high symmetry points separated by '-', supported: Kp, K, M, G.
@@ -369,7 +369,13 @@ def get_kList(cut,kPts):
         for p in range(ls[i]):
             ind = p if i==0 else p+ls[:i].sum()
             res[ind] = dic_Kpts[terms[i]] + (dic_Kpts[terms[i+1]] - dic_Kpts[terms[i]])/ls[i]*p
-    return res
+    if returnNorm:
+        norm = np.zeros(kPts)
+        for i in range(1,kPts):
+            norm[i] = norm[i-1] + np.linalg.norm(res[i]-res[i-1])
+        return res, norm
+    else:
+        return res
 
 #######################################################################################
 #######################################################################################

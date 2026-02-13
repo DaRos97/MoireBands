@@ -20,7 +20,8 @@ sample = "S11"
 nShells = 2
 theta = 2.8 if sample=='S11' else 1.8    #twist angle, in degrees, from LEED eperiment
 #listPhi = np.linspace(0,2*np.pi,72,endpoint=False)
-listPhi = np.linspace(160/180*np.pi,200/180*np.pi,41,endpoint=True)
+#listPhi = np.linspace(160/180*np.pi,200/180*np.pi,41,endpoint=True)
+listPhi = np.linspace(0/180*np.pi,360/180*np.pi,360,endpoint=False)
 home_dn = fsm.get_home_dn(machine)
 data_dn = cfs.getFilename(('edc',*(sample,nShells,theta)),dirname=home_dn+"Data/newEDC/")+'/'
 full_fn = cfs.getFilename(('full',*(listPhi[0],listPhi[-1],len(listPhi))),dirname=data_dn,extension='.npy')
@@ -97,60 +98,90 @@ fig = plt.figure(figsize=(20,10))
 ns = full_data.shape[0]     #Number of solutions
 print("%d solutions"%ns)
 
-phiMin = 160/180*np.pi
-phiMax = 200/180*np.pi
+if 0:        # Extract one solution by hand
+    phi175 = full_data[full_data[:,2]/np.pi*180==175]
+    V17 = phi175[phi175[:,3]==0.017]
+    print(V17)
+    exit()
 
-s_ = 20
-ax1 = fig.add_subplot(1,3,1)
-ax2 = fig.add_subplot(1,3,2)
-ax3 = fig.add_subplot(1,3,3)
-for i in range(ns):
-    if full_data[i,2] < phiMin or full_data[i,2] > phiMax:
-        continue
-    ax1.scatter(
-        full_data[i,2]/np.pi*180,
-        full_data[i,3],
-        color=cmap(norm(full_data[i,0])),
-        marker='^',
-        s=sizes[i],
-        alpha=0.5,
-        lw=0
-    )
+phiMin = 165/180*np.pi
+phiMax = 180/180*np.pi
 
-    ax2.scatter(
-        full_data[i,0],
-        full_data[i,3],
-        color=cmap(norm(full_data[i,0])),
-        marker='^',
-        s=sizes[i],
-        alpha=0.5,
-        lw=0
-    )
+if 1:
+    s_ = 20
+    ax1 = fig.add_subplot(1,3,1)
+    ax2 = fig.add_subplot(1,3,2)
+    ax3 = fig.add_subplot(1,3,3)
+    for i in range(ns):
+        if full_data[i,2] < phiMin or full_data[i,2] > phiMax:
+            continue
+        ax1.scatter(
+            full_data[i,2]/np.pi*180,
+            full_data[i,3],
+            color=cmap(norm(full_data[i,0])),
+            marker='^',
+            s=sizes[i],
+            alpha=0.5,
+            lw=0
+        )
 
-    ax3.scatter(
-        full_data[i,1],
-        full_data[i,3],
-        color=cmap(norm(full_data[i,0])),
-        marker='^',
-        s=sizes[i],
-        alpha=0.5,
-        lw=0
-    )
+        ax2.scatter(
+            full_data[i,0],
+            full_data[i,3],
+            color=cmap(norm(full_data[i,0])),
+            marker='^',
+            s=sizes[i],
+            alpha=0.5,
+            lw=0
+        )
 
-ax1.set_xlim(phiMin/np.pi*180,phiMax/np.pi*180)
-ax1.set_ylim(0.01,0.02)
-ax1.set_ylabel("V moiré",size=s_)
-ax1.set_xlabel("phase (°)",size=s_)
-ax2.set_xlabel(r"$w_1^p$",size=s_)
-ax2.set_xlim(-1.68,-1.61)
-ax2.set_ylim(0.01,0.02)
-ax3.set_xlabel(r"$w_1^d$",size=s_)
-ax3.set_xlim(0.3,0.34)
-ax3.set_ylim(0.01,0.02)
+        ax3.scatter(
+            full_data[i,1],
+            full_data[i,3],
+            color=cmap(norm(full_data[i,0])),
+            marker='^',
+            s=sizes[i],
+            alpha=0.5,
+            lw=0
+        )
 
-sm = ScalarMappable(norm=norm,cmap=cmap)
-cax = fig.add_subplot([0.93,0.12,0.02,0.78])
-plt.colorbar(sm,cax=cax)
+    ax1.set_xlim(phiMin/np.pi*180,phiMax/np.pi*180)
+    ax1.set_ylim(0.01,0.02)
+    ax1.set_ylabel("V moiré",size=s_)
+    ax1.set_xlabel("phase (°)",size=s_)
+    ax2.set_xlabel(r"$w_1^p$",size=s_)
+    ax2.set_xlim(-1.68,-1.61)
+    ax2.set_ylim(0.01,0.02)
+    ax3.set_xlabel(r"$w_1^d$",size=s_)
+    ax3.set_xlim(0.3,0.34)
+    ax3.set_ylim(0.01,0.02)
+
+    sm = ScalarMappable(norm=norm,cmap=cmap)
+    cax = fig.add_subplot([0.93,0.12,0.02,0.78])
+    plt.colorbar(sm,cax=cax)
+
+else:
+    s_ = 20
+    ax = fig.add_subplot()
+    for i in range(ns):
+        if full_data[i,2] < phiMin or full_data[i,2] > phiMax:
+            continue
+        ax.scatter(
+            full_data[i,2]/np.pi*180,
+            full_data[i,3],
+            color=cmap(norm(full_data[i,0])),
+            marker='^',
+            s=sizes[i],
+            alpha=0.5,
+            lw=0
+        )
+    ax.set_xlim(phiMin/np.pi*180,phiMax/np.pi*180)
+    ax.set_ylim(0.01,0.02)
+    ax.set_ylabel("V moiré",size=s_)
+    ax.set_xlabel("phase (°)",size=s_)
+    ax.axvline(60,ls='--',color='k',lw=1)
+    ax.axvline(180,ls='--',color='k',lw=1)
+    ax.axvline(300,ls='--',color='k',lw=1)
 plt.show()
 
 

@@ -1,4 +1,5 @@
-""" LDOS in real space for selected parameters """
+""" LDOS in real space for selected parameters.
+"""
 import sys,os
 import argparse
 import numpy as np
@@ -21,7 +22,7 @@ machine = cfs.get_machine(os.getcwd())
 """ Parameters and options """
 parser = argparse.ArgumentParser(description="LDOS of final set of parameters")
 parser.add_argument("Sample", help="Sample to consider (S3 or S11)")
-parser.add_argument("Phase", help="Phase solution to consider (60 for pi/3 or 180 for pi, check to have solutions for other angles)", type=float)
+parser.add_argument("Phase", help="Phase (deg°) solution to consider (60 for pi/3 or 180 for pi, check to have solutions for other angles)", type=float)
 parser.add_argument("-v","--verbose", help="Enable verbose output", action="store_true")
 inputArguments = parser.parse_args()
 
@@ -31,6 +32,8 @@ disp = inputArguments.verbose
 
 """ Fixed parameters """
 nShells = 2
+kPts = 30       # grid kPts x kPts in evals
+rPts = 100#150
 monolayer_type = 'fit'
 Vk,phiK = (0.007,-106/180*np.pi)
 nCells = int(1+3*nShells*(nShells+1))
@@ -47,6 +50,11 @@ elif inputArguments.Phase==175:
     w1d = 0.38 if sample=='S3' else 0.39
 if sample=='S3' and phiG==np.pi:
     phiG = 175/180*np.pi
+elif inputArguments.Phase==165:
+    w1p = -1.73
+    w1d = 0.39
+    if sample=='S3':
+        exit()
 
 stacking = 'P'
 w2p=w2d = 0
@@ -62,7 +70,6 @@ if disp:    #print what parameters we're using
     print("Moiré potential at K (%f eV, %f°)"%(Vk,phiK/np.pi*180))
     print("Number of mini-BZs circles: ",nShells)
     print("(stacking,w2_p,w2_d,phi) = (%s, %.4f eV, %.4f eV, %.1f°)"%(stacking,w2p,w2d,phiG/np.pi*180))
-
 
 """ Import best V from EDC fitting """
 Vg = -1
@@ -83,7 +90,6 @@ if Vg==-1:
     quit()
 
 """ Evals and evecs """
-kPts = 20
 kFlat = fsm.LDOS_kList(kPts,G_M)
 args_e_data = (sample,nShells,monolayer_type,Vk,phiK,theta,stacking,w1p,w1d,phiG,kPts)
 th_e_data_fn = 'Data/ldos_data_e_'+fsm.get_fn(*args_e_data)+'.npz'
@@ -97,15 +103,14 @@ else:
     evecs = np.load(th_e_data_fn)['evecs']
 
 """ LDOS """
-rPts = 50#150
 rList = fsm.LDOS_rList(rPts,a_M)
-eMin, eMax, ePts = (-1,-0.5,200)
+eMin, eMax, ePts = (-0.8,-0.65,200)
 eList = np.linspace(eMin,eMax,ePts)           #CHECK THIS
 def lorentzian(E, E0, eta=0.002):
     return eta / (np.pi * ((E - E0)**2 + eta**2))
 
 args_l_data = args_e_data + (rPts,eMin,eMax,ePts)
-th_l_data_fn = 'Data/ldos_data_e_'+fsm.get_fn(*args_l_data)+'.npy'
+th_l_data_fn = 'Data/ldos_data_l_'+fsm.get_fn(*args_l_data)+'.npy'
 
 if not Path(th_l_data_fn).is_file():
     LDOS = np.zeros((rPts,ePts))
@@ -136,34 +141,68 @@ if not Path(th_l_data_fn).is_file():
 else:
     LDOS = np.load(th_l_data_fn)
 
-""" Plot """
-fig = plt.figure(figsize=(10,10))
+if 0:
+    """ Plot 1 - my way """
+    fig = plt.figure(figsize=(10,10))
 
-ax = fig.add_subplot(111)
-X,Y = np.meshgrid(np.linalg.norm(rList,axis=1),eList)
-rL = np.linalg.norm(rList[-1])
-mesh = ax.pcolormesh(X,Y,LDOS.T,cmap='viridis')
-cbar = fig.colorbar(
-    mesh,
-    ax=ax,
-)
-cbar.set_ticks(
-    ticks=[np.min(LDOS),np.max(LDOS)],
-    labels=['Low', 'High'],
-    fontsize=20
-)
+    ax = fig.add_subplot(111)
+    X,Y = np.meshgrid(np.linalg.norm(rList,axis=1),eList)
+    rL = np.linalg.norm(rList[-1])
+    mesh = ax.pcolormesh(X,Y,LDOS.T,cmap='viridis')
+    cbar = fig.colorbar(
+        mesh,
+        ax=ax,
+    )
+    if 0:
+        cbar.set_ticks(
+            ticks=[np.min(LDOS),np.max(LDOS)],
+            labels=['Low', 'High'],
+            fontsize=20
+        )
 
-ax.set_xticks([0,rL//3,2*rL//3,rL],[r"$XX$",r"$MX$",r"$XM$",r"$XX$",],size=30)
-ax.set_ylabel('Energy [eV]',size=30)
-title = "LDOS sample %s"%sample[1:]
-ax.set_title(title,size=30)
+    ax.set_xticks([0,rL//3,2*rL//3,rL],[r"W/W",r"Se/W",r"W/S",r"W/W",],size=30)
+    ax.set_ylabel('Energy [eV]',size=30)
+    title = "LDOS sample %s"%sample[1:]
+    ax.set_title(title,size=30)
 
-fig.tight_layout()
-plt.show()
+    fig.tight_layout()
+    plt.show()
 
-if input("Save?[y/N]")=='y':
-    figname = "Figures/LDOS_"+fsm.get_fn(*args_l_data) + '.png'
-    fig.savefig(figname)
+    if input("Save?[y/N]")=='y':
+        figname = "Figures/LDOS_"+fsm.get_fn(*args_l_data) + '.png'
+        fig.savefig(figname)
+
+if 1:
+    """ Plot 2 - Li et al. """
+    fig = plt.figure(figsize=(8,5))
+
+    ax = fig.add_subplot(111)
+    X,Y = np.meshgrid(eList,np.linalg.norm(rList,axis=1))
+    rL = np.linalg.norm(rList[-1])
+    mesh = ax.pcolormesh(X,Y,LDOS[::-1,:],cmap='hot')
+    cbar = fig.colorbar(
+        mesh,
+        ax=ax,
+    )
+
+    if 1:
+        cbar.set_ticks(
+            ticks=[np.min(LDOS),np.max(LDOS)],
+            labels=['Low', 'High'],
+            fontsize=20
+        )
+
+    ax.set_yticks([0,rL//3,2*rL//3,rL],[r"W/W",r"W/S",r"Se/W",r"W/W",],size=30)     #Changed order because we're plotting the y-axis inverted
+    ax.set_xlabel('Energy [eV]',size=30)
+    title = "LDOS sample %s"%sample[1:]
+    ax.set_title(title,size=30)
+
+    fig.tight_layout()
+    plt.show()
+
+    if input("Save?[y/N]")=='y':
+        figname = "Figures/LDOS2_"+fsm.get_fn(*args_l_data) + '.png'
+        fig.savefig(figname)
 
 
 

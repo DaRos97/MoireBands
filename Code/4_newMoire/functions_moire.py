@@ -298,7 +298,7 @@ def two_lorentzian_one_gaussian(x, amp1,cen1,gam1, amp2,cen2,gam2, sig):
 import warnings
 warnings.filterwarnings("ignore", message="Using UFloat objects with std_dev==0")
 
-def EDC(args,sample,peaks,spreadE=0.03,disp=False,plot=False,figname='',show=False):
+def EDC(args,sample,peaks,spreadE=0.03,disp=False,plot=False,figname='',show=False,testInterlayer=False):
     """ Compute energy distance of side bands crossing from main band.
     We do it by diagonalizing the Hamiltonian at the desired k point.
     We evaluate and extract the weights BELOW the main band (carefull to the SOC degeneracy at Gamma).
@@ -327,7 +327,10 @@ def EDC(args,sample,peaks,spreadE=0.03,disp=False,plot=False,figname='',show=Fal
         fullWeightValues = weights[indexMainBand-nCellsK+1:indexMainBand+1]
     # Define finer energy list for weight spreading: slightly larger for better spreading shape
     if edcPoint=='Gamma':
-        energyList = np.linspace(-1.0,-0.4,200)      #we chose this from experimental data
+        if testInterlayer:
+            energyList = np.linspace(-1.0,-0.4,600)      #we chose this from experimental data
+        else:
+            energyList = np.linspace(-1.0,-0.4,200)      #we chose this from experimental data
     else:
         energyList = np.linspace(-1,-0.1,200)      #we chose this from experimental data
     weightList = np.zeros(len(energyList))
@@ -483,6 +486,8 @@ def EDC(args,sample,peaks,spreadE=0.03,disp=False,plot=False,figname='',show=Fal
 
     amp1, amp2 = result.best_values['amp1'], result.best_values['amp2']
     cen1, cen2 = (result.best_values['cen1'], result.best_values['cen2']) if amp1>amp2 else (result.best_values['cen2'], result.best_values['cen1'])
+    if testInterlayer:
+        return cen1,cen2
     if result.success and amp1>1e-3 and amp2>1e-3 and result.redchi<1e-2 and goodBottomPosition:
         return cen1, cen2
     else:
