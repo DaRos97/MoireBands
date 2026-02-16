@@ -341,13 +341,13 @@ def find_HSO(SO_pars):
     HSOf = HSOf[:,[6,7,10,8,9,0,2,1,5,3,4,17,18,21,19,20,11,13,12,16,14,15]]
     return HSOf
 
-def get_kList(cut,kPts,returnNorm=False):
+def get_kList(cut,kPts,TMD='WSe2',endpoint=False,returnNorm=False):
     """
     Get cut in BZ to compute.
     The cut is composed of a list of high symmetry points separated by '-', supported: Kp, K, M, G.
     The number of points in the list are divided in the different segments depending on their actual BZ length.
     """
-    b2 = 4*np.pi/np.sqrt(3)/dic_params_a_mono['WSe2'] * np.array([0,1])
+    b2 = 4*np.pi/np.sqrt(3)/dic_params_a_mono[TMD] * np.array([0,1])
     b1 = R_z(-np.pi/3) @ b2
     b6 = R_z(-2*np.pi/3) @ b2
     K = (b1+b6)/3
@@ -363,6 +363,8 @@ def get_kList(cut,kPts,returnNorm=False):
     ls = np.zeros(len(terms)-1,dtype=int)   #define number of points for each segment
     for i in range(len(terms)-1):
         ls[i] = int(dks[i]/tot_k*kPts)
+        if i==len(terms)-2 and endpoint:
+            ls[i] += 1
     kPts = ls.sum()     #adjust total number of points
     res = np.zeros((kPts,2))
     for i in range(len(terms)-1):
