@@ -171,12 +171,6 @@ def chi2_tb(pars_tb,*args):
         if spec_args[0]=="WSe2":        #Specific for points (40,15,10)
             chiDK += Pdk*(np.absolute(tb_en[1+i,-4]-data[-4,4+i])**2)
     result += chiDK
-    # chi2 of having minimum of conduction at K -> just add 10 if it's not there
-    if np.argmin(cond_en) == spec_args[-1][0]-1:
-        chiCond = 0
-    else:
-        chiCond = 10
-    result += chiCond
     # chi2 of band gap (to conduction band) at G and K and M
     Kpts = [0,spec_args[-1][0]-1,-1]
     DFT_pars = np.array(cfs.initial_pt[spec_args[0]])
