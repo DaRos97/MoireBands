@@ -513,9 +513,9 @@ def get_home_dn(machine):
     if machine == 'loc':
         return '/home/dario/Desktop/git/MoireBands/Code/monolayer_v2.0/'
     elif machine == 'hpc':
-        return '/home/users/r/rossid/1_monolayer/'
+        return '/home/users/r/rossid/monolayer_v2.0/'
     elif machine == 'maf':
-        return '/users/rossid/1_monolayer/'
+        return '/users/rossid/monolayer_v2.0/'
 
 
 
