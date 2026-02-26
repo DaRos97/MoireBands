@@ -413,7 +413,7 @@ def getFilename(*args,dirname='',extension='',floatPrecision=6):
         elif t in [float, np.float32, np.float64]:
             filename += f"{a:.{floatPrecision}f}"
         elif t==tuple:
-            filename += getFilename(*a)
+            filename += getFilename(*a,floatPrecision=floatPrecision)
         else:
             raise TypeError("Parameter %s has unsupported type: %s"%(a,t))
         if not i==len(args)-1:
@@ -833,7 +833,7 @@ w1d_dic = {
 
 
 class monolayerData():
-    def __init__(self,TMD):
+    def __init__(self,TMD,pts=61):
         self.TMD = TMD
         self.paths = ['KpGK','KMKp']
         self.nbands = {'KpGK':6,'KMKp':4}
@@ -843,7 +843,7 @@ class monolayerData():
         self.offset = {'WSe2':-0.052,'WS2':0.01}
         self.raw_data = self._getRaw()
         self.sym_data = self._getSym()
-        self.fit_data = self._getFitData()
+        self.fit_data = self._getFitData(pts=pts)
 
     def _getRaw(self):
         """

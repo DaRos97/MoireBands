@@ -41,42 +41,44 @@ argc = int(sys.argv[1])
 if machine == 'maf':
     argc -= 1
 args_minimization = utils.get_args(argc)
-TMD = args_minimization[0]
-pts = args_minimization[-1]
+TMD = args_minimization['TMD']
+pts = args_minimization['pts']
 
 """ Import experimental data of monolayer """
-data = cfs.monolayerData(TMD)
+data = cfs.monolayerData(TMD,pts=pts)
 
 if disp:
     print("------------CHOSEN PARAMETERS------------")
-    print(" TMD: ",args_minimization[0],
-          "\n K_1: ","{:.4f}".format(args_minimization[1]),
-          "\n K_2: ","{:.4f}".format(args_minimization[2]),
-          "\n K_3: ","{:.4f}".format(args_minimization[3]),
-          "\n K_4: ","{:.4f}".format(args_minimization[4]),
-          "\n Bound pars: ","{:.2f}".format(args_minimization[5]*100)+"%",
-          "\n Bound z-pars: ","{:.2f}".format(args_minimization[6]*100)+"%",
-          "\n Bound xy-pars: ","{:.2f}".format(args_minimization[7]*100)+"%",
-          "\n Bounds SOC: ","{:.2f}".format(args_minimization[8]*100)+"%",
+    print(" TMD: ",TMD,
+          "\n K_1: ","{:.6f}".format(args_minimization['Ks'][0]),
+          "\n K_2: ","{:.6f}".format(args_minimization['Ks'][1]),
+          "\n K_3: ","{:.6f}".format(args_minimization['Ks'][2]),
+          "\n K_4: ","{:.6f}".format(args_minimization['Ks'][3]),
+          "\n K_5: ","{:.6f}".format(args_minimization['Ks'][4]),
+          "\n Bound pars: %.2f"%(args_minimization['Bs'][0]*100)+"%",
+          "\n Bound z-pars: %.2f"%(args_minimization['Bs'][1]*100)+"%",
+          "\n Bound xy-pars: %.2f"%(args_minimization['Bs'][2]*100)+"%",
+          "\n Bound SOC: %.2f"%(args_minimization['Bs'][3]*100)+"%",
           )
     print(" Using ",pts," points of interpolated data.")
+    print("-"*15)
 
 """ Fitting """
 DFT_values = np.array(cfs.initial_pt[TMD])  #DFT values of tb parameters. Order is: e, t, offset, SOC
-Bounds_full = fsm.get_bounds(DFT_values,args)
-if args_minimization[8]==0:     # SOC bounds set to 0
+Bounds_full = utils.get_bounds(DFT_values,args_minimization['Bs'])
+if args_minimization['Bs'][3]==0:     # SOC bounds set to 0
     print("Fitting only tb (excluding SOC)")
     HSO = cfs.find_HSO(DFT_values[-2:])
     args_chi2 = (data,HSO,DFT_values[-2:],machine,args_minimization,max_eval)
     Bounds = Bounds_full[:-2]
     initial_point = DFT_values[:-2]
-    func = fsm.chi2
+    func = utils.chi2
 else:
     print("Fitting all parameters")
     args_chi2 = (data,machine,args_minimization,max_eval)
     Bounds = Bounds_full
     initial_point = DFT_values
-    func = fsm.chi2_full
+    func = utils.chi2_full
 
 result = minimize(func,
     args = args_chi2,
@@ -93,24 +95,11 @@ result = minimize(func,
     )
 
 """ Plotting results """
-HSO = cfs.find_HSO(result.x[-2:])
-print("Minimization finished with optimal chi2: %.4f"%result.fun)
 print("Plotting results")
-full_pars = np.append(result.x,off_SOC_pars) if fit_off_SOC_separately else result.x
-best_en = cfs.energy(full_pars,HSO,data,args_minimization[0])
-fsm.plotResults(full_pars,best_en,data,args_minimization,machine,result.fun)
-
-else:   # To just plot results if they weren't
-    import os, glob
-    home_dn = fsm.get_home_dn(machine)
-    temp_dn = cfs.getFilename(('temp',*args_minimization),dirname=home_dn+'Data/')+'/'
-    npy_files = glob.glob(os.path.join(temp_dn, "*.npy"))
-    full_pars = np.load(npy_files[0])
-    HSO = cfs.find_HSO(full_pars[-2:])
-
-    best_en = cfs.energy(full_pars,HSO,data,args_minimization[0])
-    fsm.plotResults(full_pars,best_en,data,args_minimization,machine,float(npy_files[0][-10:-4]))
-
+full_pars = result.x
+HSO = cfs.find_HSO(result.x[-2:])
+best_en = cfs.energy(full_pars,HSO,data,args_minimization['TMD'])
+utils.plotResults(full_pars,best_en,data,args_minimization,machine,result.fun)
 
 
 
