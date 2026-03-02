@@ -41,11 +41,12 @@ def get_args(ind):
     """
     lTMDs = ["WSe2", ]    #TMDs
     # Parameters of constraints
-    lK1 = [0,1e-6,1e-5,1e-4,1e-3]         # coefficient of parameters distance from DFT
-    lK2 = [1e-6,1e-5,1e-4,1e-3,1e-2]        # coefficient of band content
-    lK3 = [1,]         # coefficient of minimum of conduction band
+    lK1 = [0,1e-5,1e-4,1e-3]         # coefficient of parameters distance from DFT
+    lK2 = [1e-4,1e-3,1e-2]        # coefficient of band content in valence band
+    lK2b = [0,]        # coefficient of band content in conduction band
+    lK3 = [0,]         # coefficient of minimum of conduction band at K
     lK4 = [1e-2,1e-1,1]          # coefficient of gap value
-    lK5 = [1,5,10]             # weight of high symmetry points
+    lK5 = [5,10,20]             # weight of high symmetry points: G,K,near-M-crossing and M
     # Bounds
     lrp = [3,]         #tb bounds for general orbitals
     lrpz = [3,]         #tb bounds for z orbitals -> indices 6 and 9
@@ -53,14 +54,14 @@ def get_args(ind):
     lrl = [3,]          #SOC bounds
     # Points in fit
     pts = [151,]     # better is it is a number n*3 + 1 with n integer
-    listPar = list(itertools.product(*[lTMDs,pts,lK1,lK2,lK3,lK4,lK5,lrp,lrpz,lrpxy,lrl]))
+    listPar = list(itertools.product(*[lTMDs,pts,lK1,lK2,lK2b,lK3,lK4,lK5,lrp,lrpz,lrpxy,lrl]))
     print("Index %d / %d"%(ind,len(listPar)))
     listPar = listPar[ind]
     args = {
         'TMD':listPar[0],
         'pts':listPar[1],
-        'Ks':tuple(listPar[2:7]),
-        'Bs':tuple(listPar[7:11]),
+        'Ks':tuple(listPar[2:8]),
+        'Bs':tuple(listPar[8:]),
     }
     return args
 
@@ -81,10 +82,10 @@ def chi2(pars_tb,*args):
     Made for fitting without SOC parameters -> HSO already computed.
     """
     data, HSO, SOC_pars, machine, args_minimization, max_eval = args
-    K1,K2,K3,K4,K5 = args_minimization['Ks']
+    K1,K2,K2b,K3,K4,K5 = args_minimization['Ks']
     full_pars = np.append(pars_tb,SOC_pars)
     result = 0
-    # chi2 of bands distance: compute energy of new pars
+    # chi2 of bands distance: compute energy of new pars -> and K5
     tb_en, cond_en = cfs.energy(full_pars,HSO,data.fit_data,args_minimization['TMD'],conduction=True)
     nbands = tb_en.shape[0]
     chi2_band_distance = 0
@@ -120,12 +121,6 @@ def chi2(pars_tb,*args):
                    np.absolute(
                        evecs_K[indIPO,:][:,TVB2]
                    )**2))
-    ## K conduction
-    K2_Kcon = abs( 2 -
-               np.sum(
-                   np.absolute(
-                       evecs_K[indOPO,:][:,BCB2]
-                   )**2))
     ## M
     evals_M,evecs_M = np.linalg.eigh(Ham_bc[2])
     K2_M = abs( 4 -
@@ -133,7 +128,13 @@ def chi2(pars_tb,*args):
                    np.absolute(
                        evecs_M[indIPO,:][:,TVB4]
                    )**2))
-    K2_band_content = K2_G + K2_Kval + K2_Kcon + K2_M
+    K2_band_content = K2_G + K2_Kval + K2_M
+    ## K conduction
+    K2_Kcon = abs( 2 -
+               np.sum(
+                   np.absolute(
+                       evecs_K[indOPO,:][:,BCB2]
+                   )**2))
     # K3: minimum of conduction band
     if abs(data.fit_data[np.argmin(cond_en),0]-data.K[0])<1e-3:
         K3_band_min = 0
@@ -148,7 +149,13 @@ def chi2(pars_tb,*args):
     gap_DFT = evals_DFT[14]-evals_DFT[13]
     gap_p = evals_K[14]-evals_K[13]
     K4_gap = abs(gap_DFT-gap_p)
-    result = chi2_band_distance + K1*K1_par_dis + K2*K2_band_content + K3*K3_band_min + K4*K4_gap
+    result = chi2_band_distance + (
+        K1*K1_par_dis +
+        K2*K2_band_content +
+        K2b*K2_Kcon +
+        K3*K3_band_min +
+        K4*K4_gap
+    )
 
     """ From here on just plotting and temporary save """
     home_dn = get_home_dn(machine)
@@ -175,7 +182,7 @@ def chi2(pars_tb,*args):
         best_en = cfs.energy(best_tb,HSO,data.fit_data,args_minimization['TMD'])
         plotResults(best_tb,best_en,data.fit_data,args_minimization,machine,result)
         exit()
-    if machine=='loc' and evaluation_step%5000==1:
+    if machine=='loc' and evaluation_step%1000==1:
         print("New intermediate figure")
         print("Result: %.6f"%result)
         print("Chi2: %.6f"%chi2_band_distance)
@@ -258,10 +265,10 @@ def plot_bands(tb_en,data,args_minimization=None,title='',figname='',show=False,
             transform=ax.transAxes,
             fontsize=15
         )
-        Ppar,Pbc,Pdk,Pgap,Pval = args_minimization['Ks']
+        Ks = args_minimization['Ks']
         ax.text(
             0.3,0.83,
-            "Chi2 parameters:\n"+"Ppar:  %.3f"%Ppar + "\n"+"Pbc:   %d"%Pbc + "\n"+"Pdk:   %d"%Pdk + "\n"+"Pgap:  %.3f"%Pgap,
+            "Chi2 parameters:\nK1:%.6f\nK2:%.6f\nK2b:%.6f\nK3:%.6f\nK4:%.6f\nK5:%.6f"%Ks,
             bbox = box_dic,
             transform=ax.transAxes,
             fontsize=15
@@ -454,10 +461,10 @@ def plot_orbitalContent(full_pars,TMD,args_minimization=None,title='',figname=''
             transform=ax.transAxes,
             fontsize=15
         )
-        Ppar,Pbc,Pdk,Pgap,Pval = args_minimization['Ks']
+        Ks = args_minimization['Ks']
         ax.text(
             0.05,0.5,
-            "Chi2 parameters:\n"+"Ppar:  %.3f"%Ppar + "\n"+"Pbc:   %d"%Pbc + "\n"+"Pdk:   %d"%Pdk + "\n"+"Pgap:  %.3f"%Pgap,
+            "Chi2 parameters:\nK1:%.6f\nK2:%.6f\nK2b:%.6f\nK3:%.6f\nK4:%.6f\nK5:%.6f"%Ks,
             bbox = box_dic,
             transform=ax.transAxes,
             fontsize=15
