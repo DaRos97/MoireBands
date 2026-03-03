@@ -455,68 +455,10 @@ def tqdm(x,**kwargs):
 #######################################################################################
 
 """DFT parameters and constants"""
-
 dic_params_a_mono = {
     'WS2': 3.18,
     'WSe2': 3.32,
     }
-
-params_V = [0.0335,np.pi, 7.7*1e-3, -106*2*np.pi/360]
-
-"""Twist angle of samples 3 and 11. Central value and error bars."""
-dic_params_twist = {
-        'S3': [1.5,1.8,2.1],
-        'S11': [2.6,2.8,3.0],
-        }
-
-def moire_length(theta):
-    """
-    Real space moire lattice length.
-    """
-    return 1/np.sqrt(1/dic_params_a_mono['WSe2']**2+1/dic_params_a_mono['WS2']**2-2*np.cos(theta)/dic_params_a_mono['WSe2']/dic_params_a_mono['WS2'])
-
-def miniBZ_rotation(theta):
-    """
-    Compute eta, the rotation of the mini-BZ wrt the monolayer BZ.
-    It's the angle of the segment between the K points of the 2 layers.
-    """
-    return np.arctan(np.tan(theta/2)*(dic_params_a_mono['WSe2']+dic_params_a_mono['WS2'])/(dic_params_a_mono['WSe2']-dic_params_a_mono['WS2']))
-
-def get_reciprocal_moire(theta):
-    """
-    Compute moire reciprocal lattice vectors.
-    They depend on the moire length for the size and on the orientation of the mini-BZ for the direction.
-    Returns a list of 7 vectors, first one being 0.
-    """
-    eta = miniBZ_rotation(theta)
-    Mat = R_z(eta)
-    G1 = 4*np.pi/np.sqrt(3)/moire_length(theta)*np.array([np.sqrt(3)/2,1/2])
-    G_M = [np.zeros(2), Mat@G1,]
-    for i in range(1,6):
-        G_M.append(R_z(np.pi/3*i) @ G_M[1])
-    return G_M
-
-def get_lattice_vectors(TMD,theta=0):
-    """
-    Compute single layer real-space and reciprocal lattice vectors.
-    The conventions we use are:
-        - WSe2 -> unit cell is aligned, with vertical bonds.
-        - WS2 -> unit cell has theta rotation.
-    """
-    As = [ R_z(theta/180*np.pi) @ a_1*dic_params_a_mono[TMD], ]
-    for i in range(1,6):
-        As.append(R_z(np.pi/3*i) @ As[0])
-    # Compute area (scalar cross product)
-    area = As[0][0]*As[1][1] - As[0][1]*As[1][0]
-    # Reciprocal lattice vectors
-    Bs = [ 2 * np.pi * np.array([ As[1][1], -As[1][0]]) / area, ]
-    for i in range(1,6):
-        Bs.append(R_z(np.pi/3*i) @ Bs[0])
-    # Rotate Bs to stick with conventions
-    Bs = Bs[1:] + Bs[:1]
-    return As, Bs
-
-
 initial_pt = {
         'WS2': [
             #'e1':   
@@ -708,8 +650,6 @@ initial_pt = {
             0.2470,
                 ],
         }
-
-#Names of independent parameters of the model
 list_names_all = [
             'e1',
             'e3',
@@ -755,7 +695,6 @@ list_names_all = [
             'L_W',
             'L_S',
             ]
-#Formatted names of independent parameters of the model
 list_formatted_names_all = [
             r'$\epsilon_1$',
             r'$\epsilon_3$',
@@ -801,13 +740,71 @@ list_formatted_names_all = [
             r'$\lambda_W$',
             r'$\lambda_{Se}$',
             ]
+dic_params_twist = {
+        'S3': 1.8,
+        'S11': 2.8,
+        }
+dic_params_edc_positions = {
+    'S11': np.array([-1.1599, -1.2531, -1.82]),
+    'S3': (np.nan,),
+}
+dic_params_offset = {
+    "S3": 0,
+    "S11": -0.47
+}
+
+""" Moiré functions """
+def moire_length(theta):
+    """
+    Real space moire lattice length.
+    """
+    return 1/np.sqrt(1/dic_params_a_mono['WSe2']**2+1/dic_params_a_mono['WS2']**2-2*np.cos(theta)/dic_params_a_mono['WSe2']/dic_params_a_mono['WS2'])
+def miniBZ_rotation(theta):
+    """
+    Compute eta, the rotation of the mini-BZ wrt the monolayer BZ.
+    It's the angle of the segment between the K points of the 2 layers.
+    """
+    return np.arctan(np.tan(theta/2)*(dic_params_a_mono['WSe2']+dic_params_a_mono['WS2'])/(dic_params_a_mono['WSe2']-dic_params_a_mono['WS2']))
+def get_reciprocal_moire(theta):
+    """
+    Compute moire reciprocal lattice vectors.
+    They depend on the moire length for the size and on the orientation of the mini-BZ for the direction.
+    Returns a list of 7 vectors, first one being 0.
+    """
+    eta = miniBZ_rotation(theta)
+    Mat = R_z(eta)
+    G1 = 4*np.pi/np.sqrt(3)/moire_length(theta)*np.array([np.sqrt(3)/2,1/2])
+    G_M = [np.zeros(2), Mat@G1,]
+    for i in range(1,6):
+        G_M.append(R_z(np.pi/3*i) @ G_M[1])
+    return G_M
+def get_lattice_vectors(TMD,theta=0):
+    """
+    Compute single layer real-space and reciprocal lattice vectors.
+    The conventions we use are:
+        - WSe2 -> unit cell is aligned, with vertical bonds.
+        - WS2 -> unit cell has theta rotation.
+    """
+    As = [ R_z(theta/180*np.pi) @ a_1*dic_params_a_mono[TMD], ]
+    for i in range(1,6):
+        As.append(R_z(np.pi/3*i) @ As[0])
+    # Compute area (scalar cross product)
+    area = As[0][0]*As[1][1] - As[0][1]*As[1][0]
+    # Reciprocal lattice vectors
+    Bs = [ 2 * np.pi * np.array([ As[1][1], -As[1][0]]) / area, ]
+    for i in range(1,6):
+        Bs.append(R_z(np.pi/3*i) @ Bs[0])
+    # Rotate Bs to stick with conventions
+    Bs = Bs[1:] + Bs[:1]
+    return As, Bs
+def get_nCells(nShells):
+    """ Get number of mini-BZ given the number nShells of shells around the central one. """
+    return int(1+3*nShells*(nShells+1))
 
 """Parameters of experimental image
-
 In order, are:
     E_max, E_min,
     pixel of k=-1, pixel of k=1, pixel of e=E_max, pixel of e=E_min
-
 """
 
 dic_pars_samples = {
@@ -821,18 +818,8 @@ dic_pars_samples = {
 
 dic_energy_bounds = {'S11zoom':(-0.6,-1.8), 'S11':(-0.5,-2.5), 'S3':(-0.2,-1.8)}
 
-#Interlayer parameters of "constant" part w1 for p and d orbitals in the different cases
-w1p_dic = {
-    'DFT':{'S3':-1.650 , 'S11':-1.820},
-    'fit':{'S3':-1.725 , 'S11':-1.725}#-1.92}
-          }
-w1d_dic = {
-    'DFT':{'S3':0.340 , 'S11':0.420},
-    'fit':{'S3':0.370 , 'S11':0.370}#0.46}
-          }
 
-
-
+""" ARPES monolayer extraction data """
 class monolayerData():
     def __init__(self,TMD,pts=61):
         self.TMD = TMD

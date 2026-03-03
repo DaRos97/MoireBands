@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 from scipy.special import wofz      #for fitting weights in EDC
 import lmfit      #for fitting weights in EDC
+from tqdm import tqdm
 
 machine = cfs.get_machine(os.getcwd())
 
@@ -532,69 +533,91 @@ def get_data_dn(machine):
 
 def get_home_dn(machine):
     if machine == 'loc':
-        return '/home/dario/Desktop/git/MoireBands/Code/4_newMoire/'
+        return '/home/dario/Desktop/git/MoireBands/Code/bilayer/'
     elif machine == 'hpc':
-        return '/home/users/r/rossid/4_newMoire/'
+        return '/home/users/r/rossid/bilayer/'
     elif machine == 'maf':
-        return '/users/rossid/4_newMoire/'
+        return '/users/rossid/bilayer/'
 
 """ LDOS FUNCTIONS """
 
-def LDOS_kList(kPts,G_M):
+def LDOS_kList(kPts,theta,center='G'):
     """ Here we have to define the grid of momentum points to sum over.
     Here now is a grid of the mini-BZ.
     """
+    G_M = cfs.get_reciprocal_moire(theta/180*np.pi)     #7 reciprocal moire lattice vectors
     G1,G2 = G_M[1:3]
     kList = np.zeros((kPts,kPts,2))
+    if center=='K':
+        b2 = 4*np.pi/np.sqrt(3)/cfs.dic_params_a_mono['WSe2'] * np.array([0,1])
+        b1 = cfs.R_z(-np.pi/3) @ b2
+        b6 = cfs.R_z(-2*np.pi/3) @ b2
+        centerPoint = (b1+b6)/3
+    elif center=='G':
+        centerPoint = np.zeros(2)
     for ix in range(kPts):
         for iy in range(kPts):
-            kList[ix,iy] = G1*ix/kPts + G2*iy/kPts
+            kList[ix,iy] = centerPoint + G1*ix/kPts + G2*iy/kPts
     kFlat = kList.reshape(-1,2)
     return kFlat
 
-def LDOS_rList(rPts,a_M):
+def LDOS_rList(rPts,theta):
     """ Here we have to define the real space points to compute.
     We take a cut: W/W -> Se/W -> W/S -> W/W
     """
-    a1,a2 = a_M
+    a1,a2 = get_rs_moire(theta)        #real space moirè vectors
     rList = np.zeros((rPts,2))
     for i in range(rPts):
         rList[i] = (a1+a2)*i/rPts
     return rList
 
-def get_rs_moire(G_M):
+def get_rs_moire(theta):
     """
     Here we compute the moirè real-space vectors from the reciprocal ones.
     """
+    G_M = cfs.get_reciprocal_moire(theta/180*np.pi)     #7 reciprocal moire lattice vectors
     a_M = 2*np.pi*np.linalg.inv(G_M[1:3])
     a1 = a_M[:,0]
     a2 = cfs.R_z(np.pi/3) @ a1
     return [a1,a2]
 
+def lorentzian(E, E0, eta):
+    return eta / (np.pi * ((E - E0)**2 + eta**2))
 
+def compute_LDOS(evals,evecs,*args):
+    """
+    Computation of LDOS over real space.
+    """
+    rList, eList, nShells, nCells, theta, kFlat, spreadE = args
+    kPts = kFlat.shape[0]
+    rPts = rList.shape[0]
+    ePts = len(eList)
 
-########################################################################################################
-########################################################################################################
-# OLD FUNCTIONS #
-########################################################################################################
-########################################################################################################
-def get_pars(ind):
-    """ Old, not for EDC. """
-    lMonolayer_type = ['fit',]
-    lSample = ['S3',]  #this and theta are related! Sample needed also for interlayer parameters' choice
-    lStacking = ['P',]
-    lW2p = [0.0]#np.linspace(-0.05,0.05,5)
-    lW2d = [0.0]#np.linspace(-0.05,0.05,5)
-    pars_Vgs = [0.0,]        #Moire potential at Gamma
-    pars_Vks = [0.007,]             #Moire potential at K
-    phi_G = [np.pi/3,]                #Phase at Gamma
-    phi_K = [-106*np.pi/180,]       #Phase at K
-    lnShells = [0,]                       #number of BZ circles
-    lCuts = ['Kp-G-K',]#'Kp-G-K',]          #'Kp-G-K-Kp'
-    lKpts = [100,]
-    #
-    ll = [lMonolayer_type,lStacking,lW2p,lW2d,pars_Vgs,pars_Vks,phi_G,phi_K,lSample,lnShells,lCuts,lKpts,]
-    return list(itertools.product(*ll))[ind]
+    LDOS = np.zeros((rPts,ePts))
+    lu = lu_table(nShells)
+    Kbs = np.zeros((nCells,2))
+    G_M = cfs.get_reciprocal_moire(theta/180*np.pi)     #7 reciprocal moire lattice vectors
+    for i in range(nCells):
+        Kbs[i] = G_M[1]*lu[i][0] + G_M[2]*lu[i][1]
+
+    ig = np.arange(nCells)[np.newaxis, :]  # (1, nCells)
+    alpha = np.arange(44)[:, np.newaxis]  # (44, 1)       #index over alphas -> orbitals
+    ind = (alpha % 22) + ig * 22 + nCells * 22 * (alpha // 22)  #44,nCells
+    for ik in tqdm(range(kPts), desc="Momentum iteration"):
+        evals_k = evals[ik]
+        evecs_k = evecs[ik]
+        kGs = Kbs + kFlat[ik]        #nCells,2
+        phases = np.exp(1j * rList @ kGs.T)[np.newaxis,:,:]     #1,nR,nCells
+        for n,En in enumerate(evals_k):
+            #Vectorized calculation
+            coeffs = evecs_k[ind,n]
+            coeffs_all = coeffs[:,np.newaxis,:]  # (44, 1, nCells)
+            #
+            psi_alpha = np.sum(phases * coeffs_all, axis=-1)  # (44, nR)
+            psi_r_all = np.sum(np.abs(psi_alpha)**2, axis=0)  # nR
+            lorentz_matrix = lorentzian(eList, En, spreadE)  # nE
+            LDOS += psi_r_all[:,None] * lorentz_matrix[None,:] / kPts # (nR, nE)
+    return LDOS
 
 
 
