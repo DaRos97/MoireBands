@@ -30,8 +30,8 @@ for folder in data_dn.glob("temp*"):
         args_minimization = {
             'TMD': tokens[1],
             'pts': int(tokens[2]),
-            'Ks': tuple([float(tokens[3+i]) for i in range(5)]),
-            'Bs': tuple([float(tokens[8+i]) for i in range(4)]),
+            'Ks': tuple([float(tokens[3+i]) for i in range(6)]),
+            'Bs': tuple([float(tokens[9+i]) for i in range(4)]),
         }
         # Tight-binding parameters
         npy_file = next(folder.glob("*.npy"), None)

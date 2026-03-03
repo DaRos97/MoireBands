@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.linalg as la
 from pathlib import Path
+import copy
 
 """Functions related to Monolayer Hamiltonian"""
 
@@ -894,6 +895,12 @@ class monolayerData():
                 if ib>1 and path=='KpGK':       # Only positive values of momentum here.
                     sym[path].append(self.raw_data[path][ib])
                     continue
+                if ib>1 and path=='KMKp' and self.TMD=='WS2':   #Just take negative momenta since fit  is better
+                    rd = copy.copy(self.raw_data[path][ib])
+                    leftSide = copy.deepcopy(rd[:rd.shape[0]//2,:][::-1,:])
+                    leftSide[:,0] = np.absolute(leftSide[:,0])
+                    sym[path].append(leftSide)
+                    continue
                 nk = rd.shape[0]
                 nkl = nk//2
                 nkr = nk//2 if nk%2==0 else nk//2+1
@@ -956,10 +963,13 @@ class monolayerData():
             data[ptsGK:,2] = np.linspace(self.K[1],self.M[1],ptsKM,endpoint=True)
             for ib in range(self.nbands['KMKp']):
                 sd = self.sym_data['KMKp'][ib]
-                ind = np.searchsorted(data[ptsGK:,0], modK+modKM-np.max(sd[:,0]), side="right")
-                ikmin = min(ind,ptsKM)
-                data[ptsGK+ikmin:,3+ib] = np.interp( data[ptsGK+ikmin:,0], modK+modKM-sd[~np.isnan(sd[:,1]),0][::-1], sd[~np.isnan(sd[:,1]),1][::-1] )
+                indmax = np.searchsorted(data[ptsGK:,0], modK+modKM-np.min(sd[:,0]), side="left")+1
+                ikmax = min(indmax,ptsKM)
+                indmin = np.searchsorted(data[ptsGK:,0], modK+modKM-np.max(sd[:,0]), side="right")
+                ikmin = min(indmin,ptsKM)
+                data[ptsGK+ikmin:ptsGK+ikmax,3+ib] = np.interp( data[ptsGK+ikmin:ptsGK+ikmax,0], modK+modKM-sd[~np.isnan(sd[:,1]),0][::-1], sd[~np.isnan(sd[:,1]),1][::-1] )
                 data[ptsGK:ptsGK+ikmin,3+ib] = np.nan
+                data[ptsGK+ikmax:,3+ib] = np.nan
             ## No bands 5 and 6 for KMKp
             data[ptsGK:,7] = np.nan
             data[ptsGK:,8] = np.nan

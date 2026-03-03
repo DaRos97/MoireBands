@@ -17,16 +17,16 @@ import matplotlib.pyplot as plt
 """ Input processing """
 inp = sys.argv
 if len(inp)!=2:
-    print("Usage: python visualize_ARPES_data.py arg\nwith arg a string containing only s, r and/or m for (r)aw, (s)ymmetrized and (f)it data.")
+    print("Usage: python visualize_ARPES_data.py arg\nwith arg a string containing only r, s and/or f for (r)aw, (s)ymmetrized and (f)it data.")
     exit()
 for i in inp[1]:
     if i not in ['r','s','f']:
         raise ValueError("Input must contain only r, s and/or f.")
 
 TMD = 'WS2'
-pts = 91
+pts = 151
 
-data = cfs.monolayerData(TMD)
+data = cfs.monolayerData(TMD,pts=pts)
 paths = data.paths
 
 """ Raw data """

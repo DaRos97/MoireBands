@@ -56,23 +56,12 @@ There is another one, the best of big7.zip, which is better but has much larger 
 
 ## Mafalda
 ### WSe2
-big from 1 to 8.
-big9:
-    - Adjusted orbital content with SOC bands instead of just 11 orbitals. Hopefully fixes problem of conduction band.
-big11:
-    - Result of chi2=1.285622 -> good but saturates bounds
-big12:
-    - Very good result for 0.05_5_20_1 3_3_3_0 and 0.05_5_20_1 3_3_3_3
-big13:
-    - Making finer grid in Ppar
-    - 10_3 -> 0.035
-    - 5_3 -> 0.015  -> BEST
-    - 5_0 all kind of ok
-    - 10_0 -> 0.02 
+`set2.zip`
+- Ks: 1e-3, 1e-3, 0, 0, 0.1, 5      ->  min of conduction not at K and orbitals of K mostly p_xy, maybe beter d_xy
+`set3.zip`
+- Ks: 1e-3, 1e-3, 0, 1, 0.1, 5      ->  little pz at M, 4 saturated par bounds
 
 ### WS2
-big1:
-    - 5_3 -> 0.015
 
 
 

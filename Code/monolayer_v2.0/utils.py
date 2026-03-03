@@ -39,14 +39,14 @@ def get_args(ind):
     -------
     dict: 'TMD', 'pts', 'Ks', 'Bs'
     """
-    lTMDs = ["WSe2", ]    #TMDs
+    lTMDs = ["WS2", ]    #TMDs
     # Parameters of constraints
-    lK1 = [0,1e-5,1e-4,1e-3]         # coefficient of parameters distance from DFT
-    lK2 = [1e-4,1e-3,1e-2]        # coefficient of band content in valence band
+    lK1 = [1e-3,1e-2,1e-1,1]         # coefficient of parameters distance from DFT
+    lK2 = [1e-3,1e-2,1e-1,1]        # coefficient of band content in valence band
     lK2b = [0,]        # coefficient of band content in conduction band
-    lK3 = [0,]         # coefficient of minimum of conduction band at K
-    lK4 = [1e-2,1e-1,1]          # coefficient of gap value
-    lK5 = [5,10,20]             # weight of high symmetry points: G,K,near-M-crossing and M
+    lK3 = [0,1]         # coefficient of minimum of conduction band at K
+    lK4 = [1e-1,1]          # coefficient of gap value
+    lK5 = [5,10]             # weight of high symmetry points: G,K,near-M-crossing and M
     # Bounds
     lrp = [3,]         #tb bounds for general orbitals
     lrpz = [3,]         #tb bounds for z orbitals -> indices 6 and 9
