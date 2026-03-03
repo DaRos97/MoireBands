@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 save_E_int_fit = True
 save_W_int_fit = True
@@ -173,12 +174,15 @@ else:
     orbitals_dft = np.load(orb_fn)['orb_dft']
 
 """ ARPES bands """
-dataObject = cfs.dataWS2() if TMD=="WS2" else cfs.dataWSe2()
-ptsPerPath = (30,15,10)
-ARPES_bands = dataObject.getFitData(ptsPerPath)
+#dataObject = cfs.dataWS2() if TMD=="WS2" else cfs.dataWSe2()
+#ptsPerPath = (30,15,10)
+#ARPES_bands = dataObject.getFitData(ptsPerPath)
+pts = 61
+ARPES_bands = cfs.monolayerData(TMD,pts=pts).fit_data
+
 
 """ Fit and DFT bands. """
-args_e_data = ('bands_en',TMD,*ptsPerPath)
+args_e_data = ('bands_en',TMD,pts)
 th_e_data_fn = cfs.getFilename(args_e_data,dirname='Data/',extension='.npz')
 if not Path(th_e_data_fn).is_file():
     print("Computing energy bands")
@@ -268,6 +272,7 @@ for orb in range(5):
             facecolor=color[orb],
             lw=0,
             alpha=0.3,
+            rasterized=True
         )
         ax.scatter(
             2*norm_orb[-1]-norm_orb,
@@ -277,6 +282,7 @@ for orb in range(5):
             facecolor=color[orb],
             lw=0,
             alpha=0.3,
+            rasterized=True
         )
 
     if orb<3:
@@ -419,7 +425,11 @@ ax.set_ylim(
 ks = [ARPES_bands[0,0],4/3*np.pi/cfs.dic_params_a_mono[TMD],ARPES_bands[-1,0]]
 ax.set_xticks(ks,[r"$\Gamma$",r"$K$",r"$M$"],size=s_norm)
 
-
+if 0:   #""" Plot TMD hoppings """
+    ax = fig.add_subplot(gs[0,1])
+    img = plt.imread("hoppings.png")  # easiest way
+    ax.imshow(img)
+    ax.axis("off")
 
 plt.subplots_adjust(
     bottom = 0.064,
@@ -433,8 +443,8 @@ plt.subplots_adjust(
 plt.show()
 
 if 1:
-    fig.savefig('Data/Fig_monolayer.pdf')
+    fig.savefig('Data/fig_monolayer.svg')
 else:
-    fig.savefig('Data/Fig_monolayer.png')
+    fig.savefig('Data/fig_monolayer.png', dpi=600)#, compress_level=0)
 
 
