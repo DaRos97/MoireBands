@@ -13,10 +13,10 @@ import lmfit      #for fitting weights in EDC
 """ Parameters """
 def get_parameters(chunk_id,n_chunks=128):
     """ Get chunks of parameters to compute. """
-    listVg = np.linspace(0.000,0.040,21)     # Considered values of moirè potential -> every 1 meV
-    listPhi = np.linspace(160,180,11,endpoint=True) /180*np.pi
-    listW1p = np.linspace(-1.600,-1.700,21)         # every 5 meV
-    listW1d = np.linspace(0.300,0.400,21)           # every 5 meV
+    listVg = np.linspace(0.007,0.025,19)     # Considered values of moirè potential -> every 1 meV
+    listPhi = np.linspace(160,180,21,endpoint=True) /180*np.pi
+    listW1p = np.linspace(-2.000,-1.200,41)         # every 5 meV
+    listW1d = np.linspace( 0.700, 1.300,31)           # every 5 meV
     filename = cfs.getFilename(
         (
         listVg[0],listVg[-1],len(listVg),int(listPhi[0]/np.pi*180),int(listPhi[-1]/np.pi*180),len(listPhi),
@@ -59,9 +59,10 @@ def EDC(args_diag,sample,spreadE=0.03,disp=False,plot=False,machine='loc'):
     weights = np.sum(ab[:22,:],axis=0) + np.sum(ab[22*nCells:22*(1+nCells),:],axis=0)
     # Bands fitting
     pTVB,successTVB = fitBands('TVB',evals,weights,nCells,spreadE,sample)
-    pLVB,successLVB = fitBands('LVB',evals,weights,nCells,spreadE,sample)
-    if successTVB and successLVB:
-        return (pTVB[0],pTVB[1],pLVB[0]), True
+    if successTVB:
+        pLVB,successLVB = fitBands('LVB',evals,weights,nCells,spreadE,sample)
+        if successLVB:
+            return (pTVB[0],pTVB[1],pLVB[0]), True
     else:
         return np.nan, False
 def fitBands(bandType,evals,weights,nCells,spreadE,sample):

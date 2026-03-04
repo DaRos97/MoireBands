@@ -62,8 +62,6 @@ if disp:    #print what parameters we're using
 parameters_chunk, listFn = utils.get_parameters(ind,n_chunks=n_chunks)
 results = []
 for Vg,phiG,w1p,w1d in parameters_chunk:
-    if disp:
-        print("Vg: %.3f\tphiG: %.1f\tw1p: %.3f\t w1d: %.3f"%(Vg,phiG/np.pi*180,w1p,w1d))
     parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
     args_diag = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', False, False)
     positions,success = utils.EDC(
@@ -78,6 +76,9 @@ for Vg,phiG,w1p,w1d in parameters_chunk:
         results.append((Vg,phiG,w1p,w1d,*positions))
     else:
         results.append((Vg,phiG,w1p,w1d,np.nan,np.nan,np.nan))
+    if disp:
+        print("Vg: %.3f\tphiG: %.1f\tw1p: %.3f\t w1d: %.3f"%(Vg,phiG/np.pi*180,w1p,w1d))
+        #print("Iteration time: %.4f"%(tf-ti))
 
 """ Save to file: hdf5 """
 df = pd.DataFrame(
