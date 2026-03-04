@@ -15,19 +15,25 @@ import utils
 
 """ Dirname and parameters """
 machine = cfs.get_machine(os.getcwd())
+n_chunks = 128
 theta_deviation = 0      #Change here for \pm 0.3 degrees
 nShells = 2
 Vk,phiK = (0.006,106/180*np.pi)
 spreadE = 0.03      # in eV
+chunk, listFn = utils.get_parameters(0,n_chunks=n_chunks)
 dirname = cfs.getFilename(
     ('edcGamma',theta_deviation,nShells,Vk,phiK,spreadE),
     dirname=utils.get_home_dn(machine)+"Data/",
-) + '/'
+    floatPrecision=3
+) + listFn + '/'
 
-n_chunks = 128
 files = sorted(glob.glob(dirname+"*_%d.h5"%n_chunks))
 
-output_file = dirname + "final_results.h5"
+output_file = cfs.getFilename(
+    ('full_edcGamma',theta_deviation,nShells,Vk,phiK,spreadE),
+    dirname=utils.get_home_dn(machine)+"Data/",
+    floatPrecision=3
+) + listFn +  ".h5"
 
 store = pd.HDFStore(
     output_file,
@@ -47,4 +53,4 @@ for f in files:
 
 store.close()
 
-print(f"Merged {len(files)} chunk files.")
+print("Merged %d chunk files."%len(files))

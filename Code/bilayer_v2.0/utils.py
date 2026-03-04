@@ -13,10 +13,16 @@ import lmfit      #for fitting weights in EDC
 """ Parameters """
 def get_parameters(chunk_id,n_chunks=128):
     """ Get chunks of parameters to compute. """
-    listVg = np.linspace(0.010,0.040,31)     # Considered values of moirè potential -> every 1 meV
-    listPhi = np.linspace(160,200,40,endpoint=False) /180*np.pi
+    listVg = np.linspace(0.000,0.040,21)     # Considered values of moirè potential -> every 1 meV
+    listPhi = np.linspace(160,180,11,endpoint=True) /180*np.pi
     listW1p = np.linspace(-1.600,-1.700,21)         # every 5 meV
     listW1d = np.linspace(0.300,0.400,21)           # every 5 meV
+    filename = cfs.getFilename(
+        (
+        listVg[0],listVg[-1],len(listVg),int(listPhi[0]/np.pi*180),int(listPhi[-1]/np.pi*180),len(listPhi),
+        listW1p[0],listW1p[-1],len(listW1p),listW1d[0],listW1d[-1],len(listW1d)
+        )
+    )
     #
     grid = product(listVg, listPhi, listW1p, listW1d)
     total_jobs = len(listVg)*len(listPhi)*len(listW1p)*len(listW1d)
@@ -27,15 +33,21 @@ def get_parameters(chunk_id,n_chunks=128):
     chunk_iter = islice(grid, start, end)
     print("Total jobs: %d"%total_jobs)
     print("This chunk: %d"%(end-start))
-    return chunk_iter
+    return chunk_iter,filename
 
 """ EDC """
 def EDC(args_diag,sample,spreadE=0.03,disp=False,plot=False,machine='loc'):
-    """ Compute peak positions of bands by fitting the intensity profile.
+    """
+    Compute peak positions of bands by fitting the intensity profile.
     We do it by diagonalizing the Hamiltonian at the desired k point.
-    We spread the weights with a Lorentzian of width 30 meV.
+    We spread the weights with a Lorentzian of width `spreadE`.
     We fit the intensity profile with 2 Lorentzians (convoluted with a Gaussian).
     Two different fittings (same procedure) for TVB and LVB (lower valence band -> WS2).
+
+    Returns
+    -------
+    tuple: three positions of fit
+    bool: success flag of procedure
     """
     #edcPoint = 'Gamma' if np.linalg.norm(args_diag[2][0])==0 else 'K'
     nCells = args_diag[1]
@@ -46,14 +58,22 @@ def EDC(args_diag,sample,spreadE=0.03,disp=False,plot=False,machine='loc'):
     ab = np.absolute(evecs)**2
     weights = np.sum(ab[:22,:],axis=0) + np.sum(ab[22*nCells:22*(1+nCells),:],axis=0)
     # Bands fitting
-    p1,p2,successTVB = fitBands('TVB',evals,weights,nCells,spreadE,sample)
-    p3,p4,successLVB = fitBands('LVB',evals,weights,nCells,spreadE,sample)
+    pTVB,successTVB = fitBands('TVB',evals,weights,nCells,spreadE,sample)
+    pLVB,successLVB = fitBands('LVB',evals,weights,nCells,spreadE,sample)
     if successTVB and successLVB:
-        return (p1,p2,p3), True
+        return (pTVB[0],pTVB[1],pLVB[0]), True
     else:
         return np.nan, False
 def fitBands(bandType,evals,weights,nCells,spreadE,sample):
-    p1,p2,p3 = tuple(cfs.dic_params_edc_positions[sample] - cfs.dic_params_offset[sample])
+    """
+    Uses lmfit to try to fit the intensity profile to 2 Lorentzians convoluted with a Gaussian.
+    Used to extract the peak positions of main band and side band crossings.
+
+    Returns
+    -------
+    tuple: two positions of the peaks
+    bool: fitting success flag
+    """
     indexB = 28*nCells - 1 if bandType=='TVB' else 26*nCells - 1
     energyB = evals[indexB]
     weightB = weights[indexB]
@@ -65,7 +85,7 @@ def fitBands(bandType,evals,weights,nCells,spreadE,sample):
     energyList = np.linspace(minE,maxE,200)      #we chose this from experimental data
     weightList = np.zeros(len(energyList))
     if np.max(fullWeightValues[:-2]) > weightB:     # Check the main band has highest weight
-        return 0,0,False
+        return (0,0),False
     # Lorentzian spreading
     for i in range(len(fullEnergyValues)):
         weightList += spreadE/np.pi * fullWeightValues[i] / ((energyList-fullEnergyValues[i])**2+spreadE**2)
@@ -86,15 +106,15 @@ def fitBands(bandType,evals,weights,nCells,spreadE,sample):
     result = model.fit(weightList, params, x=energyList)
 
     amp1, amp2 = result.best_values['amp1'], result.best_values['amp2']
-    cen1, cen2 = (result.best_values['cen1'], result.best_values['cen2']) if amp1>amp2 else (result.best_values['cen2'], result.best_values['cen1'])
+    cen1, cen2 = result.best_values['cen1'], result.best_values['cen2']#) if amp1>amp2 else (result.best_values['cen2'], result.best_values['cen1'])
 
     if 0:   # Plot fit to check
-        plotFitResult(energyList,weightList,fullEnergyValues,fullWeightValues,result,p1 if bandType=='TVB' else p3,p2 if bandType=='TVB' else p3-0.093)
+        plotFitResult(energyList,weightList,fullEnergyValues,fullWeightValues,result,sample,bandType)
 
-    if result.success and amp1>1e-3 and amp2>1e-3 and result.redchi<1e-2:
-        return cen1, cen2, True
+    if result.success and amp1>1e-3 and amp2>1e-3 and result.redchi<1e-2 and amp1>amp2:
+        return (cen1, cen2), True
     else:
-        return 0, 0, False
+        return (0, 0), False
 def voigt(x, center, amplitude, gamma, sigma):
     """Single Voigt peak."""
     z = ((x - center) + 1j*gamma) / (sigma*np.sqrt(2))
@@ -109,7 +129,7 @@ def two_lorentzian_one_gaussian(x, amp1,cen1,gam1, amp2,cen2,gam2, sig):
     peak2 = voigt(x, cen2, amp2, gam2, sig)
 
     return peak1 + peak2
-def plotFitResult(energyList,weightList,fullEnergyValues,fullWeightValues,result,cen1,cen2):
+def plotFitResult(energyList,weightList,fullEnergyValues,fullWeightValues,result,sample,bandType):
     imageBands = False
     if imageBands:       #Compute image zoom around Gamma
         fig = plt.figure(figsize=(20,13))
@@ -191,18 +211,22 @@ def plotFitResult(energyList,weightList,fullEnergyValues,fullWeightValues,result
     else:
         fig = plt.figure(figsize=(10,10))
         ax = fig.add_subplot()
+    p1,p2,p3 = tuple(cfs.dic_params_edc_positions[sample] - cfs.dic_params_offset[sample])
     # Plot weight spreading
     ax.scatter(energyList,weightList,color='b')
     ax.scatter(fullEnergyValues,fullWeightValues,color='r')
     ax.set_xlim(energyList[0],energyList[-1])
     if result.success:
         ax.plot(energyList,result.best_fit,color='g',ls='--',lw=2)
-        ax.axvline(result.best_values['cen1'],color='r')
-        ax.axvline(result.best_values['cen2'],color='r')
+        ax.axvline(result.best_values['cen1'],color='r',label="fit: cen1=%.4f"%result.best_values['cen1'])
+        ax.axvline(result.best_values['cen2'],color='orange',label="fit: cen2=%.4f"%result.best_values['cen2'])
     ax.axhline(0,lw=0.5,zorder=-10,color='k')
-    ax.axvline(cen1,color='y',lw=2,zorder=-1)
-    ax.axvline(cen2,color='y',lw=2,zorder=-1)
+    ax.axvline(p1,color='green',lw=2,zorder=-1,label="ARPES: cen TVB=%.4f"%p1)
+    ax.axvline(p2,color='lime',lw=2,zorder=-1,label="ARPES: cen EDC=%.4f"%p2)
+    ax.axvline(p3,color='blue',lw=2,zorder=-1,label="ARPES: cen LVB=%.4f"%p3)
+    ax.set_title(bandType,size=30)
     fig.tight_layout()
+    ax.legend(fontsize=15)
     plt.show()
 
 """ Moiré functions """

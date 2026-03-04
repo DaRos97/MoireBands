@@ -36,11 +36,7 @@ sample = 'S11'
 ind = int(sys.argv[1])
 if machine=='maf':
     ind -= 1
-disp = not machine=='maf'
-if disp:
-    from tqdm import tqdm
-else:
-    tqdm = cfs.tqdm
+disp = machine=='loc'
 
 """ Fixed parameetrs """
 theta_deviation = 0      #Change here for \pm 0.3 degrees
@@ -63,9 +59,11 @@ if disp:    #print what parameters we're using
     print("Energy spreading: %.3f eV"%spreadE)
 
 """ Computation """
-parameters_chunk = utils.get_parameters(ind,n_chunks=n_chunks)
+parameters_chunk, listFn = utils.get_parameters(ind,n_chunks=n_chunks)
 results = []
-for Vg,phiG,w1p,w1d in tqdm(parameters_chunk):
+for Vg,phiG,w1p,w1d in parameters_chunk:
+    if disp:
+        print("Vg: %.3f\tphiG: %.1f\tw1p: %.3f\t w1d: %.3f"%(Vg,phiG/np.pi*180,w1p,w1d))
     parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
     args_diag = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', False, False)
     positions,success = utils.EDC(
@@ -89,7 +87,8 @@ df = pd.DataFrame(
 dirname = cfs.getFilename(
     ('edcGamma',theta_deviation,nShells,Vk,phiK,spreadE),
     dirname=utils.get_home_dn(machine)+"Data/",
-) + '/'
+    floatPrecision=3,
+) + listFn + '/'
 if not Path(dirname).is_dir():
     os.system("mkdir "+dirname)
 output_file = dirname + "chunk_%d_%d.h5"%(ind,n_chunks)
