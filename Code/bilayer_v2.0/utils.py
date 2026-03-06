@@ -97,9 +97,12 @@ def fitBands(bandType,evals,weights,nCells,spreadE,sample,BZpoint,showFit=False)
     fullWeightValues = weights[indexL:indexB+1]
     # Define finer energy list for weight spreading: slightly larger for better spreading shape
     minE, maxE = (-1,-0.5) if bandType=='TVB' else (-1.6,-1.1)
-    nE = 251
-    if BZpoint=='K':
-        minE, maxE, nE = (-0.8,-0.2,301)
+    minE = fullEnergyValues[0]
+    maxE = fullEnergyValues[-1]
+    Delta = maxE-minE
+    minE -= Delta/2
+    maxE += Delta/2
+    nE = int((maxE-minE)/0.005)
     energyList = np.linspace(minE,maxE,nE)      #we chose this from experimental data
     weightList = np.zeros(len(energyList))
     if np.max(fullWeightValues[:-nSOC]) > weightB:     # Check the main band has highest weight
