@@ -1,11 +1,9 @@
 """
-Here we take an intensity cut at Gamma to look at the distance between the main band and the side band crossing below it.
-For the 4-dimensional space of V, phi, w1p and w1d we define a distance from the ARPES result in two ways:
-    - Considering distances: d1,d2 distance of side band crossing(sbc) and of WS2 band from TVB, respectively
-    - Considering positions: p1,p2,p3 positions of TVB, sbc and WS2, respectively.
+Here we take an intensity cut at K to look at the distance between the main band and the side band crossing below it.
+In this situation there is no role of interlayer coupling, so we just look at the distance between main band and moiré bands.
 From the ARPES exp we have, for S11 [eV]:
-    - d1=0.0932, d2=0.6601
-    - p1=-1.1599, p2=-1.2531, p3=-1.8200
+    - d=0.170 eV
+    - p=-0.8990 eV
 """
 
 import sys,os
@@ -25,11 +23,11 @@ import pandas as pd
 from pathlib import Path
 
 machine = cfs.get_machine(os.getcwd())
-n_chunks = 500
+n_chunks = 128
 
 """ Parameters and options """
 if len(sys.argv)!=2:
-    print("Usage: python3 edc.py arg1")
+    print("Usage: python3 edcK.py arg1")
     print("arg1 is an int for the index of the parameter list")
     exit()
 sample = 'S11'
@@ -41,60 +39,59 @@ disp = machine=='loc'
 """ Fixed parameetrs """
 theta_deviation = 0      #Change here for \pm 0.3 degrees
 nShells = 2
-Vk,phiK = (0.006,106/180*np.pi)
+Vg,phiG = (0.019,175/180*np.pi)
 spreadE = 0.03      # in eV
+w1p = -1.750
+w1d = 1.050
 #
 nCells = cfs.get_nCells(nShells)
 monolayer_type = 'fit'
 theta = cfs.dic_params_twist[sample]+theta_deviation    #twist angle, in degrees, from LEED eperiment
-kListG = np.array([np.zeros(2),])
+kListK = np.array([[4*np.pi/3/cfs.dic_params_a_mono['WSe2'],0],])
 stacking = 'P'
 w2p = w2d = 0
+parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
 if disp:    #print what parameters we're using
     print("-----------FIXED PARAMETRS CHOSEN-----------")
     print("Monolayers' tight-binding parameters: ",monolayer_type)
     print("Sample ",sample," with twist %.2f°"%theta," (variation of %.1f° from LEED)"%theta_deviation)
-    print("Moiré potential at K (%.5f eV, %.1f°)"%(Vk,phiK/np.pi*180))
+    print("Moiré potential at Gamma (%.5f eV, %.1f°)"%(Vg,phiG/np.pi*180))
     print("Number of mini-BZs circles: ",nShells)
     print("Energy spreading: %.3f eV"%spreadE)
 
 """ Computation """
-parameters_chunk, listFn = utils.get_parametersGamma(ind,n_chunks=n_chunks)
+parameters_chunk, listFn = utils.get_parametersK(ind,n_chunks=n_chunks)
 results = []
-for Vg,phiG,w1p,w1d in parameters_chunk:
-    #Vg = 0.018
-    #phiG = 175/180*np.pi
-    #w1p = -1.75
-    #w1d= 1.05
-    parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
-    args_diag = (nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', False, False)
+for Vk,phiK in parameters_chunk:
+    #Vk = 0.0
+    #phiK = 120/180*np.pi
+    args_diag = (nShells, nCells, kListK, monolayer_type, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', False, False)
     positions,success = utils.EDC(
         args_diag,
         sample,
-        BZpoint='G',
+        BZpoint='K',
         spreadE=spreadE,
         disp=False,
         plot=False,
         machine=machine
     )
     if success:
-        results.append((Vg,phiG,w1p,w1d,*positions))
+        results.append((Vk,phiK,*positions))
     else:
-        results.append((Vg,phiG,w1p,w1d,np.nan,np.nan,np.nan))
+        results.append((Vk,phiK,np.nan,np.nan))
     if disp:
-        print("Vg: %.3f\tphiG: %.1f\tw1p: %.3f\t w1d: %.3f"%(Vg,phiG/np.pi*180,w1p,w1d))
-        #print("Iteration time: %.4f"%(tf-ti))
+        print("Vk: %.3f\tphiK: %.1f"%(Vk,phiK/np.pi*180))
 
 """ Save to file: hdf5 """
 df = pd.DataFrame(
     results,
-    columns=["Vg", "phiG", "w1p", "w1d", "p1", "p2", "p3"]
+    columns=["Vk", "phiK", "p1", "p2"]
 )
 dirname = cfs.getFilename(
-    ('edcGamma',theta_deviation,nShells,Vk,phiK,spreadE),
+    ('edcK',theta_deviation,nShells,Vg,phiG,w1p,w1d,spreadE),
     dirname=utils.get_home_dn(machine)+"Data/",
     floatPrecision=3,
-) + listFn + '/'
+) + '_' + listFn + '/'
 if not Path(dirname).is_dir():
     os.system("mkdir "+dirname)
 output_file = dirname + "chunk_%d_%d.h5"%(ind,n_chunks)

@@ -20,7 +20,7 @@ theta_deviation = 0      #Change here for \pm 0.3 degrees
 nShells = 2
 Vk,phiK = (0.006,106/180*np.pi)
 spreadE = 0.03      # in eV
-chunk, listFn = utils.get_parameters(0,n_chunks=n_chunks)
+chunk, listFn = utils.get_parametersGamma(0,n_chunks=n_chunks)
 dirname = cfs.getFilename(
     ('edcGamma',theta_deviation,nShells,Vk,phiK,spreadE),
     dirname=utils.get_home_dn(machine)+"Data/",

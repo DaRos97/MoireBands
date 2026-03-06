@@ -744,8 +744,12 @@ dic_params_twist = {
         'S3': 1.8,
         'S11': 2.8,
         }
-dic_params_edc_positions = {
+dic_params_edcG_positions = {
     'S11': np.array([-1.1599, -1.2531, -1.82]),
+    'S3': (np.nan,),
+}
+dic_params_edcK_positions = {
+    'S11': np.array([-0.8990, -1.0696]),
     'S3': (np.nan,),
 }
 dic_params_offset = {

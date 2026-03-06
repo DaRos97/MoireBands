@@ -11,12 +11,12 @@ from scipy.special import wofz      #for fitting weights in EDC
 import lmfit      #for fitting weights in EDC
 
 """ Parameters """
-def get_parameters(chunk_id,n_chunks=128):
+def get_parametersGamma(chunk_id,n_chunks=128):
     """ Get chunks of parameters to compute. """
     listVg = np.linspace(0.007,0.025,19)     # Considered values of moirè potential -> every 1 meV
-    listPhi = np.linspace(160,180,21,endpoint=True) /180*np.pi
+    listPhi = np.linspace(160,180,360,endpoint=True) /180*np.pi
     listW1p = np.linspace(-2.000,-1.200,41)         # every 5 meV
-    listW1d = np.linspace( 0.700, 1.300,31)           # every 5 meV
+    listW1d = np.linspace( 0.700, 1.300,41)           # every 5 meV
     filename = cfs.getFilename(
         (
         listVg[0],listVg[-1],len(listVg),int(listPhi[0]/np.pi*180),int(listPhi[-1]/np.pi*180),len(listPhi),
@@ -34,9 +34,29 @@ def get_parameters(chunk_id,n_chunks=128):
     print("Total jobs: %d"%total_jobs)
     print("This chunk: %d"%(end-start))
     return chunk_iter,filename
+def get_parametersK(chunk_id,n_chunks=128):
+    """ Get chunks of parameters to compute. """
+    listVk = np.linspace(0.001,0.070,70)     # Considered values of moirè potential -> every 1 meV
+    listPhi = np.linspace(0,359,360,endpoint=True) /180*np.pi
+    filename = cfs.getFilename(
+        (
+        listVk[0],listVk[-1],len(listVk),int(listPhi[0]/np.pi*180),int(listPhi[-1]/np.pi*180),len(listPhi)
+        )
+    )
+    #
+    grid = product(listVk, listPhi)
+    total_jobs = len(listVk)*len(listPhi)
+    chunk_size = total_jobs // n_chunks
+    remainder = total_jobs % n_chunks
+    start = chunk_id * chunk_size + min(chunk_id, remainder)
+    end = start + chunk_size + (1 if chunk_id < remainder else 0)
+    chunk_iter = islice(grid, start, end)
+    print("Total jobs: %d"%total_jobs)
+    print("This chunk: %d"%(end-start))
+    return chunk_iter,filename
 
 """ EDC """
-def EDC(args_diag,sample,spreadE=0.03,disp=False,plot=False,machine='loc'):
+def EDC(args_diag,sample,BZpoint='G',spreadE=0.03,disp=False,plot=False,machine='loc'):
     """
     Compute peak positions of bands by fitting the intensity profile.
     We do it by diagonalizing the Hamiltonian at the desired k point.
@@ -49,7 +69,6 @@ def EDC(args_diag,sample,spreadE=0.03,disp=False,plot=False,machine='loc'):
     tuple: three positions of fit
     bool: success flag of procedure
     """
-    #edcPoint = 'Gamma' if np.linalg.norm(args_diag[2][0])==0 else 'K'
     nCells = args_diag[1]
     # Evals, evecs and weights at edcPoint
     e_, ev_ = diagonalize_matrix(*args_diag,machine=machine)
@@ -58,14 +77,16 @@ def EDC(args_diag,sample,spreadE=0.03,disp=False,plot=False,machine='loc'):
     ab = np.absolute(evecs)**2
     weights = np.sum(ab[:22,:],axis=0) + np.sum(ab[22*nCells:22*(1+nCells),:],axis=0)
     # Bands fitting
-    pTVB,successTVB = fitBands('TVB',evals,weights,nCells,spreadE,sample)
+    pTVB,successTVB = fitBands('TVB',evals,weights,nCells,spreadE,sample,BZpoint)
     if successTVB:
-        pLVB,successLVB = fitBands('LVB',evals,weights,nCells,spreadE,sample)
+        if BZpoint=='K':
+            return pTVB, True
+        pLVB,successLVB = fitBands('LVB',evals,weights,nCells,spreadE,sample,BZpoint)
         if successLVB:
             return (pTVB[0],pTVB[1],pLVB[0]), True
     else:
         return np.nan, False
-def fitBands(bandType,evals,weights,nCells,spreadE,sample):
+def fitBands(bandType,evals,weights,nCells,spreadE,sample,BZpoint):
     """
     Uses lmfit to try to fit the intensity profile to 2 Lorentzians convoluted with a Gaussian.
     Used to extract the peak positions of main band and side band crossings.
@@ -76,16 +97,19 @@ def fitBands(bandType,evals,weights,nCells,spreadE,sample):
     bool: fitting success flag
     """
     indexB = 28*nCells - 1 if bandType=='TVB' else 26*nCells - 1
+    nSOC = 2 if BZpoint=='G' else 1
     energyB = evals[indexB]
     weightB = weights[indexB]
     #
-    fullEnergyValues = evals  [indexB-2*nCells+1:indexB+1]
-    fullWeightValues = weights[indexB-2*nCells+1:indexB+1]
+    fullEnergyValues = evals  [indexB-nSOC*nCells+1:indexB+1]
+    fullWeightValues = weights[indexB-nSOC*nCells+1:indexB+1]
     # Define finer energy list for weight spreading: slightly larger for better spreading shape
     minE, maxE = (-1,-0.5) if bandType=='TVB' else (-1.6,-1.1)
+    if BZpoint=='K':
+        minE, maxE = (-0.73,-0.23)
     energyList = np.linspace(minE,maxE,200)      #we chose this from experimental data
     weightList = np.zeros(len(energyList))
-    if np.max(fullWeightValues[:-2]) > weightB:     # Check the main band has highest weight
+    if np.max(fullWeightValues[:-nSOC]) > weightB:     # Check the main band has highest weight
         return (0,0),False
     # Lorentzian spreading
     for i in range(len(fullEnergyValues)):
@@ -93,7 +117,7 @@ def fitBands(bandType,evals,weights,nCells,spreadE,sample):
     # Fit the spreaded weights with two Lorentzian peaks convoluted with a Gaussian
     model = lmfit.Model(two_lorentzian_one_gaussian)
     cen1 = energyList[np.argmax(weightList)]
-    cen2 = cen1-0.05
+    cen2 = cen1-0.05 if BZpoint=='G' else cen1-0.15
     params = model.make_params(
         amp1=1.57, cen1=cen1, gam1=0.03,
         amp2=0.41, cen2=cen2, gam2=0.03,
@@ -110,7 +134,7 @@ def fitBands(bandType,evals,weights,nCells,spreadE,sample):
     cen1, cen2 = result.best_values['cen1'], result.best_values['cen2']#) if amp1>amp2 else (result.best_values['cen2'], result.best_values['cen1'])
 
     if 0:   # Plot fit to check
-        plotFitResult(energyList,weightList,fullEnergyValues,fullWeightValues,result,sample,bandType)
+        plotFitResult(energyList,weightList,fullEnergyValues,fullWeightValues,result,sample,bandType,BZpoint)
 
     if result.success and amp1>1e-3 and amp2>1e-3 and result.redchi<1e-2 and amp1>amp2:
         return (cen1, cen2), True
@@ -130,89 +154,14 @@ def two_lorentzian_one_gaussian(x, amp1,cen1,gam1, amp2,cen2,gam2, sig):
     peak2 = voigt(x, cen2, amp2, gam2, sig)
 
     return peak1 + peak2
-def plotFitResult(energyList,weightList,fullEnergyValues,fullWeightValues,result,sample,bandType):
+def plotFitResult(energyList,weightList,fullEnergyValues,fullWeightValues,result,sample,bandType,BZpoint):
     imageBands = False
-    if imageBands:       #Compute image zoom around Gamma
-        fig = plt.figure(figsize=(20,13))
-        import matplotlib.gridspec as gridspec
-        gs = gridspec.GridSpec(2, 2, width_ratios=[1, 0.8])
-        # Need to compute some points around Gamma
-        if edcPoint=='Gamma':
-            kPts = 31 #has to be odd
-            kList = np.zeros((kPts,2))
-            range_k = 0.6
-            kList[:,0] = np.linspace(-range_k,range_k,kPts)
-            kLine = kList[:,0]
-        else:
-            kPts = 100 #has to be odd
-            kList = np.zeros((kPts,2))
-            range_k = 0.6
-            K = args[2][0]
-            kList[:kPts//2,0] = K[0] + np.linspace(-range_k,0,kPts//2)
-            a_TMD = cfs.dic_params_a_mono['WSe2']
-            M = np.array([np.pi/a_TMD,np.pi/np.sqrt(3)/a_TMD])
-            for i in range(kPts//2):
-                kList[i] = K - np.array([range_k*(kPts//2-i)/(kPts//2),0])
-                kList[kPts//2+i] = K + (M-K)*range_k/(kPts//2)*i
-            kLine = np.arange(kPts)
-        nShells, nCells, kListG, monolayer_type, parsInterlayer, theta, moir_pars, _, __, disp = args
-        args2 = (nShells, nCells, kList, monolayer_type, parsInterlayer, theta, moir_pars, '', False, True)
-        evals2, evecs2 = diagonalize_matrix(*args2)
-        weights2 = np.zeros((kPts,nCells*44))
-        for i in range(kPts):
-            ab2 = np.absolute(evecs2[i])**2
-            weights2[i,:] = np.sum(ab2[:22,:],axis=0) + np.sum(ab2[22*nCells:22*(1+nCells),:],axis=0)
-        #Figure of points
-        ax = fig.add_subplot(gs[0,0])
-        for n in range(10*nCells,28*nCells):
-            ax.plot(kLine,evals2[:,n],color='r',lw=0.3,zorder=1)
-            ax.scatter(kLine,evals2[:,n], s=weights2[:,n]*100,
-                       color='b',lw=0,zorder=3)
-        if edcPoint=='Gamma':
-            ax.set_ylim(-1.6,-0.4)
-            ax.set_xlim(-range_k,range_k)
-            V = args[6][0]
-            phiG = args[6][2]/np.pi*180
-            w1p = args[4]['w1p']
-            w1d = args[4]['w1d']
-            stacking = args[4]['stacking']
-            ax.text(0.1,0.9,r"stacking: %s, V=%.4f eV, $\varphi$=%.1f°, $w_1^p$=%.4f eV, $w_1^d$=%.4f eV"%(stacking,V,phiG,w1p,w1d),size=20,transform=ax.transAxes)
-        else:
-            ax.set_ylim(-1.2,-0.1)
-            ax.set_xlim(0,kPts)
-            V = args[6][1]
-            phiK = args[6][3]/np.pi*180
-            ax.text(0.1,0.9,r"V=%.4f eV, $\varphi$=%.1f°"%(V,phiK),size=20,transform=ax.transAxes)
-        ax.set_ylabel("eV")
-        #Figure of spread
-        ax = fig.add_subplot(gs[1,0])
-        if edcPoint=='Gamma':
-            E_list = np.linspace(-1.6,-0.4,150)
-        else:
-            E_list = np.linspace(-1.2,-0.1,150)
-        spread = np.zeros((kPts,len(E_list)))
-        pars_spread = (0.001,spreadE,'Lorentz')
-        for i in range(kPts):
-            for n in range(indexMainBand-nCells*4+1,indexMainBand+1):
-                spread += weight_spreading(weights2[i,n],kList[i],evals2[i,n],kList,E_list[None,:],pars_spread)
-        spread /= np.max(spread)        #0 to 1
-        map_ = 'viridis'
-        ax.imshow(spread.T[::-1,:]**0.5,
-          cmap=map_,
-          aspect=kPts/len(E_list)*0.45,     #to coincide by eye between the two images
-          interpolation='none'
-         )
-        ax.set_xticks([])
-        ax.set_xlabel('K')
-        #
-        #ax = fig.add_subplot(gs[1,1])
-        #ax.plot(E_list,spread[kPts//2,:])
-        #ax.set_xlim(-1,-0.4)
-        ax = fig.add_subplot(gs[:,1])
+    fig = plt.figure(figsize=(10,10))
+    ax = fig.add_subplot()
+    if BZpoint=='G':
+        p1,p2,p3 = tuple(cfs.dic_params_edcG_positions[sample] - cfs.dic_params_offset[sample])
     else:
-        fig = plt.figure(figsize=(10,10))
-        ax = fig.add_subplot()
-    p1,p2,p3 = tuple(cfs.dic_params_edc_positions[sample] - cfs.dic_params_offset[sample])
+        p1,p2 = tuple(cfs.dic_params_edcK_positions[sample] - cfs.dic_params_offset[sample])
     # Plot weight spreading
     ax.scatter(energyList,weightList,color='b')
     ax.scatter(fullEnergyValues,fullWeightValues,color='r')
@@ -224,7 +173,8 @@ def plotFitResult(energyList,weightList,fullEnergyValues,fullWeightValues,result
     ax.axhline(0,lw=0.5,zorder=-10,color='k')
     ax.axvline(p1,color='green',lw=2,zorder=-1,label="ARPES: cen TVB=%.4f"%p1)
     ax.axvline(p2,color='lime',lw=2,zorder=-1,label="ARPES: cen EDC=%.4f"%p2)
-    ax.axvline(p3,color='blue',lw=2,zorder=-1,label="ARPES: cen LVB=%.4f"%p3)
+    if BZpoint=='G':
+        ax.axvline(p3,color='blue',lw=2,zorder=-1,label="ARPES: cen LVB=%.4f"%p3)
     ax.set_title(bandType,size=30)
     fig.tight_layout()
     ax.legend(fontsize=15)
