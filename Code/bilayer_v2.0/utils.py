@@ -11,41 +11,31 @@ from scipy.special import wofz      #for fitting weights in EDC
 import lmfit      #for fitting weights in EDC
 
 """ Parameters """
-def get_parametersGamma(chunk_id,n_chunks=128):
+def get_parameters(chunk_id,BZpoint,n_chunks=128):
     """ Get chunks of parameters to compute. """
-    listVg = np.linspace(0.007,0.025,19)     # Considered values of moirè potential -> every 1 meV
-    listPhi = np.linspace(160,180,360,endpoint=True) /180*np.pi
-    listW1p = np.linspace(-2.000,-1.200,41)         # every 5 meV
-    listW1d = np.linspace( 0.700, 1.300,41)           # every 5 meV
-    filename = cfs.getFilename(
-        (
-        listVg[0],listVg[-1],len(listVg),int(listPhi[0]/np.pi*180),int(listPhi[-1]/np.pi*180),len(listPhi),
-        listW1p[0],listW1p[-1],len(listW1p),listW1d[0],listW1d[-1],len(listW1d)
+    if BZpoint=='G':
+        listVg = np.linspace(0.005,0.025,21)     # Considered values of moirè potential -> every 1 meV
+        listPhi = np.linspace(160,180,21,endpoint=True) /180*np.pi
+        listW1p = np.linspace(-2.000,-1.500,51)         # every 5 meV
+        listW1d = np.linspace( 0.800, 1.200,41)           # every 5 meV
+        filename = cfs.getFilename(
+            (
+            listVg[0],listVg[-1],len(listVg),int(listPhi[0]/np.pi*180),int(listPhi[-1]/np.pi*180),len(listPhi),
+            listW1p[0],listW1p[-1],len(listW1p),listW1d[0],listW1d[-1],len(listW1d)
+            )
         )
-    )
-    #
-    grid = product(listVg, listPhi, listW1p, listW1d)
-    total_jobs = len(listVg)*len(listPhi)*len(listW1p)*len(listW1d)
-    chunk_size = total_jobs // n_chunks
-    remainder = total_jobs % n_chunks
-    start = chunk_id * chunk_size + min(chunk_id, remainder)
-    end = start + chunk_size + (1 if chunk_id < remainder else 0)
-    chunk_iter = islice(grid, start, end)
-    print("Total jobs: %d"%total_jobs)
-    print("This chunk: %d"%(end-start))
-    return chunk_iter,filename
-def get_parametersK(chunk_id,n_chunks=128):
-    """ Get chunks of parameters to compute. """
-    listVk = np.linspace(0.001,0.070,70)     # Considered values of moirè potential -> every 1 meV
-    listPhi = np.linspace(0,359,360,endpoint=True) /180*np.pi
-    filename = cfs.getFilename(
-        (
-        listVk[0],listVk[-1],len(listVk),int(listPhi[0]/np.pi*180),int(listPhi[-1]/np.pi*180),len(listPhi)
+        #
+        grid = product(listVg, listPhi, listW1p, listW1d)
+        total_jobs = len(listVg)*len(listPhi)*len(listW1p)*len(listW1d)
+    elif BZpoint=='K':
+        listVk = np.linspace(0.001,0.020,20)     # Considered values of moirè potential -> every 1 meV
+        listPhiK = np.linspace(0,359,360) /180*np.pi
+        filename = cfs.getFilename(
+            ( listVk[0],listVk[-1],len(listVk),int(listPhiK[0]/np.pi*180),int(listPhiK[-1]/np.pi*180),len(listPhiK) )
         )
-    )
-    #
-    grid = product(listVk, listPhi)
-    total_jobs = len(listVk)*len(listPhi)
+        #
+        grid = product(listVk, listPhiK)
+        total_jobs = len(listVk)*len(listPhiK)
     chunk_size = total_jobs // n_chunks
     remainder = total_jobs % n_chunks
     start = chunk_id * chunk_size + min(chunk_id, remainder)
@@ -56,7 +46,7 @@ def get_parametersK(chunk_id,n_chunks=128):
     return chunk_iter,filename
 
 """ EDC """
-def EDC(args_diag,sample,BZpoint='G',spreadE=0.03,disp=False,plot=False,machine='loc'):
+def EDC(args_diag,sample,BZpoint='G',spreadE=0.03,disp=False,plot=False,machine='loc',showFit=False):
     """
     Compute peak positions of bands by fitting the intensity profile.
     We do it by diagonalizing the Hamiltonian at the desired k point.
@@ -69,6 +59,8 @@ def EDC(args_diag,sample,BZpoint='G',spreadE=0.03,disp=False,plot=False,machine=
     tuple: three positions of fit
     bool: success flag of procedure
     """
+    if 0:
+        plotBands(args_diag,sample,BZpoint)
     nCells = args_diag[1]
     # Evals, evecs and weights at edcPoint
     e_, ev_ = diagonalize_matrix(*args_diag,machine=machine)
@@ -77,16 +69,15 @@ def EDC(args_diag,sample,BZpoint='G',spreadE=0.03,disp=False,plot=False,machine=
     ab = np.absolute(evecs)**2
     weights = np.sum(ab[:22,:],axis=0) + np.sum(ab[22*nCells:22*(1+nCells),:],axis=0)
     # Bands fitting
-    pTVB,successTVB = fitBands('TVB',evals,weights,nCells,spreadE,sample,BZpoint)
+    pTVB,successTVB = fitBands('TVB',evals,weights,nCells,spreadE,sample,BZpoint,showFit=showFit)
     if successTVB:
         if BZpoint=='K':
             return pTVB, True
-        pLVB,successLVB = fitBands('LVB',evals,weights,nCells,spreadE,sample,BZpoint)
+        pLVB,successLVB = fitBands('LVB',evals,weights,nCells,spreadE,sample,BZpoint,showFit=showFit)
         if successLVB:
             return (pTVB[0],pTVB[1],pLVB[0]), True
-    else:
-        return np.nan, False
-def fitBands(bandType,evals,weights,nCells,spreadE,sample,BZpoint):
+    return np.nan, False
+def fitBands(bandType,evals,weights,nCells,spreadE,sample,BZpoint,showFit=False):
     """
     Uses lmfit to try to fit the intensity profile to 2 Lorentzians convoluted with a Gaussian.
     Used to extract the peak positions of main band and side band crossings.
@@ -97,17 +88,19 @@ def fitBands(bandType,evals,weights,nCells,spreadE,sample,BZpoint):
     bool: fitting success flag
     """
     indexB = 28*nCells - 1 if bandType=='TVB' else 26*nCells - 1
+    indexL = indexB-2*nCells+1 if BZpoint=='G' else indexB-nCells+1 + np.argmax(weights[indexB-nCells+1:indexB]) +1
     nSOC = 2 if BZpoint=='G' else 1
     energyB = evals[indexB]
     weightB = weights[indexB]
     #
-    fullEnergyValues = evals  [indexB-nSOC*nCells+1:indexB+1]
-    fullWeightValues = weights[indexB-nSOC*nCells+1:indexB+1]
+    fullEnergyValues = evals  [indexL:indexB+1]
+    fullWeightValues = weights[indexL:indexB+1]
     # Define finer energy list for weight spreading: slightly larger for better spreading shape
     minE, maxE = (-1,-0.5) if bandType=='TVB' else (-1.6,-1.1)
+    nE = 251
     if BZpoint=='K':
-        minE, maxE = (-0.73,-0.23)
-    energyList = np.linspace(minE,maxE,200)      #we chose this from experimental data
+        minE, maxE, nE = (-0.8,-0.2,301)
+    energyList = np.linspace(minE,maxE,nE)      #we chose this from experimental data
     weightList = np.zeros(len(energyList))
     if np.max(fullWeightValues[:-nSOC]) > weightB:     # Check the main band has highest weight
         return (0,0),False
@@ -133,7 +126,7 @@ def fitBands(bandType,evals,weights,nCells,spreadE,sample,BZpoint):
     amp1, amp2 = result.best_values['amp1'], result.best_values['amp2']
     cen1, cen2 = result.best_values['cen1'], result.best_values['cen2']#) if amp1>amp2 else (result.best_values['cen2'], result.best_values['cen1'])
 
-    if 0:   # Plot fit to check
+    if showFit:   # Plot fit to check
         plotFitResult(energyList,weightList,fullEnergyValues,fullWeightValues,result,sample,bandType,BZpoint)
 
     if result.success and amp1>1e-3 and amp2>1e-3 and result.redchi<1e-2 and amp1>amp2:
@@ -165,7 +158,7 @@ def plotFitResult(energyList,weightList,fullEnergyValues,fullWeightValues,result
     # Plot weight spreading
     ax.scatter(energyList,weightList,color='b')
     ax.scatter(fullEnergyValues,fullWeightValues,color='r')
-    ax.set_xlim(energyList[0],energyList[-1])
+    #ax.set_xlim(energyList[0],energyList[-1])
     if result.success:
         ax.plot(energyList,result.best_fit,color='g',ls='--',lw=2)
         ax.axvline(result.best_values['cen1'],color='r',label="fit: cen1=%.4f"%result.best_values['cen1'])
@@ -178,6 +171,31 @@ def plotFitResult(energyList,weightList,fullEnergyValues,fullWeightValues,result
     ax.set_title(bandType,size=30)
     fig.tight_layout()
     ax.legend(fontsize=15)
+    plt.show()
+def plotBands(args_diag,sample,BZpoint):
+    """ Plot bands around the BZ point """
+    args = list(args_diag)
+    pts = 151
+    kList = np.zeros((pts,2))
+    kList[:,0] = np.linspace(-1.5,1.5,pts)
+    if BZpoint=='K':
+        kList[:,0] += 4*np.pi/3/cfs.dic_params_a_mono['WSe2']
+    args[2] = kList
+    e_, ev_ = diagonalize_matrix(*args,machine='loc')
+    ab = np.absolute(ev_)**2
+    #weights = np.sum(ab[:22,:],axis=0) + np.sum(ab[22*nCells:22*(1+nCells),:],axis=0)
+    fig = plt.figure(figsize=(10,10))
+    ax = fig.add_subplot()
+    nCells = args[1]
+    nTVB = 28*nCells
+    nBands = 4
+    weights = np.zeros(e_.shape)
+    for i in range(pts):
+        ab = np.absolute(ev_[i])**2
+        weights[i,:] = np.sum(ab[:22,:],axis=0) + 0.05*np.sum(ab[22*nCells:22*(1+nCells),:],axis=0)
+    for n in range(nTVB-nBands*nCells,nTVB):
+        ax.plot(kList[:,0],e_[:,n],color='r',lw=0.5)
+        ax.scatter(kList[:,0],e_[:,n],s=weights[:,n]*50,color='b')
     plt.show()
 
 """ Moiré functions """

@@ -13,28 +13,40 @@ import pandas as pd
 import numpy as np
 import utils
 
+""" Input """
+if len(sys.argv)!=2:
+    print("Usage: python3 mergeEDC.py arg1\nWith arg1 = {'G','K'}")
+    exit()
+BZpoint = sys.argv[1]
+
 """ Dirname and parameters """
 machine = cfs.get_machine(os.getcwd())
 n_chunks = 128
 theta_deviation = 0      #Change here for \pm 0.3 degrees
 nShells = 2
-Vk,phiK = (0.006,106/180*np.pi)
+if BZpoint=='G':
+    args = (0.006,106/180*np.pi)        #Vk, phiK
+else:
+    args = (0.019,175/180*np.pi,-1.750,1.050)        #Vg, phiG, w1p, w1d
 spreadE = 0.03      # in eV
-chunk, listFn = utils.get_parametersGamma(0,n_chunks=n_chunks)
+
+""" Filenames """
+chunk, listFn = utils.get_parameters(0,BZpoint,n_chunks=n_chunks)
 dirname = cfs.getFilename(
-    ('edcGamma',theta_deviation,nShells,Vk,phiK,spreadE),
+    ('edc'+BZpoint,theta_deviation,nShells,spreadE,*args),
     dirname=utils.get_home_dn(machine)+"Data/",
     floatPrecision=3
-) + listFn + '/'
+) + '_' + listFn + '/'
 
 files = sorted(glob.glob(dirname+"*_%d.h5"%n_chunks))
 
 output_file = cfs.getFilename(
-    ('full_edcGamma',theta_deviation,nShells,Vk,phiK,spreadE),
+    ('full_edc'+BZpoint,theta_deviation,nShells,spreadE,*args),
     dirname=utils.get_home_dn(machine)+"Data/",
     floatPrecision=3
-) + listFn +  ".h5"
+) + '_' + listFn +  ".h5"
 
+""" Loop and store """
 store = pd.HDFStore(
     output_file,
     mode="w",
@@ -53,4 +65,6 @@ for f in files:
 
 store.close()
 
-print("Merged %d chunk files."%len(files))
+print("Merged %d chunk files of edc%s."%(len(files),BZpoint))
+
+
