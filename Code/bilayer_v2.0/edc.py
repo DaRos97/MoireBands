@@ -92,6 +92,8 @@ for pars in parameters_chunk:
             print("Vg: %.3f\tphiG: %.1f\tw1p: %.3f\t w1d: %.3f"%(Vg,phiG/np.pi*180,w1p,w1d))
     elif BZpoint=='K':
         Vk, phiK = pars
+        Vk = 0.007
+        phiK = 120/180*np.pi
         if disp:
             print("Vk: %.3f\tphiK: %.1f"%(Vk,phiK/np.pi*180))
     parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}

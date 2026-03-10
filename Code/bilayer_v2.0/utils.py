@@ -14,10 +14,10 @@ import lmfit      #for fitting weights in EDC
 def get_parameters(chunk_id,BZpoint,n_chunks=128):
     """ Get chunks of parameters to compute. """
     if BZpoint=='G':
-        listVg = np.linspace(0.005,0.025,21)     # Considered values of moirè potential -> every 1 meV
-        listPhi = np.linspace(160,180,21,endpoint=True) /180*np.pi
-        listW1p = np.linspace(-2.000,-1.500,51)         # every 5 meV
-        listW1d = np.linspace( 0.800, 1.200,41)           # every 5 meV
+        listVg = np.linspace(0.010,0.025,31)     # Considered values of moirè potential -> every 1 meV
+        listPhi = np.linspace(0,359,360) /180*np.pi
+        listW1p = np.linspace(-1.850,-1.650,41)         # every 5 meV
+        listW1d = np.linspace( 1.000, 1.120,25)           # every 5 meV
         filename = cfs.getFilename(
             (
             listVg[0],listVg[-1],len(listVg),int(listPhi[0]/np.pi*180),int(listPhi[-1]/np.pi*180),len(listPhi),
@@ -88,7 +88,7 @@ def fitBands(bandType,evals,weights,nCells,spreadE,sample,BZpoint,showFit=False)
     bool: fitting success flag
     """
     indexB = 28*nCells - 1 if bandType=='TVB' else 26*nCells - 1
-    indexL = indexB-2*nCells+1 if BZpoint=='G' else indexB-nCells+1 + np.argmax(weights[indexB-nCells+1:indexB]) +1
+    indexL = indexB-2*nCells+1 if BZpoint=='G' else indexB-nCells + np.argmax(weights[indexB-nCells:indexB]) + 1
     nSOC = 2 if BZpoint=='G' else 1
     energyB = evals[indexB]
     weightB = weights[indexB]
@@ -178,20 +178,20 @@ def plotFitResult(energyList,weightList,fullEnergyValues,fullWeightValues,result
 def plotBands(args_diag,sample,BZpoint):
     """ Plot bands around the BZ point """
     args = list(args_diag)
-    pts = 151
+    pts = 101
     kList = np.zeros((pts,2))
-    kList[:,0] = np.linspace(-1.5,1.5,pts)
+    kList[:,0] = np.linspace(-0.25,0.25,pts)
     if BZpoint=='K':
         kList[:,0] += 4*np.pi/3/cfs.dic_params_a_mono['WSe2']
     args[2] = kList
+    args[-1] = True
     e_, ev_ = diagonalize_matrix(*args,machine='loc')
-    ab = np.absolute(ev_)**2
-    #weights = np.sum(ab[:22,:],axis=0) + np.sum(ab[22*nCells:22*(1+nCells),:],axis=0)
+    """ Figure """
     fig = plt.figure(figsize=(10,10))
     ax = fig.add_subplot()
     nCells = args[1]
     nTVB = 28*nCells
-    nBands = 4
+    nBands = 2
     weights = np.zeros(e_.shape)
     for i in range(pts):
         ab = np.absolute(ev_[i])**2
