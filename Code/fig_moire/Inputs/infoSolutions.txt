@@ -1,6 +1,0 @@
-WSe2:
-    From dataset big13.zip: parameters 0.015_5_20_1, bounds 3_3_3_3
-    Chi2: 1.1804
-WS2:
-    Same parameters as WSe2
-    

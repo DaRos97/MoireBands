@@ -40,17 +40,17 @@ def get_args(TMD,ind):
     dict: 'pts', 'Ks', 'Bs'
     """
     # Parameters of constraints
-    lK1 = [1e-3,1e-2,1e-1,1]         # coefficient of parameters distance from DFT
-    lK2 = [1e-3,1e-2,1e-1,1]        # coefficient of band content in valence band
+    lK1 = [1e-4,1e-3,1e-2,1e-1]         # coefficient of parameters distance from DFT
+    lK2 = [5e-3,1e-2,5e-2,1e-1]        # coefficient of band content in valence band
     lK2b = [0,]        # coefficient of band content in conduction band
-    lK3 = [0,1]         # coefficient of minimum of conduction band at K
-    lK4 = [1e-1,1]          # coefficient of gap value
-    lK5 = [5,10]             # weight of high symmetry points: G,K,near-M-crossing and M
+    lK3 = [1]         # coefficient of minimum of conduction band at K
+    lK4 = [1e-1,5e-1,1]          # coefficient of gap value
+    lK5 = [10,]             # weight of high symmetry points: G,K,near-M-crossing and M
     # Bounds
-    lrp = [4,]         #tb bounds for general orbitals
-    lrpz = [4,]         #tb bounds for z orbitals -> indices 6 and 9
-    lrpxy = [4,]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
-    lrl = [4,]          #SOC bounds
+    lrp = [5,]         #tb bounds for general orbitals
+    lrpz = [5,]         #tb bounds for z orbitals -> indices 6 and 9
+    lrpxy = [5,]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
+    lrl = [5,]          #SOC bounds
     # Points in fit
     pts = [151,]     # better is it is a number n*3 + 1 with n integer
     listPar = list(itertools.product(*[pts,lK1,lK2,lK2b,lK3,lK4,lK5,lrp,lrpz,lrpxy,lrl]))

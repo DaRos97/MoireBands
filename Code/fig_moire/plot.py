@@ -1,11 +1,14 @@
 import numpy as np
 
+fnWSe2 = '../Inputs/tb_WSe2_B:4_K:0.0001_0.01_0_1_0.1_5.npy'
+fnWS2 = '../Inputs/tb_WS2_B:3_K:0.001_0.01_0_1_0.1_10.npy'
+
 """ Save energy and intensities """
 saveE = True
 saveW = True
 
 """ Bilayer parameters -> changing any of these you need to re-evaluate the energies """
-kPts = 400         # Points in the cut G -> K -> K'
+kPts = 200         # Points in the cut G -> K -> K'
 theta = 2.8     # twisting angle, in deg
 Vg = 0.0195              # eV
 phiG = 175/180*np.pi        # rad
@@ -38,12 +41,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-if 0:   #Save reciprocal moirè vectors
-    print("Reciprocal moirè vectors")
-    GM = cfs.get_reciprocal_moire(theta)
-    np.savetxt("reciprocalMoire.csv",np.array(GM))
-    exit()
-
 """ Actual computation """
 
 """ Interlayer parameters """
@@ -53,7 +50,7 @@ w2p = w2d = 0
 parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
 nShells = 2
 nCells = int(1+3*nShells*(nShells+1))
-monolayer_type = 'fit'
+monolayer_fns = {'WSe2':fnWSe2,'WS2':fnWS2}
 moire_pars = (Vg,Vk,phiG,phiK)
 """ BZ path """
 kList,norm = cfs.get_kList('G-K-Kp',kPts,returnNorm=True)
@@ -66,11 +63,11 @@ if 0:   # Plot BZ cut
 kPts = kList.shape[0]
 K0 = 4*np.pi/3/cfs.dic_params_a_mono['WSe2']
 """ Computing evals and evecs """
-args_e_data = (sample,nShells,monolayer_type,Vk,phiK,theta,stacking,w1p,w1d,phiG,kPts)
+args_e_data = (sample,nShells,monolayer_fns,Vk,phiK,theta,stacking,w1p,w1d,phiG,kPts)
 th_e_data_fn = cfs.getFilename(('fig3_e',)+args_e_data,dirname='Data/',extension='.npz')
 if not Path(th_e_data_fn).is_file():
     print("Computing energies")
-    args = (nShells, nCells, kList, monolayer_type, parsInterlayer, theta, moire_pars, '', False, True)
+    args = (nShells, nCells, kList, monolayer_fns, parsInterlayer, theta, moire_pars, '', False, True)
     evalsFull, evecsFull = cfs.diagonalize_matrix(*args)
     evals = evalsFull[:,nCells*minimumBand:nCells*28]
     evecs = evecsFull[:,:,nCells*minimumBand:nCells*28]

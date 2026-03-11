@@ -416,6 +416,10 @@ def getFilename(*args,dirname='',extension='',floatPrecision=6):
             filename += f"{a:.{floatPrecision}f}"
         elif t==tuple:
             filename += getFilename(*a)
+        elif t==dict:
+            continue
+            for e in a.keys():
+                filename += e+':'+getFilename(a[e])
         else:
             raise TypeError("Parameter %s has unsupported type: %s"%(a,t))
         if not i==len(args)-1:
@@ -1099,14 +1103,14 @@ class dataWSe2(monolayerData):
 
 
 
-def import_monolayer_parameters(monolayer_type):
+def import_monolayer_parameters(monolayer_fns):
     """Import monolayer parameters, either DFT or fit ones."""
     hopping = {}
     epsilon = {}
     HSO = {}
     offset = {}
     for TMD in TMDs:
-        temp = np.load('Inputs/tb_'+TMD+'.npy')
+        temp = np.load(monolayer_fns[TMD])
         hopping[TMD] = find_t(temp)
         epsilon[TMD] = find_e(temp)
         HSO[TMD] = find_HSO(temp[-2:])
@@ -1137,10 +1141,10 @@ def diagonalize_matrix(*args):
     """
     Compute and diagonalize big matrix and save to file the result.
     """
-    nShells, nCells, K_list, monolayer_type, parsInterlayer, theta, pars_V, energy_fn, save_data_energy, disp = args
+    nShells, nCells, K_list, monolayer_fns, parsInterlayer, theta, pars_V, energy_fn, save_data_energy, disp = args
     kPts = K_list.shape[0]
     #Monolayer parameters
-    pars_monolayer = import_monolayer_parameters(monolayer_type)
+    pars_monolayer = import_monolayer_parameters(monolayer_fns)
     #Moire parameters
     G_M = get_reciprocal_moire(theta/180*np.pi)     #7 reciprocal moire lattice vectors
     moireHam = H_moire(pars_V)

@@ -56,7 +56,7 @@ for ip in range(Npars):
     if not (          #Chose specific set: 1
         args_minimization['TMD']=="WSe2" and     #TMD
         #args_minimization['Ks'][0]==1e-2 and     #K1
-        #args_minimization['Ks'][1]==1e-2 and     #K2
+        args_minimization['Ks'][1]>=1e-2 and     #K2
         #args_minimization['Ks'][3]==1 and     #K3
         #args_minimization['Ks'][3]==1 and     #K4
         #args_minimization['Ks'][4]==5 and     #K5
@@ -70,7 +70,7 @@ for ip in range(Npars):
     full_pars = pars_sorted[ip]
     chi2 = c2_sorted[ip]
     # Import data
-    data = cfs.monolayerData(args_minimization['TMD'],pts=args_minimization['pts'])
+    data = cfs.monolayerData(args_minimization['TMD'],master_folder,pts=args_minimization['pts'])
     # Plot
     HSO = cfs.find_HSO(full_pars[-2:])
     best_en = cfs.energy(full_pars,HSO,data.fit_data,args_minimization['TMD'])
