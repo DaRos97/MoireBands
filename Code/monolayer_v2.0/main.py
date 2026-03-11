@@ -17,9 +17,9 @@ cwd = os.getcwd()
 if cwd[6:11] == 'dario':
     master_folder = cwd[:40]
 elif cwd[:20] == '/home/users/r/rossid':
-    master_folder = cwd[:20] + '/git/MoireBands/Code'
+    master_folder = cwd[:20] + '/git/MoireBands/Code/'
 elif cwd[:13] == '/users/rossid':
-    master_folder = cwd[:13] + '/git/MoireBands/Code'
+    master_folder = cwd[:13] + '/git/MoireBands/Code/'
 sys.path.insert(1, master_folder)
 import CORE_functions as cfs
 import utils

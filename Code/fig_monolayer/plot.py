@@ -12,6 +12,8 @@ import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
+fnWSe2 = '../Inputs/tb_WSe2_B:5_K:0.001_0.005_0_1_0.5_10.npy'
+
 save_E_int_fit = True
 save_W_int_fit = True
 save_orb = True
@@ -71,7 +73,7 @@ listK_fitI, norm_fitI = cfs.get_kList('G-K-M',nK_int,endpoint=True,returnNorm=Tr
 pars_en = ('intensity_fit_en',nK_int,TMD)
 en_fn = cfs.getFilename(pars_en,dirname='Data/',extension='.npz')
 if not Path(en_fn).is_file():
-    fit_pars = np.load('Inputs/tb_%s.npy'%TMD)
+    fit_pars = np.load(fnWSe2)
     hopping = cfs.find_t(fit_pars)
     epsilon = cfs.find_e(fit_pars)
     offset = fit_pars[-3]
@@ -116,7 +118,7 @@ else:
 intensity_fit /= np.max(intensity_fit)
 
 """ Orbital occupations DFT and fit """
-nK_orb = 120
+nK_orb = 200
 listK_orb, norm_orb = cfs.get_kList('G-K-M',nK_orb,endpoint=True,returnNorm=True)
 pars_fn = ('orbitals',nK_orb,TMD)
 orb_fn = cfs.getFilename(pars_fn,dirname='Data/',extension='.npz')
@@ -178,7 +180,7 @@ else:
 #ptsPerPath = (30,15,10)
 #ARPES_bands = dataObject.getFitData(ptsPerPath)
 pts = 61
-ARPES_bands = cfs.monolayerData(TMD,pts=pts).fit_data
+ARPES_bands = cfs.monolayerData(TMD,master_folder,pts=pts).fit_data
 
 
 """ Fit and DFT bands. """
