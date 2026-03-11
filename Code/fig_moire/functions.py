@@ -9,7 +9,8 @@ def import_monolayer_parameters(monolayer_type):
     HSO = {}
     offset = {}
     for TMD in cfs.TMDs:
-        temp = np.load('Inputs/tb_'+TMD+'.npy')
+        fn = 'Inputs/tb_WS2.npy' if TMD=='WS2' else 'Inputs/tb_WSe2_v2.npy'
+        temp = np.load(fn)
         hopping[TMD] = cfs.find_t(temp)
         epsilon[TMD] = cfs.find_e(temp)
         HSO[TMD] = cfs.find_HSO(temp[-2:])

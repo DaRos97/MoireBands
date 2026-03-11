@@ -55,9 +55,9 @@ for ip in range(Npars):
     args_minimization = s_a_sorted[ip]
     if not (          #Chose specific set: 1
         args_minimization['TMD']=="WSe2" and     #TMD
-        #args_minimization['Ks'][0]==1e-6 and     #K1
-        #args_minimization['Ks'][1]==1e-4 and     #K2
-        #args_minimization['Ks'][2]==1 and     #K3
+        #args_minimization['Ks'][0]==1e-2 and     #K1
+        #args_minimization['Ks'][1]==1e-2 and     #K2
+        #args_minimization['Ks'][3]==1 and     #K3
         #args_minimization['Ks'][3]==1 and     #K4
         #args_minimization['Ks'][4]==5 and     #K5
         #1e-6,1e-3,1,0.1,1

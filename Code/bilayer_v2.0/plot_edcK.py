@@ -14,26 +14,30 @@ import numpy as np
 import utils
 import matplotlib.pyplot as plt
 
+maxMeasure = 0.1
+
 """ Dirname and parameters load """
 sample='S11'
 
-output_file = 'Data/full_edcK_0_2_0.019_3.054_-1.750_1.050_0.030_0.001000_0.070000_70_0_359_360.h5'
-
-maxMeasure = 0.1
+#fn = 'Data/full_edcK_0_2_0.019_3.054_-1.750_1.050_0.030_0.001000_0.070000_70_0_359_360.h5'
+fn = 'Data/full_edcK_0_2_0.030_0.019_3.054_-1.750_1.050_0.001000_0.020000_20_0_359_360.h5'
 
 # Load HDF5
-df = pd.read_hdf(output_file, key="results")
+df = pd.read_hdf(fn, key="results")
 
 # Convert to NumPy array
-dataFull = df.to_numpy()
-dataFull[:,1] = dataFull[:,1]/np.pi*180
-maskNan = ~np.isnan(dataFull[:,2])
-data = dataFull[maskNan]
+data = df.to_numpy()
+data[:,1] *= 180/np.pi
+maskNan = ~np.isnan(data[:,2])
+#data = dataFull[maskNan]
 
 V_col   = 0
 phi_col = 1
 p1_col  = 2
 p2_col  = 3
+
+phi_all = np.unique(data[:, phi_col])
+V_all   = np.unique(data[:, V_col])
 
 """ Measures """
 # measure of distances
@@ -41,57 +45,41 @@ positions = data[:, [p1_col, p2_col]]
 ARPES_positions = cfs.dic_params_edcK_positions[sample] - cfs.dic_params_offset[sample]
 distances = positions[:,0] - positions[:,1]
 ARPES_distance = ARPES_positions[0]-ARPES_positions[1]
-m_dis = np.absolute(distances-ARPES_distance)
 
+m_dis = np.absolute(distances-ARPES_distance)
 data_dis = np.column_stack([data, m_dis])
-mdis_col = data_dis.shape[1] - 1
-maskDis = m_dis < maxMeasure
+maskDis = (m_dis < maxMeasure) & maskNan
 data_dis = data_dis[maskDis]
 
-# -------------------------------------------------
-# MINIMUM MEASURE PROJECTOR
-# -------------------------------------------------
-""" Distance V-phi """
-phi_all_dis = np.unique(data_dis[:, phi_col])
-V_all_dis   = np.unique(data_dis[:, V_col])
-min_map_dis = np.full((len(V_all_dis), len(phi_all_dis)), np.nan)
-
-for i, V in enumerate(V_all_dis):
-    for j, phi in enumerate(phi_all_dis):
-        mask = (
+min_dis = np.full((len(V_all), len(phi_all)), np.nan)
+for i, V in enumerate(V_all):
+    for j, phi in enumerate(phi_all):
+        mask_pos = (
             (data_dis[:, V_col] == V) &
             (data_dis[:, phi_col] == phi)
         )
-        vals_dis = data_dis[mask][:, mdis_col]
+        vals_dis = data_dis[mask_pos][:, -1]
         if len(vals_dis) > 0:
-            min_map_dis[i, j] = np.min(vals_dis)
+            min_dis[i, j] = np.min(vals_dis)
 
 """ Figure """
 fig = plt.figure(figsize=(10, 10))
+ax = fig.add_subplot()
 s_ = 15
 s_2 = 20
 
-""" Figure V-phi distance """
-ax = fig.add_subplot()
+gPhi,gV = np.meshgrid(phi_all,V_all)
 
-im = ax.imshow(
-    min_map_dis,
-    origin="lower",
-    aspect="auto",
-    extent=[phi_all_dis.min(), phi_all_dis.max(),
-            V_all_dis.min(), V_all_dis.max()],
-    cmap='viridis_r'
+im = ax.pcolormesh(
+    gPhi,gV,
+    min_dis,
+    cmap='plasma_r',
 )
 
 ax.set_xlabel(r"$\phi$",size=s_)
 ax.set_ylabel(r"$V$ [eV]",size=s_)
 ax.set_title("Distances Measure",size=s_2)
-ax.set_ylim(np.min(dataFull[:,0]),np.max(dataFull[:,0]))
-ax.set_xlim(np.min(dataFull[:,1]),np.max(dataFull[:,1]))
-
 cbar = fig.colorbar(im, ax=ax)
-cbar.set_label(r"Minimum measure over $w_p$ and $w_d$",
-               fontsize=s_)
 
 fig.tight_layout()
 plt.show()

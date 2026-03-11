@@ -41,7 +41,7 @@ We can check the experimental data modifications and extractions in `data_visual
 - `select_best_result.py`
 - `SortChi2.py`
 
-### Utils:
+### Bash
 - `ygg.sh`
 - `bao.sh`
 - `maf.sh`
@@ -62,6 +62,9 @@ There is another one, the best of big7.zip, which is better but has much larger 
 - Ks: 1e-3, 1e-3, 0, 1, 0.1, 5      ->  little pz at M, 4 saturated par bounds
 
 ### WS2
+`set1.zip`
+- Ks: 1e-3, 1e-2, 0, 1, 1, 10      ->  pz at M, 4 saturated par bounds
+- Ks: 1e-3, 1e-2, 0, 1, 0.1, 10      ->  4 saturated par bounds
 
 
 

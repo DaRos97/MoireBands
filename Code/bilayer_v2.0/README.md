@@ -27,7 +27,9 @@ From the ARPES exp we have, for S11 [eV]:
     - p=-0.4290 eV      (units of S3, offset of 0.47 eV)
 
 ### TODO
-- Simulations with theta + and - 0.3°
-- Add nShells = 3 -> all simulations again
+- edcG with theta + and - 0.3°:
+        - Running now on mafalda
+        - Remember to change the angle_deviation in mergeEDC.py
 - Nice EDC plot for paper
+- Solve problem of edc at K
 

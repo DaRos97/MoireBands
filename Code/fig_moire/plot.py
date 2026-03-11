@@ -5,18 +5,18 @@ saveE = True
 saveW = True
 
 """ Bilayer parameters -> changing any of these you need to re-evaluate the energies """
-kPts = 50         # Points in the cut G -> K -> K'
+kPts = 400         # Points in the cut G -> K -> K'
 theta = 2.8     # twisting angle, in deg
-Vg = 0.017              # eV
+Vg = 0.0195              # eV
 phiG = 175/180*np.pi        # rad
-Vk = 0.006              # eV
-phiK = -106/180*np.pi       # rad
-w1p = -1.66         # eV
-w1d = 0.324         # eV
+Vk = 0.007              # eV
+phiK = 106/180*np.pi       # rad
+w1p = -1.745         # eV
+w1d = 1.055         # eV
 
 """ Parameters of intensity matrix -> changing any of these you need to re-evaluate the intensities """
 typeSpread = 'Gauss'    # 'Gauss' or 'Lorentz', works for both k and E
-spreadK = 0.005     # in 1/a
+spreadK = 0.01     # in 1/a
 spreadE = 0.015      # in eV
 E_max = 0           # in eV
 E_min = -2.5        # in eV
@@ -167,7 +167,7 @@ if 1:       # Plot with pcolormesh
     ax1.pcolormesh(
         K1,eList,
         spKGK.T,
-        cmap='viridis',
+        cmap='Greys',
         shading="auto"
     )
 
@@ -175,7 +175,7 @@ if 1:       # Plot with pcolormesh
     ax2.pcolormesh(
         K2,eList,
         spKKp.T,
-        cmap='viridis',
+        cmap='Greys',
         shading='auto'
     )
     plt.show()

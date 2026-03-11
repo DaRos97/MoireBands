@@ -57,9 +57,9 @@ if BZpoint=='G':
     columns = ["Vg", "phiG", "w1p", "w1d", "p1", "p2", "p3"]
     argsFn = (Vk,phiK)
 elif BZpoint=='K':
-    Vg,phiG = (0.019,175/180*np.pi)
-    w1p = -1.750
-    w1d = 1.050
+    Vg,phiG = (0.020,175/180*np.pi)
+    w1p = -1.760
+    w1d = 1.060
     kList = np.array([[4*np.pi/3/cfs.dic_params_a_mono['WSe2'],0],])
     columns=["Vk", "phiK", "p1", "p2"]
     argsFn = (Vg,phiG,w1p,w1d)
@@ -92,9 +92,9 @@ for pars in parameters_chunk:
             print("Vg: %.3f\tphiG: %.1f\tw1p: %.3f\t w1d: %.3f"%(Vg,phiG/np.pi*180,w1p,w1d))
     elif BZpoint=='K':
         Vk, phiK = pars
-        Vk = 0.007
-        phiK = 120/180*np.pi
         if disp:
+            Vk = 0.007
+            phiK = 120/180*np.pi
             print("Vk: %.3f\tphiK: %.1f"%(Vk,phiK/np.pi*180))
     parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
     args_diag = (nShells, nCells, kList, monolayer_type, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', False, False)
@@ -103,10 +103,9 @@ for pars in parameters_chunk:
         sample,
         BZpoint=BZpoint,
         spreadE=spreadE,
-        disp=False,
-        plot=False,
         machine=machine,
-        showFit=disp
+        plotBands=1,
+        plotFit=disp
     )
     if success:
         if BZpoint=='G':

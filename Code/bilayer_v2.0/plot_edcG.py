@@ -19,7 +19,8 @@ maxMeasure = 0.026
 """ Dirname and parameters load """
 sample='S11'
 #fn = 'Data/full_edcGamma_0_2_0.006_1.850_0.0300.007000_0.025000_19_160_180_21_-2.000000_0.000000_21_0.000000_2.000000_21.h5'
-fn = 'Data/full_edcG_0_2_0.030_0.006_1.850_0.005000_0.025000_21_160_180_21_-2.000000_-1.500000_51_0.800000_1.200000_41.h5'
+#fn = 'Data/full_edcG_0_2_0.030_0.006_1.850_0.005000_0.025000_21_160_180_21_-2.000000_-1.500000_51_0.800000_1.200000_41.h5'
+fn = 'Data/full_edcG_0_2_0.030_0.006_1.850_0.010000_0.025000_31_0_359_360_-1.850000_-1.650000_41_1.000000_1.120000_25.h5'
 data = pd.read_hdf(fn, key="results").to_numpy()
 
 data[:,1] = data[:,1]/np.pi*180
@@ -120,6 +121,7 @@ im = ax.pcolormesh(
 
 ax.set_xlabel(r"$\phi$",size=s_)
 ax.set_ylabel(r"$V$ [eV]",size=s_)
+ax.set_ylim(0,0.025)
 ax.set_title("Positions Measure",size=s_2)
 cbar = fig.colorbar(im, ax=ax)
 cbar.set_label(r"Minimum measure over $w_p$ and $w_d$",
@@ -136,7 +138,7 @@ im = ax.pcolormesh(
 
 ax.set_xlabel(r"$\phi$",size=s_)
 ax.set_title("Distances Measure",size=s_2)
-
+ax.set_ylim(0,0.025)
 cbar = fig.colorbar(im, ax=ax)
 cbar.set_label(r"Minimum measure over $w_p$ and $w_d$",
                fontsize=s_)

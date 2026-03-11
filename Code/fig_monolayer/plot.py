@@ -348,7 +348,7 @@ for i in range(3):
 ax.text(
     xl_text,
     y_text,
-    "DFT",
+    "DFT-derived",
     transform=ax.transAxes,
     ha='left',
     va='center',

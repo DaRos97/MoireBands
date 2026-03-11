@@ -46,7 +46,7 @@ def get_parameters(chunk_id,BZpoint,n_chunks=128):
     return chunk_iter,filename
 
 """ EDC """
-def EDC(args_diag,sample,BZpoint='G',spreadE=0.03,disp=False,plot=False,machine='loc',showFit=False):
+def EDC(args_diag,sample,BZpoint='G',spreadE=0.03,machine='loc',plotBands=False,plotFit=False):
     """
     Compute peak positions of bands by fitting the intensity profile.
     We do it by diagonalizing the Hamiltonian at the desired k point.
@@ -59,8 +59,8 @@ def EDC(args_diag,sample,BZpoint='G',spreadE=0.03,disp=False,plot=False,machine=
     tuple: three positions of fit
     bool: success flag of procedure
     """
-    if 0:
-        plotBands(args_diag,sample,BZpoint)
+    if plotBands:
+        plotBandsResult(args_diag,sample,BZpoint)
     nCells = args_diag[1]
     # Evals, evecs and weights at edcPoint
     e_, ev_ = diagonalize_matrix(*args_diag,machine=machine)
@@ -69,15 +69,15 @@ def EDC(args_diag,sample,BZpoint='G',spreadE=0.03,disp=False,plot=False,machine=
     ab = np.absolute(evecs)**2
     weights = np.sum(ab[:22,:],axis=0) + np.sum(ab[22*nCells:22*(1+nCells),:],axis=0)
     # Bands fitting
-    pTVB,successTVB = fitBands('TVB',evals,weights,nCells,spreadE,sample,BZpoint,showFit=showFit)
+    pTVB,successTVB = fitBands('TVB',evals,weights,nCells,spreadE,sample,BZpoint,plotFit=plotFit)
     if successTVB:
         if BZpoint=='K':
             return pTVB, True
-        pLVB,successLVB = fitBands('LVB',evals,weights,nCells,spreadE,sample,BZpoint,showFit=showFit)
+        pLVB,successLVB = fitBands('LVB',evals,weights,nCells,spreadE,sample,BZpoint,plotFit=plotFit)
         if successLVB:
             return (pTVB[0],pTVB[1],pLVB[0]), True
     return np.nan, False
-def fitBands(bandType,evals,weights,nCells,spreadE,sample,BZpoint,showFit=False):
+def fitBands(bandType,evals,weights,nCells,spreadE,sample,BZpoint,plotFit=False):
     """
     Uses lmfit to try to fit the intensity profile to 2 Lorentzians convoluted with a Gaussian.
     Used to extract the peak positions of main band and side band crossings.
@@ -129,7 +129,7 @@ def fitBands(bandType,evals,weights,nCells,spreadE,sample,BZpoint,showFit=False)
     amp1, amp2 = result.best_values['amp1'], result.best_values['amp2']
     cen1, cen2 = result.best_values['cen1'], result.best_values['cen2']#) if amp1>amp2 else (result.best_values['cen2'], result.best_values['cen1'])
 
-    if showFit:   # Plot fit to check
+    if plotFit:   # Plot fit to check
         plotFitResult(energyList,weightList,fullEnergyValues,fullWeightValues,result,sample,bandType,BZpoint)
 
     if result.success and amp1>1e-3 and amp2>1e-3 and result.redchi<1e-2 and amp1>amp2:
@@ -158,6 +158,11 @@ def plotFitResult(energyList,weightList,fullEnergyValues,fullWeightValues,result
         p1,p2,p3 = tuple(cfs.dic_params_edcG_positions[sample] - cfs.dic_params_offset[sample])
     else:
         p1,p2 = tuple(cfs.dic_params_edcK_positions[sample] - cfs.dic_params_offset[sample])
+        print("Fit distance:")
+        print(result.best_values['cen1']-result.best_values['cen2'])
+        print("ARPES distance:")
+        print(p1-p2)
+        exit()
     # Plot weight spreading
     ax.scatter(energyList,weightList,color='b')
     ax.scatter(fullEnergyValues,fullWeightValues,color='r')
@@ -175,7 +180,7 @@ def plotFitResult(energyList,weightList,fullEnergyValues,fullWeightValues,result
     fig.tight_layout()
     ax.legend(fontsize=15)
     plt.show()
-def plotBands(args_diag,sample,BZpoint):
+def plotBandsResult(args_diag,sample,BZpoint):
     """ Plot bands around the BZ point """
     args = list(args_diag)
     pts = 101

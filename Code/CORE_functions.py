@@ -455,9 +455,9 @@ def tqdm(x,**kwargs):
 #######################################################################################
 
 """DFT parameters and constants"""
-dic_params_a_mono = {
-    'WS2': 3.18,
-    'WSe2': 3.32,
+dic_params_a_mono = {       #in Angstrom
+    'WS2': 3.18,#3.191,#3.18,
+    'WSe2': 3.32#3.327,#3.32,
     }
 initial_pt = {
         'WS2': [
@@ -740,19 +740,19 @@ list_formatted_names_all = [
             r'$\lambda_W$',
             r'$\lambda_{Se}$',
             ]
-dic_params_twist = {
+dic_params_twist = {        #in degrees
         'S3': 1.8,
         'S11': 2.8,
         }
-dic_params_edcG_positions = {
+dic_params_edcG_positions = {       #in eV
     'S11': np.array([-1.1599, -1.2531, -1.82]),
     'S3': (np.nan,),
 }
-dic_params_edcK_positions = {
+dic_params_edcK_positions = {       # in eV
     'S11': np.array([-0.8990, -1.0696]),
     'S3': (np.nan,),
 }
-dic_params_offset = {
+dic_params_offset = {       # in eV
     "S3": 0,
     "S11": -0.47
 }
@@ -761,28 +761,49 @@ dic_params_offset = {
 def moire_length(theta):
     """
     Real space moire lattice length.
+
+    Returns
+    -------
+    a_moire, in Angstrom.
     """
-    return 1/np.sqrt(1/dic_params_a_mono['WSe2']**2+1/dic_params_a_mono['WS2']**2-2*np.cos(theta)/dic_params_a_mono['WSe2']/dic_params_a_mono['WS2'])
+    a_WS2 = dic_params_a_mono['WS2']
+    a_WSe2 = dic_params_a_mono['WSe2']
+    a_moire = 1/np.sqrt(1/(a_WSe2**2) + 1/(a_WS2**2) - 2*np.cos(theta)/a_WSe2/a_WS2)
+    return a_moire
 def miniBZ_rotation(theta):
     """
     Compute eta, the rotation of the mini-BZ wrt the monolayer BZ.
-    It's the angle of the segment between the K points of the 2 layers.
+    It's the angle of the segiment between the K points of the 2 layers.
+    `theta` is in radiants.
+
+    Returns
+    -------
+    eta, in radiants.
     """
-    return np.arctan(np.tan(theta/2)*(dic_params_a_mono['WSe2']+dic_params_a_mono['WS2'])/(dic_params_a_mono['WSe2']-dic_params_a_mono['WS2']))
+    a_WS2 = dic_params_a_mono['WS2']
+    a_WSe2 = dic_params_a_mono['WSe2']
+    eta = np.arctan(np.tan(theta/2)*(a_WSe2+a_WS2)/(a_WSe2-a_WS2))
+    return eta
 def get_reciprocal_moire(theta):
     """
     Compute moire reciprocal lattice vectors.
     They depend on the moire length for the size and on the orientation of the mini-BZ for the direction.
     Returns a list of 7 vectors, first one being 0.
+    theta in radiants.
     """
     eta = miniBZ_rotation(theta)
+    a_moire = moire_length(theta)
+    if 0:
+        print("Theta is %.3f"%(theta/np.pi*180))
+        print("Eta is %.3f"%(eta/np.pi*180))
+        print("a_moire is %.3f"%a_moire)
     Mat = R_z(eta)
-    G1 = 4*np.pi/np.sqrt(3)/moire_length(theta)*np.array([np.sqrt(3)/2,1/2])
+    G1 = 4*np.pi/np.sqrt(3)/a_moire*np.array([np.sqrt(3)/2,1/2])
     G_M = [np.zeros(2), Mat@G1,]
     for i in range(1,6):
         G_M.append(R_z(np.pi/3*i) @ G_M[1])
     return G_M
-def get_lattice_vectors(TMD,theta=0):
+def get_lattice_vectorsB(TMD,theta=0):
     """
     Compute single layer real-space and reciprocal lattice vectors.
     The conventions we use are:
