@@ -846,7 +846,7 @@ dic_energy_bounds = {'S11zoom':(-0.6,-1.8), 'S11':(-0.5,-2.5), 'S3':(-0.2,-1.8)}
 
 """ ARPES monolayer extraction data """
 class monolayerData():
-    def __init__(self,TMD,pts=61):
+    def __init__(self,TMD,master_folder,pts=61):
         self.TMD = TMD
         self.paths = ['KpGK','KMKp']
         self.nbands = {'KpGK':6,'KMKp':4}
@@ -854,11 +854,11 @@ class monolayerData():
         self.K = np.array([4*np.pi/3,0])/dic_params_a_mono[self.TMD]
         self.Kp = np.array([2*np.pi/3,2*np.pi/np.sqrt(3)])/dic_params_a_mono[self.TMD]
         self.offset = {'WSe2':-0.052,'WS2':0.01}
-        self.raw_data = self._getRaw()
+        self.raw_data = self._getRaw(master_folder)
         self.sym_data = self._getSym()
         self.fit_data = self._getFitData(pts=pts)
 
-    def _getRaw(self):
+    def _getRaw(self,master_folder):
         """
         Raw data comes from:
             'Inputs/' folder for the first six bands of KpGK and first 4 bands of KMKp
@@ -872,7 +872,7 @@ class monolayerData():
             raw[path] = []
             nbands = self.nbands[path]
             for ib in range(nbands):
-                fn = Path('Inputs/'+path+'_'+self.TMD+'_band%d'%(ib+1)+'.txt')
+                fn = Path(master_folder+'Inputs/'+path+'_'+self.TMD+'_band%d'%(ib+1)+'.txt')
                 with open(fn,'r') as f:
                     lines = f.readlines()
                 temp = []

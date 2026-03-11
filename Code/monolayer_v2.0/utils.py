@@ -30,16 +30,15 @@ TVB4 = [10,11,12,13]
 BCB2 = [14,15]
 
 """ Args and chi2 function """
-def get_args(ind):
+def get_args(TMD,ind):
     """
     Function to retrieve arguments to pass to the minimization function.
     Mostly to decide constraint weights and parameters bounds.
 
     Returns
     -------
-    dict: 'TMD', 'pts', 'Ks', 'Bs'
+    dict: 'pts', 'Ks', 'Bs'
     """
-    lTMDs = ["WS2", ]    #TMDs
     # Parameters of constraints
     lK1 = [1e-3,1e-2,1e-1,1]         # coefficient of parameters distance from DFT
     lK2 = [1e-3,1e-2,1e-1,1]        # coefficient of band content in valence band
@@ -48,20 +47,20 @@ def get_args(ind):
     lK4 = [1e-1,1]          # coefficient of gap value
     lK5 = [5,10]             # weight of high symmetry points: G,K,near-M-crossing and M
     # Bounds
-    lrp = [3,]         #tb bounds for general orbitals
-    lrpz = [3,]         #tb bounds for z orbitals -> indices 6 and 9
-    lrpxy = [3,]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
-    lrl = [3,]          #SOC bounds
+    lrp = [4,]         #tb bounds for general orbitals
+    lrpz = [4,]         #tb bounds for z orbitals -> indices 6 and 9
+    lrpxy = [4,]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
+    lrl = [4,]          #SOC bounds
     # Points in fit
     pts = [151,]     # better is it is a number n*3 + 1 with n integer
-    listPar = list(itertools.product(*[lTMDs,pts,lK1,lK2,lK2b,lK3,lK4,lK5,lrp,lrpz,lrpxy,lrl]))
+    listPar = list(itertools.product(*[pts,lK1,lK2,lK2b,lK3,lK4,lK5,lrp,lrpz,lrpxy,lrl]))
     print("Index %d / %d"%(ind,len(listPar)))
     listPar = listPar[ind]
     args = {
-        'TMD':listPar[0],
-        'pts':listPar[1],
-        'Ks':tuple(listPar[2:8]),
-        'Bs':tuple(listPar[8:]),
+        'TMD':TMD,
+        'pts':listPar[0],
+        'Ks':tuple(listPar[1:7]),
+        'Bs':tuple(listPar[7:]),
     }
     return args
 
@@ -176,11 +175,12 @@ def chi2(pars_tb,*args):
         pars_full = np.append(pars_tb,SOC_pars)
         np.save(temp_fn,pars_full)
     if evaluation_step>max_eval:
-        print("Reached max number of evaluations, plotting results")
-        best_fn = cfs.getFilename(('temp',min_chi2),dirname=temp_dn,extension='.npy',floatPrecision=10)
-        best_tb = np.load(best_fn)
-        best_en = cfs.energy(best_tb,HSO,data.fit_data,args_minimization['TMD'])
-        plotResults(best_tb,best_en,data.fit_data,args_minimization,machine,result)
+        print("Reached max number of evaluations")
+        if 0:
+            best_fn = cfs.getFilename(('temp',min_chi2),dirname=temp_dn,extension='.npy',floatPrecision=10)
+            best_tb = np.load(best_fn)
+            best_en = cfs.energy(best_tb,HSO,data.fit_data,args_minimization['TMD'])
+            plotResults(best_tb,best_en,data.fit_data,args_minimization,machine,result)
         exit()
     if machine=='loc' and evaluation_step%1000==1:
         print("New intermediate figure")

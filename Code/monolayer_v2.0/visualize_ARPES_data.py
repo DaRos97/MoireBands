@@ -26,7 +26,7 @@ for i in inp[1]:
 TMD = 'WS2'
 pts = 151
 
-data = cfs.monolayerData(TMD,pts=pts)
+data = cfs.monolayerData(TMD,master_folder,pts=pts)
 paths = data.paths
 
 """ Raw data """

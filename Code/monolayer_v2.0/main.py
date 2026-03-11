@@ -31,21 +31,23 @@ machine = cfs.get_machine(os.getcwd())
 disp = True                                     #Display messages during computation
 max_eval = 5e6                                  #max number of chi2 evaluations
 
-if len(sys.argv) < 2:
-    print("Usage: python main.py arg1 -p",
-          "\narg1: index of parameter list\n-p for just plotting existing result")
+if len(sys.argv) != 3:
+    print("Usage: python main.py arg1 arg2",
+          "\narg1: TMD, arg2: index of parameter list")
     exit()
 
 """ Import args for minimization """
-argc = int(sys.argv[1])
+TMD = sys.argv[1]
+if TMD not in ['WSe2','WS2']:
+    raise ValueError("TMD not recognized: ",TMD)
+argc = int(sys.argv[2])
 if machine == 'maf':
     argc -= 1
-args_minimization = utils.get_args(argc)
-TMD = args_minimization['TMD']
+args_minimization = utils.get_args(TMD,argc)
 pts = args_minimization['pts']
 
 """ Import experimental data of monolayer """
-data = cfs.monolayerData(TMD,pts=pts)
+data = cfs.monolayerData(TMD,master_folder,pts=pts)
 
 if disp:
     print("------------CHOSEN PARAMETERS------------")
@@ -64,62 +66,41 @@ if disp:
     print("-"*15)
 
 """ Fitting """
-if len(sys.argv)==2:
-    print("Fitting parameters")
-    print("-"*15)
-    DFT_values = np.array(cfs.initial_pt[TMD])  #DFT values of tb parameters. Order is: e, t, offset, SOC
-    Bounds_full = utils.get_bounds(DFT_values,args_minimization['Bs'])
-    if args_minimization['Bs'][3]==0:     # SOC bounds set to 0
-        print("Fitting only tb (excluding SOC)")
-        HSO = cfs.find_HSO(DFT_values[-2:])
-        args_chi2 = (data,HSO,DFT_values[-2:],machine,args_minimization,max_eval)
-        Bounds = Bounds_full[:-2]
-        initial_point = DFT_values[:-2]
-        func = utils.chi2
-    else:
-        print("Fitting all parameters")
-        args_chi2 = (data,machine,args_minimization,max_eval)
-        Bounds = Bounds_full
-        initial_point = DFT_values
-        func = utils.chi2_full
-
-    result = minimize(func,
-        args = args_chi2,
-        x0 = initial_point,
-        bounds = Bounds,
-        method = 'Nelder-Mead',
-        options = {
-            'disp': True,
-            'adaptive' : True,
-            'fatol': 1e-4,
-    #            'xatol': 1e-8,
-            'maxiter': 1e6,
-            },
-        )
-    final_pars = result.x
-    resultChi2 = result.fun
+print("Fitting parameters")
+print("-"*15)
+DFT_values = np.array(cfs.initial_pt[TMD])  #DFT values of tb parameters. Order is: e, t, offset, SOC
+Bounds_full = utils.get_bounds(DFT_values,args_minimization['Bs'])
+if args_minimization['Bs'][3]==0:     # SOC bounds set to 0
+    print("Fitting only tb (excluding SOC)")
+    HSO = cfs.find_HSO(DFT_values[-2:])
+    args_chi2 = (data,HSO,DFT_values[-2:],machine,args_minimization,max_eval)
+    Bounds = Bounds_full[:-2]
+    initial_point = DFT_values[:-2]
+    func = utils.chi2
 else:
-    if sys.argv[2]=='-p':
-        print("Loading parameters")
-        print("-"*15)
-        home_dn = utils.get_home_dn(machine)
-        temp_dn = cfs.getFilename(('temp',*list(args_minimization.values())),dirname=home_dn+'Data/',floatPrecision=10)+'/'
-        filenames = os.listdir(temp_dn)
-        print(filenames)
-        for fn in filenames:
-            if fn[-4:]=='.npy':
-                final_pars = np.load(temp_dn+fn)
-                resultChi2 = float(fn.split('_')[1][:-4])
-                break
-    else:
-        raise ValueError("Unrecognized second argument: %s"%sys.argv[2])
+    print("Fitting all parameters")
+    args_chi2 = (data,machine,args_minimization,max_eval)
+    Bounds = Bounds_full
+    initial_point = DFT_values
+    func = utils.chi2_full
 
-""" Plotting results """
-print("Plotting results")
-HSO = cfs.find_HSO(final_pars[-2:])
-best_en = cfs.energy(final_pars,HSO,data.fit_data,args_minimization['TMD'])
-utils.plotResults(final_pars,best_en,data.fit_data,args_minimization,machine,resultChi2)
+result = minimize(func,
+    args = args_chi2,
+    x0 = initial_point,
+    bounds = Bounds,
+    method = 'Nelder-Mead',
+    options = {
+        'disp': True,
+        'adaptive' : True,
+        'fatol': 1e-4,
+        'maxiter': 1e6,
+        },
+    )
+final_pars = result.x
+resultChi2 = result.fun
 
+print("Final chi2: ",resultChi2)
+print("Final parameters: ",final_pars)
 
 
 
