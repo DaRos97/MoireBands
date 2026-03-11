@@ -14,10 +14,10 @@ import lmfit      #for fitting weights in EDC
 def get_parameters(chunk_id,BZpoint,n_chunks=128):
     """ Get chunks of parameters to compute. """
     if BZpoint=='G':
-        listVg = np.linspace(0.010,0.025,31)     # Considered values of moirè potential -> every 1 meV
-        listPhi = np.linspace(0,359,360) /180*np.pi
-        listW1p = np.linspace(-1.850,-1.650,41)         # every 5 meV
-        listW1d = np.linspace( 1.000, 1.120,25)           # every 5 meV
+        listVg = np.linspace(0.001,0.025,25)            # Moirè potential amplitude -> every 1 meV
+        listPhi = np.linspace(160,180,21) /180*np.pi    # Moiré potential phase -> every 1 °
+        listW1p = np.linspace(-2.000, 2.000,41)         # Interlayer coupling p -> every 10 meV in fine grid, every 50 meV in large grid
+        listW1d = np.linspace(-2.000, 2.000,41)         # Interlayer coupling d -> every 10 meV in fine grid, every 50 meV in large grid
         filename = cfs.getFilename(
             (
             listVg[0],listVg[-1],len(listVg),int(listPhi[0]/np.pi*180),int(listPhi[-1]/np.pi*180),len(listPhi),
@@ -211,10 +211,10 @@ def diagonalize_matrix(*args,machine='loc'):
     """
     Compute and diagonalize big matrix and save to file the result.
     """
-    nShells, nCells, K_list, monolayer_type, parsInterlayer, theta, pars_V, energy_fn, save_data_energy, disp = args
+    nShells, nCells, K_list, monolayer_fns, parsInterlayer, theta, pars_V, energy_fn, save_data_energy, disp = args
     kPts = K_list.shape[0]
     #Monolayer parameters
-    pars_monolayer = import_monolayer_parameters(monolayer_type,machine)
+    pars_monolayer = import_monolayer_parameters(monolayer_fns,machine)
     #Moire parameters
     G_M = cfs.get_reciprocal_moire(theta/180*np.pi)     #7 reciprocal moire lattice vectors
     moireHam = H_moire(pars_V)
@@ -234,14 +234,14 @@ def diagonalize_matrix(*args,machine='loc'):
     if save_data_energy:
         np.savez(energy_fn,evals=evals,evecs=evecs)
     return evals, evecs
-def import_monolayer_parameters(monolayer_type,machine):
+def import_monolayer_parameters(monolayer_fns,machine):
     """Import monolayer parameters, either DFT or fit ones."""
     hopping = {}
     epsilon = {}
     HSO = {}
     offset = {}
     for TMD in cfs.TMDs:
-        temp = np.load(get_home_dn(machine)+'Inputs/tb_'+TMD+'.npy') if monolayer_type=='fit' else np.array(cfs.initial_pt[TMD])
+        temp = np.load(monolayer_fns[TMD])
         hopping[TMD] = cfs.find_t(temp)
         epsilon[TMD] = cfs.find_e(temp)
         HSO[TMD] = cfs.find_HSO(temp[-2:])

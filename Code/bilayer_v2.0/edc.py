@@ -52,7 +52,7 @@ disp = machine=='loc'
 theta_deviation = 0      #Change here for \pm 0.3 degrees
 nShells = 2
 if BZpoint=='G':
-    Vk,phiK = (0.006,106/180*np.pi)
+    Vk,phiK = (0.007,106/180*np.pi)
     kList = np.array([np.zeros(2),])
     columns = ["Vg", "phiG", "w1p", "w1d", "p1", "p2", "p3"]
     argsFn = (Vk,phiK)
@@ -66,13 +66,13 @@ elif BZpoint=='K':
 spreadE = 0.03      # in eV
 #
 nCells = cfs.get_nCells(nShells)
-monolayer_type = 'fit'
-theta = cfs.dic_params_twist[sample]+theta_deviation    #twist angle, in degrees, from LEED eperiment
+monolayer_fns = {'WSe2':master_folder+'Inputs/tb_WSe2_B:5_K:0.001_0.005_0_1_0.5_10.npy','WS2':master_folder+'Inputs/tb_WS2_B:5_K:0.01_0.01_0_1_0.5_10.npy'}
+theta = cfs.dic_params_twist[sample] + theta_deviation    #twist angle, in degrees, from LEED eperiment
 stacking = 'P'
 w2p = w2d = 0
 if disp:    #print what parameters we're using
     print("-----------FIXED PARAMETRS CHOSEN-----------")
-    print("Monolayers' tight-binding parameters: ",monolayer_type)
+    print("Monolayers' tight-binding parameters: ",monolayer_fns)
     print("Sample ",sample," with twist %.2f°"%theta," (variation of %.1f° from LEED)"%theta_deviation)
     if BZpoint=='G':
         print("Moiré potential at K (%.5f eV, %.1f°)"%(Vk,phiK/np.pi*180))
@@ -97,7 +97,7 @@ for pars in parameters_chunk:
             phiK = 120/180*np.pi
             print("Vk: %.3f\tphiK: %.1f"%(Vk,phiK/np.pi*180))
     parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
-    args_diag = (nShells, nCells, kList, monolayer_type, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', False, False)
+    args_diag = (nShells, nCells, kList, monolayer_fns, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', False, False)
     positions,success = utils.EDC(
         args_diag,
         sample,

@@ -415,6 +415,8 @@ def getFilename(*args,dirname='',extension='',floatPrecision=6):
             filename += f"{a:.{floatPrecision}f}"
         elif t==tuple:
             filename += getFilename(*a,floatPrecision=floatPrecision)
+        elif t==dict:
+            continue
         else:
             raise TypeError("Parameter %s has unsupported type: %s"%(a,t))
         if not i==len(args)-1:
