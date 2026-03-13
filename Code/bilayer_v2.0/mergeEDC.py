@@ -25,7 +25,7 @@ n_chunks = 128
 theta_deviation = 0      #Change here for \pm 0.3 degrees
 nShells = 2
 if BZpoint=='G':
-    args = (0.006,106/180*np.pi)        #Vk, phiK
+    args = (0.007,106/180*np.pi)        #Vk, phiK
 else:
     args = (0.019,175/180*np.pi,-1.750,1.050)        #Vg, phiG, w1p, w1d
 spreadE = 0.03      # in eV

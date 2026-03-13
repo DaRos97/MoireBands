@@ -14,15 +14,15 @@ import numpy as np
 import utils
 import matplotlib.pyplot as plt
 
-maxMeasure = 0.1
+maxMeasure = 0.017
+
+if len(sys.argv)!=2:
+    print("usage: python plot_edcK.py arg1\nWith: arg1 filename of set of data to plot.")
+    exit()
+fn = sys.argv[1]
 
 """ Dirname and parameters load """
 sample='S11'
-
-#fn = 'Data/full_edcK_0_2_0.019_3.054_-1.750_1.050_0.030_0.001000_0.070000_70_0_359_360.h5'
-fn = 'Data/full_edcK_0_2_0.030_0.019_3.054_-1.750_1.050_0.001000_0.020000_20_0_359_360.h5'
-
-# Load HDF5
 df = pd.read_hdf(fn, key="results")
 
 # Convert to NumPy array
@@ -63,7 +63,7 @@ for i, V in enumerate(V_all):
             min_dis[i, j] = np.min(vals_dis)
 
 """ Figure """
-fig = plt.figure(figsize=(10, 10))
+fig = plt.figure(figsize=(10, 5))
 ax = fig.add_subplot()
 s_ = 15
 s_2 = 20
@@ -74,12 +74,16 @@ im = ax.pcolormesh(
     gPhi,gV,
     min_dis,
     cmap='plasma_r',
+    vmin=0,
+    vmax=maxMeasure
 )
 
-ax.set_xlabel(r"$\phi$",size=s_)
+ax.set_xlabel(r"$\phi$ [°]",size=s_)
 ax.set_ylabel(r"$V$ [eV]",size=s_)
-ax.set_title("Distances Measure",size=s_2)
+ax.tick_params(axis='both',labelsize=s_)
 cbar = fig.colorbar(im, ax=ax)
+cbar.set_label("Distance measure from ARPES",size=s_)
+cbar.ax.tick_params(labelsize=s_)
 
 fig.tight_layout()
 plt.show()
