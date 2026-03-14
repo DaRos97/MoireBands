@@ -17,6 +17,13 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 machine = cfs.get_machine(os.getcwd())
 
+if len(sys.argv)!=2:
+    print("Usage: python sortResults.py arg1\nWith arg1 in {WSe2,WS2}")
+    exit()
+TMD = sys.argv[1]
+if TMD not in cfs.TMDs:
+    raise ValueError("Unrecognized TMD: ",TMD)
+
 data_dn = Path(utils.get_home_dn(machine) + "Data/")
 
 pars = []
@@ -54,15 +61,12 @@ s_a_sorted = [s_a[i] for i in order]
 for ip in range(Npars):
     args_minimization = s_a_sorted[ip]
     if not (          #Chose specific set: 1
-        args_minimization['TMD']=="WS2" and     #TMD
-        #args_minimization['Ks'][0]==1e-2 and     #K1
+        args_minimization['TMD']==TMD and     #TMD
+        #args_minimization['Ks'][0]==1e-3 and     #K1
         #args_minimization['Ks'][1]>=1e-2 and     #K2
         #args_minimization['Ks'][3]==1 and     #K3
         #args_minimization['Ks'][3]==1 and     #K4
         #args_minimization['Ks'][4]==5 and     #K5
-        #1e-6,1e-3,1,0.1,1
-        #1e-6,1e-3,1,0.1,5
-        #1e-6,1e-4,1,1,5
         1
     ):
         continue

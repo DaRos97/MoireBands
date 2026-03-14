@@ -28,7 +28,7 @@ from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 machine = cfs.get_machine(os.getcwd())
 
-disp = True                                     #Display messages during computation
+disp = machine=='loc'                                     #Display messages during computation
 max_eval = 5e6                                  #max number of chi2 evaluations
 
 if len(sys.argv) != 3:

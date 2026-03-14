@@ -40,12 +40,12 @@ def get_args(TMD,ind):
     dict: 'pts', 'Ks', 'Bs'
     """
     # Parameters of constraints
-    lK1 = [1e-4,1e-3,1e-2,1e-1]         # coefficient of parameters distance from DFT
+    lK1 = [1e-5,5e-5,1e-4,5e-4,1e-3,5e-3,1e-2]         # coefficient of parameters distance from DFT
     lK2 = [5e-3,1e-2,5e-2,1e-1]        # coefficient of band content in valence band
     lK2b = [0,]        # coefficient of band content in conduction band
     lK3 = [1]         # coefficient of minimum of conduction band at K
     lK4 = [1e-1,5e-1,1]          # coefficient of gap value
-    lK5 = [10,]             # weight of high symmetry points: G,K,near-M-crossing and M
+    lK5 = [5,10,]             # weight of high symmetry points: G,K,near-M-crossing and M
     # Bounds
     lrp = [5,]         #tb bounds for general orbitals
     lrpz = [5,]         #tb bounds for z orbitals -> indices 6 and 9
@@ -398,6 +398,12 @@ def plot_orbitalContent(full_pars,TMD,args_minimization=None,title='',figname=''
             for ik in range(Nk):   #kpts
                 for iorb in inds_orb:
                     orbitals[orb,ib,ik] += np.linalg.norm(evs[ik,iorb,ib])**2 + np.linalg.norm(evs[ik,iorb+11,ib])**2
+    indM = Ngk+Nkm
+    print("OPO at M TVB1: %.5f"%(orbitals[2,13,indM]+orbitals[4,13,indM]))
+    print("OPO at M TVB2: %.5f"%(orbitals[2,12,indM]+orbitals[4,12,indM]))
+    print("OPO at M TVB3: %.5f"%(orbitals[2,11,indM]+orbitals[4,11,indM]))
+    print("OPO at M TVB4: %.5f"%(orbitals[2,10,indM]+orbitals[4,10,indM]))
+    print("Total: %.5f"%(np.sum(orbitals[[2,4],10:14,indM])))
     if 0:       # Print orbitals at specific points
         vk = evs[Ngk]
         for ib in [12,13,14,15]:
