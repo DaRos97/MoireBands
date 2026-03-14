@@ -49,7 +49,7 @@ if ind<0 or ind>=n_chunks:
 disp = machine=='loc'
 
 """ Fixed parametetrs """
-theta_deviation = 0.      #Change here for \pm 0.3 degrees
+theta_deviation = 0      #Change here for \pm 0.3 degrees
 nShells = 2
 if BZpoint=='G':
     Vk,phiK = (0.007,106/180*np.pi)
@@ -66,7 +66,7 @@ elif BZpoint=='K':
 spreadE = 0.03      # in eV
 #
 nCells = cfs.get_nCells(nShells)
-monolayer_fns = {'WSe2':master_folder+'Inputs/tb_WSe2_B:5_K:0.001_0.005_0_1_0.5_10.npy','WS2':master_folder+'Inputs/tb_WS2_B:5_K:0.0001_0.01_0_1_0.1_10.npy'}
+monolayer_fns = {'WSe2':master_folder+'Inputs/tb_WSe2_B:5_K:0.00005_0.1_0_1_0.1_10.npy','WS2':master_folder+'Inputs/tb_WS2_B:5_K:0.0001_0.1_0_1_0.1_5.npy'}
 theta = cfs.dic_params_twist[sample] + theta_deviation    #twist angle, in degrees, from LEED eperiment
 stacking = 'P'
 w2p = w2d = 0
