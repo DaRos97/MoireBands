@@ -237,6 +237,103 @@ def find_e(dic_params_H):
     return e
 
 def find_HSO(SO_pars):
+    """
+    Compute the SOC Hamiltonian.
+    Computed by hand on notes iPad.
+    """
+    if len(SO_pars)>2:
+        print("Wrong pars in HSO")
+        exit()
+    l_M = SO_pars[0]
+    l_X = SO_pars[1]
+
+    HSO = np.zeros((22,22),dtype=complex)
+    s3 = np.sqrt(3)
+    # d_xz_u
+    HSO[0,1]        =  l_M*1j/2
+    HSO[0,11+5]     =  l_M*s3/2
+    HSO[0,11+6]     = -l_M*1j/2
+    HSO[0,11+7]     = -l_M/2
+    # d_yz_u
+    HSO[1,0]        = -l_M*1j/2
+    HSO[1,11+5]     =  l_M*1j*s3/2
+    HSO[1,11+6]     = -l_M/2
+    HSO[1,11+7]     =  l_M*1j/2
+    # p_zo_u
+    HSO[2,11+9]     = -l_X/2
+    HSO[2,11+10]    = -l_X*1j/2
+    # p_xo_u
+    HSO[3,4]        =  l_X*1j/2
+    HSO[3,11+8]     =  l_X/2
+    # p_yo_u
+    HSO[4,3]        = -l_X*1j/2
+    HSO[4,11+8]     =  l_X*1j/2
+    # d_z2_u
+    HSO[5,11+0]     = -l_M*s3/2
+    HSO[5,11+1]     = -l_M*1j*s3/2
+    # d_xy_u
+    HSO[6,7]        = -l_M*1j
+    HSO[6,11+0]     =  l_M*1j/2
+    HSO[6,11+1]     =  l_M/2
+    # d_x2_u
+    HSO[7,6]        =  l_M*1j
+    HSO[7,11+0]     =  l_M/2
+    HSO[7,11+1]     = -l_M*1j/2
+    # p_ze_u
+    HSO[8,11+3]     = -l_X/2
+    HSO[8,11+4]     = -l_X*1j/2
+    # p_xe_u
+    HSO[9,10]       =  l_X*1j/2
+    HSO[9,11+2]     =  l_X/2
+    # p_ye_u
+    HSO[10,9]       = -l_X*1j/2
+    HSO[10,11+2]    =  l_X*1j/2
+
+    #
+
+    # d_xz_d
+    HSO[11+0,5]     = -l_M*s3/2
+    HSO[11+0,6]     = -l_M*1j/2
+    HSO[11+0,7]     =  l_M/2
+    HSO[11+0,11+1]  = -l_M*1j/2
+    # d_yz_d
+    HSO[11+1,5]     =  l_M*1j*s3/2
+    HSO[11+1,6]     =  l_M/2
+    HSO[11+1,7]     =  l_M*1j/2
+    HSO[11+1,11+0]  =  l_M*1j/2
+    # p_zo_d
+    HSO[11+2,9]     =  l_X/2
+    HSO[11+2,10]    = -l_X*1j/2
+    # p_xo_d
+    HSO[11+3,8]     = -l_X/2
+    HSO[11+3,11+4]  = -l_X*1j/2
+    # p_yo_d
+    HSO[11+4,8]     =  l_X*1j/2
+    HSO[11+4,11+3]  =  l_X*1j/2
+    # d_z2_d
+    HSO[11+5,0]     =  l_M*s3/2
+    HSO[11+5,1]     = -l_M*1j*s3/2
+    # d_xy_d
+    HSO[11+6,0]     =  l_M*1j/2
+    HSO[11+6,1]     = -l_M/2
+    HSO[11+6,11+7]  =  l_M*1j
+    # d_x2_d
+    HSO[11+7,0]     = -l_M/2
+    HSO[11+7,1]     = -l_M*1j/2
+    HSO[11+7,11+6]  = -l_M*1j
+    # p_ze_d
+    HSO[11+8,3]     =  l_X/2
+    HSO[11+8,4]     = -l_X*1j/2
+    # p_xe_d
+    HSO[11+9,2]     = -l_X/2
+    HSO[11+9,11+10] = -l_X*1j/2
+    # p_ye_d
+    HSO[11+10,2]    =  l_X*1j/2
+    HSO[11+10,11+9] =  l_X*1j/2
+
+    return HSO
+
+def find_HSO_old(SO_pars):
     """Compute the SO Hamiltonian. Taken from arXiv:1401....(paco guinea)
     They compute exactly the same thing BUT with a basis change.
 
@@ -337,6 +434,7 @@ def find_HSO(SO_pars):
     #Just swap the columns and rows
     HSOf = HSO[[6,7,10,8,9,0,2,1,5,3,4,17,18,21,19,20,11,13,12,16,14,15],:]
     HSOf = HSOf[:,[6,7,10,8,9,0,2,1,5,3,4,17,18,21,19,20,11,13,12,16,14,15]]
+
     return HSOf
 
 def get_kList(cut,kPts,TMD='WSe2',endpoint=False,returnNorm=False):
