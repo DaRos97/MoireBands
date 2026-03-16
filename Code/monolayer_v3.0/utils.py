@@ -74,20 +74,20 @@ def get_args(TMD,ind):
     dict: 'pts', 'Ks', 'Bs'
     """
     # Parameters of constraints
-    lK1 = [0,1e-5,1e-4,1e-3]         # coefficient of parameters distance from DFT
-    lK2 = [1e-3,1e-2,1e-1,1,10]        # coefficient of band content at M
-    lK2b = [1,1e1,1e2]               # coefficient of orbital content of G and K from DFT
-    lK3 = [1,]         # coefficient of minimum of conduction band at K
-    lK4 = [1,]          # coefficient of gap value
-    lK5 = [10,]             # weight of high symmetry points: G,K,near-M-crossing and M
+    lK1 = [1e-6,1e-5,1e-4]         # coefficient of parameters distance from DFT
+    lK2 = np.linspace(1e-3,1,8)        # coefficient of band content at M
+    lK3 = np.linspace(1e-3,1,8)               # coefficient of orbital content of G and K from DFT
+    lK4 = [1,]         # coefficient of minimum of conduction band at K
+    lK5 = [1,]          # coefficient of gap value
+    lK6 = [10,]             # weight of high symmetry points: G,K,near-M-crossing and M
     # Bounds
-    lrp = [5,]         #tb bounds for general orbitals
-    lrpz = [5,]         #tb bounds for z orbitals -> indices 6 and 9
-    lrpxy = [5,]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
-    lrl = [5,]          #SOC bounds
+    lrp = [10,]         #tb bounds for general orbitals
+    lrpz = [10,]         #tb bounds for z orbitals -> indices 6 and 9
+    lrpxy = [10,]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
+    lrl = [0,]          #SOC bounds
     # Points in fit
-    pts = [151,]     # better is it is a number n*3 + 1 with n integer
-    listPar = list(itertools.product(*[pts,lK1,lK2,lK2b,lK3,lK4,lK5,lrp,lrpz,lrpxy,lrl]))
+    pts = [91,]     # better is it is a number n*3 + 1 with n integer
+    listPar = list(itertools.product(*[pts,lK1,lK2,lK3,lK4,lK5,lK6,lrp,lrpz,lrpxy,lrl]))
     print("Index %d / %d"%(ind,len(listPar)))
     listPar = listPar[ind]
     args = {
@@ -115,7 +115,7 @@ def chi2(pars_tb,*args):
     Made for fitting without SOC parameters -> HSO already computed.
     """
     data, HSO, SOC_pars, machine, args_minimization, max_eval = args
-    K1,K2,K2b,K3,K4,K5 = args_minimization['Ks']
+    K1,K2,K3,K4,K5,K6 = args_minimization['Ks']
     full_pars = np.append(pars_tb,SOC_pars)
     result = 0
     # chi2 of bands distance: compute energy of new pars -> and K5
@@ -124,7 +124,7 @@ def chi2(pars_tb,*args):
     chi2_band_distance = 0
     specialIndices = [0,np.argmax(data.fit_data[:,3]),np.argmin(data.fit_data[:,4]),data.fit_data.shape[0]-1]
     weights = np.ones(data.fit_data.shape[0])
-    weights[specialIndices] = K5
+    weights[specialIndices] = K6
     for ib in range(nbands):
         chi2_band_distance += np.sum(
             np.absolute(
@@ -142,7 +142,10 @@ def chi2(pars_tb,*args):
     Ham_bc = cfs.H_monolayer(k_pts,*args_H_bc)
     ## M
     evals_M,evecs_M = np.linalg.eigh(Ham_bc[0])
-    K2_M = np.sum( np.absolute( evecs_M[indILC,:][:,TVB4] )**2 )
+    bandsM = TVB4 if args_minimization['TMD']=='WSe2' else TVB2
+    K2_M = np.sum( np.absolute( evecs_M[indILC,:][:,bandsM] )**2 )
+    if args_minimization['TMD']=='WS2':
+        K2_M *= 2       # to have same dimension to WSe2
     ## Gamma
     evals_G,evecs_G = np.linalg.eigh(Ham_bc[1])
     occ_ze, occ_z2 = orbital_character[args_minimization['TMD']]['G']
@@ -161,7 +164,7 @@ def chi2(pars_tb,*args):
                  + np.absolute(1/np.sqrt(2)*(evecs_K[x2_i+11,13]-1j*evecs_K[xy_i+11,13]))**2)
     K_d2_tvb2 = (np.absolute(1/np.sqrt(2)*(evecs_K[x2_i,12]-1j*evecs_K[xy_i,12]))**2
                  + np.absolute(1/np.sqrt(2)*(evecs_K[x2_i+11,12]-1j*evecs_K[xy_i+11,12]))**2)
-    K2_DFT = (
+    K3_DFT = (
         abs(occ_ze-G_ze_tvb1) +
         abs(occ_ze-G_ze_tvb2) +
         abs(occ_z2-G_z2_tvb1) +
@@ -171,12 +174,12 @@ def chi2(pars_tb,*args):
         abs(occ_d2_tvb1-K_d2_tvb1) +
         abs(occ_d2_tvb2-K_d2_tvb2)
     )
-    # K3: minimum of conduction band
+    # K4: minimum of conduction band
     if abs(data.fit_data[np.argmin(cond_en),0]-data.K[0])<1e-3:
-        K3_band_min = 0
+        K4_band_min = 0
     else:
-        K3_band_min = 1
-    # K4: gap at K
+        K4_band_min = 1
+    # K5: gap at K
     DFT_pars = np.array(cfs.initial_pt[args_minimization['TMD']])
     args_H_DFT = (cfs.find_t(DFT_pars),cfs.find_e(DFT_pars),cfs.find_HSO(DFT_pars[-2:]),cfs.dic_params_a_mono[args_minimization['TMD']],DFT_pars[-3])
     k_pts = np.array([ data.K, ])
@@ -184,34 +187,35 @@ def chi2(pars_tb,*args):
     evals_DFT = np.linalg.eigvalsh(Ham_DFT)[0]
     gap_DFT = evals_DFT[14]-evals_DFT[13]
     gap_p = evals_K[14]-evals_K[13]
-    K4_gap = abs(gap_DFT-gap_p)
+    K5_gap = abs(gap_DFT-gap_p)
     # Total result
     result = chi2_band_distance + (
         K1*K1_par_dis +
         K2*K2_M +
-        K2b*K2_DFT +
-        K3*K3_band_min +
-        K4*K4_gap
+        K3*K3_DFT +
+        K4*K4_band_min +
+        K5*K5_gap
     )
 
     """ From here on just plotting and temporary save """
     home_dn = get_home_dn(machine)
-    temp_dn = cfs.getFilename(('temp',*list(args_minimization.values())),dirname=home_dn+'Data/',floatPrecision=10)+'/'
-    if not Path(temp_dn).is_dir():
-        print("Creating temp directory in Data/")
-        print(temp_dn)
-        os.system("mkdir "+temp_dn)
+    temp_fn = cfs.getFilename(
+        ('res',args_minimization['TMD'],args_minimization['Ks'],args_minimization['Bs']),
+        dirname=home_dn+'Data/',
+        floatPrecision=10,
+        extension='.npz'
+    )
     global min_chi2
     global evaluation_step
     evaluation_step += 1
     if result < min_chi2 and abs(result-min_chi2)>1e-4:   #remove old temp and add new one
-        if not min_chi2==1e5:
-            temp_fn = cfs.getFilename(('temp',min_chi2),dirname=temp_dn,extension='.npy',floatPrecision=10)
-            os.system('rm '+temp_fn)
         min_chi2 = result
-        temp_fn = cfs.getFilename(('temp',result),dirname=temp_dn,extension='.npy',floatPrecision=10)
-        pars_full = np.append(pars_tb,SOC_pars)
-        np.save(temp_fn,pars_full)
+        np.savez(
+            temp_fn,
+            chi2=chi2_band_distance+K2_M,
+            result=result,
+            pars=full_pars
+        )
     if evaluation_step>max_eval:
         print("Reached max number of evaluations")
         exit()
@@ -223,12 +227,12 @@ def chi2(pars_tb,*args):
         print("1->par: %.6f"%(K1*K1_par_dis))
         print("---------------")
         print("2->orb: %.6f"%(K2*K2_M))
-        print("2b->: %.6f"%(K2b*K2_DFT))
+        print("2b->: %.6f"%(K3*K3_DFT))
         print("---------------")
-        print("3->min: %.6f"%(K3*K3_band_min))
+        print("3->min: %.6f"%(K4*K4_band_min))
         print("---------------")
-        print("4->gap: %.6f"%(K4*K4_gap))
-        plotResults(np.append(pars_tb,SOC_pars),tb_en,data.fit_data,args_minimization,machine,result,dn='temp',show=False)
+        print("4->gap: %.6f"%(K5*K5_gap))
+        #plotResults(np.append(pars_tb,SOC_pars),tb_en,data.fit_data,args_minimization,machine,result,show=False)
     return result
 
 """ Plotting """
