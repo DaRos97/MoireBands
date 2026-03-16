@@ -63,7 +63,7 @@ for ip in range(Npars):
     if not (          #Chose specific set: 1
         args_minimization['TMD']==TMD and     #TMD
         #args_minimization['Ks'][0]==1e-3 and     #K1
-        #args_minimization['Ks'][1]>=1e-2 and     #K2
+        #args_minimization['Ks'][1]==1e-1 and     #K2
         #args_minimization['Ks'][3]==1 and     #K3
         #args_minimization['Ks'][3]==1 and     #K4
         #args_minimization['Ks'][4]==5 and     #K5

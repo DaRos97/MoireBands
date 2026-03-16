@@ -9,15 +9,14 @@ cwd = os.getcwd()
 if cwd[6:11] == 'dario':
     master_folder = cwd[:40]
 elif cwd[:20] == '/home/users/r/rossid':
-    master_folder = cwd[:20] + '/git/MoireBands/Code'
+    master_folder = cwd[:20] + '/git/MoireBands/Code/'
 elif cwd[:13] == '/users/rossid':
-    master_folder = cwd[:13] + '/git/MoireBands/Code'
+    master_folder = cwd[:13] + '/git/MoireBands/Code/'
 sys.path.insert(1, master_folder)
 import CORE_functions as cfs
 import functions as fs
 from pathlib import Path
 import matplotlib.pyplot as plt
-
 
 machine = cfs.get_machine(os.getcwd())
 save = True
@@ -29,8 +28,8 @@ theta = 2.8
 
 VG = 0.017       # eV           # Not needed here but for book-keeping
 phiG = 175/180*np.pi        #rad    # Not needed here but for book-keeping
-w1p = 0#-1.66         # eV
-w1d = 0#0.324         # eV
+w1p = -1.5         # eV
+w1d = 0.4         # eV
 stacking = 'P'
 w2p = w2d = 0
 parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
@@ -38,7 +37,7 @@ parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
 """ Other useless pars """
 nShells = 0
 nCells = 1
-monolayer_type = 'fit'
+monolayer_fns = {'WSe2':master_folder+'Inputs/tb_WSe2_B:5_K:0.001_0.005_0_1_0.5_10.npy','WS2':master_folder+'Inputs/tb_WS2_B:5_K:0.0001_0.01_0_1_0.1_10.npy'}
 Vk = Vg = phiG = phiK = 0
 moire_pars = (Vg,Vk,phiG,phiK)
 
@@ -46,14 +45,12 @@ moire_pars = (Vg,Vk,phiG,phiK)
 kPts = 400
 kList,norm = cfs.get_kList('G-K-Kp',kPts,returnNorm=True)
 K0 = np.linalg.norm(kList[-1])   #val of |K|
-#kList = np.zeros((kPts,2))
-#kList[:,0] = np.linspace(0,K0,kPts)
 """ Evals and weights """
-args_e_data = (sample,nShells,monolayer_type,Vk,phiK,theta,stacking,w1p,w1d,phiG,kPts)
-th_e_data_fn = 'Data/final_data_e_'+fs.get_fn(*args_e_data)+'.npz'
+args_e_data = (sample,nShells,Vk,phiK,theta,stacking,w1p,w1d,phiG,kPts)
+th_e_data_fn = 'Data/energies_'+fs.get_fn(*args_e_data)+'.npz'
 if not Path(th_e_data_fn).is_file():
     print("Computing")
-    args = (nShells, nCells, kList, monolayer_type, parsInterlayer, theta, moire_pars, '', False, True)
+    args = (nShells, nCells, kList, monolayer_fns, parsInterlayer, theta, moire_pars, '', False, True)
     evals, evecs = fs.diagonalize_matrix(*args)
     if save:
         np.savez(th_e_data_fn,evals=evals,evecs=evecs,norm=norm)
@@ -93,7 +90,7 @@ for orb in range(5):
                         np.linalg.norm(evecs[ik,iorb+22,il*22+ib])**2
                       + np.linalg.norm(evecs[ik,iorb+33,il*22+ib])**2
                     )
-
+""" Figure """
 fig = plt.figure(figsize=(15,10))
 ax = fig.add_subplot(121)
 ax2 = fig.add_subplot(122)
@@ -117,7 +114,8 @@ for i in range(8):
                    alpha=0.1,
                    zorder=1,
                    )
-        ax2.scatter(xvals,evals[:,27-i],s=(orbitalsBottom[orb,27-i]*100),
+        if 1:
+            ax2.scatter(xvals,evals[:,27-i],s=(orbitalsBottom[orb,27-i]*100),
                    marker='o',
                    facecolor=colorBottom[orb],
                    lw=0,

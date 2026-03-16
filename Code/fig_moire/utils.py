@@ -1,16 +1,19 @@
+import sys,os
 import numpy as np
-import scipy
+cwd = os.getcwd()
+master_folder = cwd[:40]
+sys.path.insert(1, master_folder)
 import CORE_functions as cfs
+import scipy
 
-def import_monolayer_parameters(monolayer_type):
+def import_monolayer_parameters(monolayer_fns):
     """Import monolayer parameters, either DFT or fit ones."""
     hopping = {}
     epsilon = {}
     HSO = {}
     offset = {}
     for TMD in cfs.TMDs:
-        fn = 'Inputs/tb_WS2.npy' if TMD=='WS2' else 'Inputs/tb_WSe2_v2.npy'
-        temp = np.load(fn)
+        temp = np.load(monolayer_fns[TMD])
         hopping[TMD] = cfs.find_t(temp)
         epsilon[TMD] = cfs.find_e(temp)
         HSO[TMD] = cfs.find_HSO(temp[-2:])

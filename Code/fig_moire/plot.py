@@ -1,21 +1,39 @@
+import sys,os
 import numpy as np
+cwd = os.getcwd()
+master_folder = cwd[:40]
+sys.path.insert(1, master_folder)
+import CORE_functions as cfs
+from pathlib import Path
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+import utils
 
-fnWSe2 = '../Inputs/tb_WSe2_B:4_K:0.0001_0.01_0_1_0.1_5.npy'
-fnWS2 = '../Inputs/tb_WS2_B:3_K:0.001_0.01_0_1_0.1_10.npy'
+
+fnWSe2 = '../Inputs/tb_WSe2_B:5_K:0.00005_0.1_0_1_0.1_10.npy'
+fnWS2 = '../Inputs/tb_WS2_B:5_K:0.0001_0.1_0_1_0.1_5.npy'
 
 """ Save energy and intensities """
 saveE = True
 saveW = True
 
 """ Bilayer parameters -> changing any of these you need to re-evaluate the energies """
-kPts = 200         # Points in the cut G -> K -> K'
+kPlusKGKp = 0.2
+kPlusKMKp = 0.6
+kDelta = 5e-3
 theta = 2.8     # twisting angle, in deg
-Vg = 0.0195              # eV
-phiG = 175/180*np.pi        # rad
 Vk = 0.007              # eV
 phiK = 106/180*np.pi       # rad
-w1p = -1.745         # eV
-w1d = 1.055         # eV
+Vg = 0.020              # eV
+phiG = 173/180*np.pi        # rad
+w1p = -0.47     # eV
+w1d = 1.03      # eV
+#Vg = 0.014              # eV
+#phiG = 169/180*np.pi        # rad
+#w1p = -1.1      # eV
+#w1d = 0.42       # eV
+
+print(Vg,phiG,w1p,w1d)
 
 """ Parameters of intensity matrix -> changing any of these you need to re-evaluate the intensities """
 typeSpread = 'Gauss'    # 'Gauss' or 'Lorentz', works for both k and E
@@ -24,22 +42,12 @@ spreadE = 0.015      # in eV
 E_max = 0           # in eV
 E_min = -2.5        # in eV
 deltaE = 0.01       # in eV, sets the energy grid
-shadeFactorWS2 = 0.1     # shade factor of WS2 -> 0 (not visible at all) to 1 (same relevance as WSe2)
-# we could also put another shading depending on the energy -> lower bands get less weight
+shadeFactorWS2 = 0.0     # shade factor of WS2 -> 0 (not visible at all) to 1 (same relevance as WSe2)
 powFactor = 1.       # exponent of weights -> 2 is the usual mod square of eigenvectors which should be the weight of ARPES spectra. For lower values we enhance the intensity of the side bands
 minimumBand = 15    # lowest considered band for spreading      #bands are 0 to 43, with TVB at 27
 
 """ Parameters of final plot """
-shadeFactorE = 0.1 # Add a linar shading depending on the energy. Starts at 1 at E_max and goes to this factor at E_min
-indKplus = 5   # number of additional points (out of kPts//2-1) after the K point on the 2 sides)
-indKG = 50   # number of additional points (out of kPts//2) after the K point on the 2 sides, towards G
-
-""" Import libraries and functions """
-import sys, os
-import CORE_functions as cfs
-from pathlib import Path
-import matplotlib.pyplot as plt
-from tqdm import tqdm
+shadeFactorE = 0.2 # Add a linar shading depending on the energy. Starts at 1 at E_max and goes to this factor at E_min
 
 """ Actual computation """
 
@@ -52,146 +60,126 @@ nShells = 2
 nCells = int(1+3*nShells*(nShells+1))
 monolayer_fns = {'WSe2':fnWSe2,'WS2':fnWS2}
 moire_pars = (Vg,Vk,phiG,phiK)
-""" BZ path """
-kList,norm = cfs.get_kList('G-K-Kp',kPts,returnNorm=True)
-if 0:   # Plot BZ cut
-    fig = plt.figure()
-    ax = fig.add_subplot()
-    ax.scatter(kList[:,0],kList[:,1])
-    ax.set_aspect('equal')
-    plt.show()
-kPts = kList.shape[0]
-K0 = 4*np.pi/3/cfs.dic_params_a_mono['WSe2']
+""" BZ path and energy list """
+kListKGKp = cfs.getMomentaKGKp(kPlusKGKp,kDelta)
+normKGKp = kListKGKp[:,0]
+kPtsKGKp = kListKGKp.shape[0]
+kListKMKp, normKMKp = cfs.getMomentaKMKp(kPlusKMKp,kDelta)
+kPtsKMKp = kListKMKp.shape[0]
+modK = 4*np.pi/3/cfs.dic_params_a_mono['WSe2']
+eList = np.linspace(E_min,E_max,int((E_max-E_min)/deltaE))
 """ Computing evals and evecs """
-args_e_data = (sample,nShells,monolayer_fns,Vk,phiK,theta,stacking,w1p,w1d,phiG,kPts)
-th_e_data_fn = cfs.getFilename(('fig3_e',)+args_e_data,dirname='Data/',extension='.npz')
+args_e_data = (sample,nShells,Vg,phiG,Vk,phiK,theta,w1p,w1d,kPlusKGKp,kPlusKMKp,kDelta)
+th_e_data_fn = cfs.getFilename(('figMoire_e',)+args_e_data,dirname='Data/',extension='.npz')
 if not Path(th_e_data_fn).is_file():
-    print("Computing energies")
-    args = (nShells, nCells, kList, monolayer_fns, parsInterlayer, theta, moire_pars, '', False, True)
-    evalsFull, evecsFull = cfs.diagonalize_matrix(*args)
-    evals = evalsFull[:,nCells*minimumBand:nCells*28]
-    evecs = evecsFull[:,:,nCells*minimumBand:nCells*28]
+    print("Computing energies KGKp")
+    args = (nShells, nCells, kListKGKp, monolayer_fns, parsInterlayer, theta, moire_pars, '', False, True)
+    evalsFullKGKp, evecsFullKGKp = utils.diagonalize_matrix(*args)
+    evalsKGKp = evalsFullKGKp[:,nCells*minimumBand:nCells*28]
+    evecsKGKp = evecsFullKGKp[:,:,nCells*minimumBand:nCells*28]
+    print("Computing energies KMKp")
+    args = (nShells, nCells, kListKMKp, monolayer_fns, parsInterlayer, theta, moire_pars, '', False, True)
+    evalsFullKMKp, evecsFullKMKp = utils.diagonalize_matrix(*args)
+    evalsKMKp = evalsFullKMKp[:,nCells*minimumBand:nCells*28]
+    evecsKMKp = evecsFullKMKp[:,:,nCells*minimumBand:nCells*28]
     if saveE:
-        np.savez(th_e_data_fn,evals=evals,evecs=evecs,norm=norm,kList=kList)
+        np.savez(
+            th_e_data_fn,
+            evalsKGKp=evalsKGKp,
+            evecsKGKp=evecsKGKp,
+            evalsKMKp=evalsKMKp,
+            evecsKMKp=evecsKMKp,
+        )
 else:
     print("Loading energies")
-    evals = np.load(th_e_data_fn)['evals']
-    evecs = np.load(th_e_data_fn)['evecs']
-    norm = np.load(th_e_data_fn)['norm']
+    evalsKGKp = np.load(th_e_data_fn)['evalsKGKp']
+    evecsKGKp = np.load(th_e_data_fn)['evecsKGKp']
+    evalsKMKp = np.load(th_e_data_fn)['evalsKMKp']
+    evecsKMKp = np.load(th_e_data_fn)['evecsKMKp']
 """ Computing weights and spread image """
 pars_spread = ( spreadK, spreadE, typeSpread, deltaE, powFactor, shadeFactorWS2, minimumBand)
 args_w_data = args_e_data + pars_spread
-th_w_data_fn = cfs.getFilename(('fig3_w',)+args_w_data,dirname='Data/',extension='.npz')
+th_w_data_fn = cfs.getFilename(('figMoire_w',)+args_w_data,dirname='Data/',extension='.npz')
 if not Path(th_w_data_fn).is_file():
-    print("Computing intensities")
-    weights = np.zeros((kPts,nCells*(28-minimumBand)))
-    for i in range(kPts):
-        ab = np.absolute(evecs[i])**powFactor
-        weights[i,:] = np.sum(ab[:22,:],axis=0) + shadeFactorWS2*np.sum(ab[22*nCells:22*(1+nCells),:],axis=0)
-    _, _, pKi, pKf, pEmax, pEmin = cfs.dic_pars_samples[sample]
-    eList = np.linspace(E_min,E_max,int((E_max-E_min)/deltaE))
-    spread = np.zeros((kPts,len(eList)))
-    for i in tqdm(range(kPts)):
+    print("Computing intensities KGKp")
+    weightsKGKp = np.zeros((kPtsKGKp,nCells*(28-minimumBand)))
+    for i in range(kPtsKGKp):
+        ab = np.absolute(evecsKGKp[i])**powFactor
+        weightsKGKp[i,:] = np.sum(ab[:22,:],axis=0) + shadeFactorWS2*np.sum(ab[22*nCells:22*(1+nCells),:],axis=0)
+    spreadKGKp = np.zeros((kPtsKGKp,len(eList)))
+    for i in tqdm(range(kPtsKGKp)):
         for n in range(nCells*(28-minimumBand)):#,nCells*28):
-            spread += cfs.weight_spreading(weights[i,n],kList[i],evals[i,n],kList,eList[None,:],pars_spread[:3])
+            spreadKGKp += utils.weight_spreading(
+                weightsKGKp[i,n],
+                kListKGKp[i],
+                evalsKGKp[i,n],
+                kListKGKp,
+                eList[None,:],
+                pars_spread[:3])
+    print("Computing intensities KMKp")
+    weightsKMKp = np.zeros((kPtsKMKp,nCells*(28-minimumBand)))
+    for i in range(kPtsKMKp):
+        ab = np.absolute(evecsKMKp[i])**powFactor
+        weightsKMKp[i,:] = np.sum(ab[:22,:],axis=0) + shadeFactorWS2*np.sum(ab[22*nCells:22*(1+nCells),:],axis=0)
+    spreadKMKp = np.zeros((kPtsKMKp,len(eList)))
+    for i in tqdm(range(kPtsKMKp)):
+        for n in range(nCells*(28-minimumBand)):#,nCells*28):
+            spreadKMKp += utils.weight_spreading(
+                weightsKMKp[i,n],
+                kListKMKp[i],
+                evalsKMKp[i,n],
+                kListKMKp,
+                eList[None,:],
+                pars_spread[:3])
     if saveW:
-        np.savez(th_w_data_fn,spread=spread,eList=eList)
+        np.savez(
+            th_w_data_fn,
+            spreadKGKp=spreadKGKp,
+            spreadKMKp=spreadKMKp,
+        )
 else:
     print("Loading intensities")
-    eList = np.load(th_w_data_fn)['eList']
-    spread = np.load(th_w_data_fn)['spread']
-""" Patch intensities """
-indK = np.argmin(abs(norm-K0))
-spGK = spread[:indK+1,:]    # with K-point
-spKKp = spread[indK:,:]     # with K-point
-
-spKplus = spKKp[1:indKplus+1]      # additional points 
-spKGK = np.concatenate([
-    spKplus[::-1,:],        # k+ -> K(ex)
-    spGK[1:][::-1],             # K (in) -> G (ex)
-    spGK[1:],               # Gamma (ex) -> K (in)
-    spKplus                 # K (ex) -> k+
-],axis=0)
-
-spKplus2 = spGK[-1-indKG:,]        # additional points
-spKKp = np.concatenate([
-    spKplus2[:-1],           # k- -> K(ex)
-    spKKp,                  # K (in) -> Kp (ex)
-    spKplus2[::-1,:]         # K (in) -> k-
-],axis=0)
-# Shading
-shadeE = np.linspace(shadeFactorE,1,len(eList))
-spKGK *= shadeE[None,:]
-spKKp *= shadeE[None,:]
-
-# Momentum values
-normGK = norm[:indK+1]      # with K
-normKKp = norm[indK:]       # with K
-normKplus = norm[1:indKplus+1]
-K1 = np.concatenate([
-    -K0-normKplus[::-1],
-    -normGK[1:][::-1],
-    normGK[1:],
-    K0+normKplus
-])
-normKplus2 = normGK[-1-indKG:]
-K2 = np.concatenate([
-    normKplus2[:-1],
-    normKKp,
-    3*K0-normKplus2[::-1]
-])  - 3/2*K0        # cetered in M
+    spreadKGKp = np.load(th_w_data_fn)['spreadKGKp']
+    spreadKMKp = np.load(th_w_data_fn)['spreadKMKp']
 
 """ Plotting """
-if 0:       # Plot with imshow -> fast but no axes
-    fig = plt.figure(figsize=(20,10))
+fig = plt.figure(figsize=(18,6))
+ax1 = fig.add_subplot(121)      # K->G->Kp plot
+ax1.pcolormesh(
+    normKGKp,
+    eList,
+    spreadKGKp.T,
+    cmap='Greys',
+    shading="auto"
+)
 
-    ax1 = fig.add_subplot(121)      # K->G->Kp plot
-    imKGK = spKGK[:,::-1].T
-    ax1.imshow(
-        imKGK,
-        cmap='berlin',
-    )
-    ax2 = fig.add_subplot(122)      # K->Kp plot 
-    imKKp = spKKp[:,::-1].T
-    ax2.imshow(
-        imKKp,
-        cmap='berlin',
-    )
-    plt.show()
-if 1:       # Plot with pcolormesh
-    fig = plt.figure(figsize=(20,10))
-    ax1 = fig.add_subplot(121)      # K->G->Kp plot
-    ax1.pcolormesh(
-        K1,eList,
-        spKGK.T,
-        cmap='Greys',
-        shading="auto"
-    )
+ax2 = fig.add_subplot(122)      # K->Kp plot
+ax2.pcolormesh(
+    normKMKp,
+    eList,
+    spreadKMKp.T,
+    cmap='Greys',
+    shading='auto'
+)
 
-    ax2 = fig.add_subplot(122)      # K->Kp plot
-    ax2.pcolormesh(
-        K2,eList,
-        spKKp.T,
-        cmap='Greys',
-        shading='auto'
-    )
-    plt.show()
-
+fig.tight_layout()
+plt.show()
 
 """ Run this part to save as .csv file the last plotted intensities and the momentum/energy values"""
-fnKGK = 'Data/intensity_K-G-Kp.csv'
-np.savetxt(fnKGK, spKGK, delimiter=",")
-fnKGKm = 'Data/momenta_K-G-Kp.csv'
-np.savetxt(fnKGKm, K1, delimiter=",")
-fnKGKe = 'Data/energy_K-G-Kp.csv'
-np.savetxt(fnKGKe, eList, delimiter=",")
+if 0:
+    fnKGK = 'Data/intensity_K-G-Kp.csv'
+    np.savetxt(fnKGK, spKGK, delimiter=",")
+    fnKGKm = 'Data/momenta_K-G-Kp.csv'
+    np.savetxt(fnKGKm, K1, delimiter=",")
+    fnKGKe = 'Data/energy_K-G-Kp.csv'
+    np.savetxt(fnKGKe, eList, delimiter=",")
 
-fnKK = 'Data/intensity_K-Kp.csv'
-np.savetxt(fnKK, spKKp, delimiter=",")
-fnKKm = 'Data/momenta_K-Kp.csv'
-np.savetxt(fnKKm, K2, delimiter=",")
-fnKKe = 'Data/energy_K-Kp.csv'
-np.savetxt(fnKKe, eList, delimiter=",")
+    fnKK = 'Data/intensity_K-Kp.csv'
+    np.savetxt(fnKK, spKKp, delimiter=",")
+    fnKKm = 'Data/momenta_K-Kp.csv'
+    np.savetxt(fnKKm, K2, delimiter=",")
+    fnKKe = 'Data/energy_K-Kp.csv'
+    np.savetxt(fnKKe, eList, delimiter=",")
 
 
 

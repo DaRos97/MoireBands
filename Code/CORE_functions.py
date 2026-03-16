@@ -363,12 +363,14 @@ def get_kList(cut,kPts,TMD='WSe2',endpoint=False,returnNorm=False):
         ls[i] = int(dks[i]/tot_k*kPts)
         if i==len(terms)-2 and endpoint:
             ls[i] += 1
-    kPts = ls.sum()     #adjust total number of points
+    kPts = ls.sum()+1     #adjust total number of points
     res = np.zeros((kPts,2))
     for i in range(len(terms)-1):
         for p in range(ls[i]):
             ind = p if i==0 else p+ls[:i].sum()
             res[ind] = dic_Kpts[terms[i]] + (dic_Kpts[terms[i+1]] - dic_Kpts[terms[i]])/ls[i]*p
+        if i==len(terms)-2:
+            res[-1] = dic_Kpts[terms[i+1]]
     if returnNorm:
         norm = np.zeros(kPts)
         for i in range(1,kPts):
@@ -376,6 +378,23 @@ def get_kList(cut,kPts,TMD='WSe2',endpoint=False,returnNorm=False):
         return res, norm
     else:
         return res
+
+def getMomentaKGKp(kPlus,kDelta):
+    modK = 4*np.pi/3/dic_params_a_mono['WSe2']
+    totalLength = 2 * (modK + kPlus)
+    totalPoints = int(totalLength/kDelta)
+    res = np.zeros((totalPoints,2))
+    res[:,0] = -kPlus-modK + np.linspace(0,totalLength,totalPoints)
+    return res
+
+def getMomentaKMKp(kPlus,kDelta):
+    modK = 4*np.pi/3/dic_params_a_mono['WSe2']
+    totalLength = modK + 2*kPlus
+    totalPoints = int(totalLength/kDelta)
+    res = np.zeros((totalPoints,2))
+    res[:,0] = modK - kPlus + np.linspace(0,totalLength,totalPoints)
+    norm = res[:,0] - modK*3/2
+    return res, norm
 
 #######################################################################################
 #######################################################################################

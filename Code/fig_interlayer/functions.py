@@ -10,14 +10,14 @@ import lmfit      #for fitting weights in EDC
 
 machine = cfs.get_machine(os.getcwd())
 
-def import_monolayer_parameters(monolayer_type,machine):
+def import_monolayer_parameters(monolayer_fns,machine):
     """Import monolayer parameters, either DFT or fit ones."""
     hopping = {}
     epsilon = {}
     HSO = {}
     offset = {}
     for TMD in cfs.TMDs:
-        temp = np.load(get_inputs_dn(machine)+'tb_'+TMD+'.npy') if monolayer_type=='fit' else np.array(cfs.initial_pt[TMD])
+        temp = np.load(monolayer_fns[TMD])
         hopping[TMD] = cfs.find_t(temp)
         epsilon[TMD] = cfs.find_e(temp)
         HSO[TMD] = cfs.find_HSO(temp[-2:])
@@ -48,10 +48,10 @@ def diagonalize_matrix(*args):
     """
     Compute and diagonalize big matrix and save to file the result.
     """
-    nShells, nCells, K_list, monolayer_type, parsInterlayer, theta, pars_V, energy_fn, save_data_energy, disp = args
+    nShells, nCells, K_list, monolayer_fns, parsInterlayer, theta, pars_V, energy_fn, save_data_energy, disp = args
     kPts = K_list.shape[0]
     #Monolayer parameters
-    pars_monolayer = import_monolayer_parameters(monolayer_type,machine)
+    pars_monolayer = import_monolayer_parameters(monolayer_fns,machine)
     #Moire parameters
     G_M = cfs.get_reciprocal_moire(theta/180*np.pi)     #7 reciprocal moire lattice vectors
     moireHam = H_moire(pars_V)

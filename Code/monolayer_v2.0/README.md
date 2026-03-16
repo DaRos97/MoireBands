@@ -52,7 +52,11 @@ The final chosen values are saved in `$HOME/Inputs/` with signature `tb_TMD_B:$1
 `set3.zip`
 - Ks: 1e-3, 1e-3, 0, 1, 0.1, 5      ->  little pz at M, 4 saturated par bounds
 `set4.zip` - B:5
-- Ks: 0.001, 0.005, 0, 1, 0.1, 10 -> not so pretty, orbM=0.059
+- Ks: 0.001, 0.005, 0, 1, 0.1, 10 ->
+`set5.zip` - B:5
+- Ks: 0.00005, 0.1 , 0, 1, 0.1, 10 -> orbM=0.0049, slightly closer SOC b/w G and K -> BEST
+- Ks: 0.00005, 0.05, 0, 1, 0.1, 10 -> orbM=0.0118
+- Ks: 0.005,   0.1 , 0, 1, 0.1, 10 -> orbM=0.0039, closer SOC b/w G and K
 
 ### WS2
 `set1.zip`
@@ -60,6 +64,11 @@ The final chosen values are saved in `$HOME/Inputs/` with signature `tb_TMD_B:$1
 - Ks: 1e-3, 1e-2, 0, 1, 0.1, 10      ->  4 saturated par bounds
 `set4.zip` - B:5
 - Ks: 0.001, 0.01, 0, 1, 0.1, 10 -> not so pretty, orbM=0.059
+`set5.zip` - B:5
+- Ks: 0.00001, 0.05, 0, 1, 0.1, 10 -> not so pretty, orbM=0.015
+- Ks: 0.00005, 0.05, 0, 1, 0.5, 5  -> large Ps, orbM=0.005
+- Ks: 0.00005, 0.1 , 0, 1, 0.5, 5  -> large Ps, orbM=0.003
+- Ks: 0.0001,  0.1 , 0, 1, 0.1, 5  -> large Ps (3 sta), orbM=0.005 -> BEST
 
 
 

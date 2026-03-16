@@ -12,7 +12,9 @@ import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
-fnWSe2 = '../Inputs/tb_WSe2_B:5_K:0.001_0.005_0_1_0.5_10.npy'
+#fnWSe2 = '../Inputs/tb_WSe2_B:5_K:0.001_0.005_0_1_0.5_10.npy'
+fnWSe2 = '../Inputs/tb_WSe2_B:5_K:0.00005_0.1_0_1_0.1_10.npy'
+fit_pars = np.load(fnWSe2)
 
 save_E_int_fit = True
 save_W_int_fit = True
@@ -58,7 +60,7 @@ gs_left = gridspec.GridSpecFromSubplotSpec(
 
 """ ARPES intensity """
 TMD = 'WSe2'
-ARPESfn = 'Inputs/intensity_GKM_%s_sum_BE_crop.txt'%TMD
+ARPESfn = 'InputsARPES/intensity_GKM_%s_sum_BE_crop.txt'%TMD
 ARPES_intensity = np.loadtxt(ARPESfn, delimiter="\t")
 ARPES_intensity /= np.max(ARPES_intensity)
 
@@ -73,7 +75,6 @@ listK_fitI, norm_fitI = cfs.get_kList('G-K-M',nK_int,endpoint=True,returnNorm=Tr
 pars_en = ('intensity_fit_en',nK_int,TMD)
 en_fn = cfs.getFilename(pars_en,dirname='Data/',extension='.npz')
 if not Path(en_fn).is_file():
-    fit_pars = np.load(fnWSe2)
     hopping = cfs.find_t(fit_pars)
     epsilon = cfs.find_e(fit_pars)
     offset = fit_pars[-3]
@@ -123,7 +124,6 @@ listK_orb, norm_orb = cfs.get_kList('G-K-M',nK_orb,endpoint=True,returnNorm=True
 pars_fn = ('orbitals',nK_orb,TMD)
 orb_fn = cfs.getFilename(pars_fn,dirname='Data/',extension='.npz')
 if not Path(orb_fn).is_file():
-    fit_pars = np.load('Inputs/tb_%s.npy'%TMD)
     dft_pars = np.array(cfs.initial_pt[TMD])
     all_H_fit = cfs.H_monolayer(
         listK_orb,
@@ -182,7 +182,6 @@ else:
 pts = 61
 ARPES_bands = cfs.monolayerData(TMD,master_folder,pts=pts).fit_data
 
-
 """ Fit and DFT bands. """
 args_e_data = ('bands_en',TMD,pts)
 th_e_data_fn = cfs.getFilename(args_e_data,dirname='Data/',extension='.npz')
@@ -192,7 +191,6 @@ if not Path(th_e_data_fn).is_file():
     HSO_DFT = cfs.find_HSO(DFT_pars[-2:])
     bands_dft = cfs.energy(DFT_pars,HSO_DFT,ARPES_bands,TMD)
     #
-    fit_pars = np.load("Inputs/tb_%s.npy"%TMD)
     HSO_fit = cfs.find_HSO(fit_pars[-2:])
     bands_fit = cfs.energy(fit_pars,HSO_fit,ARPES_bands,TMD)
     if save_E_bands:
@@ -201,6 +199,7 @@ else:
     print("Loading energy bands")
     bands_fit = np.load(th_e_data_fn)['fit']
     bands_dft = np.load(th_e_data_fn)['dft']
+
 
 """ Plot intensity """
 normK_full = np.concatenate([normK_ARPES,normK_ARPES[-1]+norm_fitI[-1]-norm_fitI[::-1]])

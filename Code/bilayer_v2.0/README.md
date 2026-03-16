@@ -34,6 +34,17 @@ Datasets (all with (7,106) moiré at K):
     - Finer grid (270): 8:25/18,  165:180/16, -2.5:-1.5/51, 0.5:1/26   -> minimum of position still on boundary (-2.5,0.9)
     - Finer grid (56) : 12:22/11, 165:180/16, -4:-2.5/31,   0.8:1.3/11 ->
 
+Inputs: `tb_WSe2_B:5_K:0.00005_0.1_0_1_0.1_10.npy` and `tb_WS2_B:5_K:0.0001_0.1_0_1_0.1_5.npy`
+Datasets (all with (7,106) moiré at K):
+    - Large grid   (80): 12:22/11,  164:180/9,  -4:0/81,        0:2/41       -> two minima (-1.1,0.4) and (-0.51,1.05)
+    - Fine grid  1  (88): 1:25/25,  165:180/16, -1.3:-0.9/41,   0.2:0.6/41   -> minimum of V not well defined, and 0 not reached
+    - Finer grid 1 (200): 5:25/41,  165:180/16, -1.15:-1.05/21, 0.36:0.46/21 -> 
+    - Finer grid 1 (200): 8:20/25,  165:180/16, -1.12:-1.06/31, 0.38:0.44/41 -> two minima (-1.086,0.412) at (14,168) and (-1.096,0.42) at (12.5,176)
+    - Fine grid  2 (200): 1:25/25,  165:180/16, -0.7:-0.3/41,   0.8:1.2/41   ->
+    - Finer grid 2 (200): 11:23/25, 170:180/11, -0.5:-0.44/31,  1:1.06/31    -> minima (-0.472,1.030) at (19.5,173)
+
+    - angle variation 1 (200): 1:25/49, 165:180/16, -1.15:-1.05/51, 0.36:0.46/51 -> 
+
 ### K
 In this situation there is no role of interlayer coupling, so we just look at the distance between main band and moiré bands.
 From the ARPES exp we have, for S11 [eV]:
@@ -47,8 +58,11 @@ Datasets (all with (17,174) moiré at G and (-5.88,0.48) intelayer):
     - theta = 2.5 (80) : 1:30/30, 0:359/360 -> change of phase
     - theta = 3.1 (80) : 1:30/30, 0:359/360 -> parabola shiftedby ~10 meV and no good results
 
-Inputs: `tb_WSe2_B:5_K:0.001_0.005_0_1_0.5_10.npy` and `tb_WS2_B:5_K:0.0001_0.01_0_1_0.1_10.npy`
-Datasets (all with (17,174) moiré at G and (-5.88,0.48) intelayer):
+Inputs: `tb_WSe2_B:5_K:0.00005_0.1_0_1_0.1_10.npy` and `tb_WS2_B:5_K:0.0001_0.1_0_1_0.1_5.npy`
+Datasets (all with (14,169) moiré at G and (-1.10,0.42) intelayer):
+    - theta = 2.8 (96): 1:20/39, 0:359/360 ->
+
+
 
 ### TODO
 - Nice EDC plot for paper
