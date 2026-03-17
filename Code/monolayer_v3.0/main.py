@@ -62,14 +62,14 @@ if args_minimization['Bs'][3]==0:     # SOC bounds set to 0
     print("Fitting only tb (excluding SOC)")
     print("-"*15)
     HSO = cfs.find_HSO(DFT_values[-2:])
-    args_chi2 = (data,HSO,DFT_values[-2:],machine,args_minimization,max_eval)
+    args_chi2 = (data,HSO,DFT_values[-2:],machine,args_minimization,max_eval,False)
     Bounds = Bounds_full[:-2]
     initial_point = DFT_values[:-2]
     func = utils.chi2
 else:
     print("Fitting all parameters")
     print("-"*15)
-    args_chi2 = (data,machine,args_minimization,max_eval)
+    args_chi2 = (data,machine,args_minimization,max_eval,False)
     Bounds = Bounds_full
     initial_point = DFT_values
     func = utils.chi2_full

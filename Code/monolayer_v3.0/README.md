@@ -30,6 +30,9 @@ Bounds to parameters:
 - rpxy: percentage difference for xy-orbitals
 - rl: percentage difference for SOC parameters
 
+## Adjustments
+- WS2 at M only needs the TVB2 to be not ILC
+
 ## Code structure
 `visualize_ARPES_data.py` to see the experimental data for each TMD how is manipulated: raw, symmetrized and merged. All the manipulation is performed in `$HOME/CORE_functions.py`.
 `main.py` is the script for the fitting of the model.
@@ -43,6 +46,19 @@ The analysys is carried out with `python sortResults.py TMD` which sorts the res
 It sequentially plots bands, orbitals and parameters of the final solution.
 
 ## Results
+
+### WSe2
+First grid:
+- K1: 1e-6, 1e-5, 1e-4
+- K2: 0.001:1/8
+- K3: 0.001:1/8
+- K4:K6 = 1, 1, 10
+
+Second grid:
+- K1: 1e-6, 1e-5, 1e-4
+- K2: 0.01:1/10
+- K3: 0.01:1/10
+- K4:K6 = 1, 1, 10
 
 
 

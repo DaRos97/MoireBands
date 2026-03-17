@@ -5,6 +5,8 @@ from pathlib import Path
 import sys,os
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+import matplotlib.gridspec as gridspec
+import matplotlib.ticker as ticker
 import itertools
 import copy
 
@@ -102,10 +104,10 @@ def chi2_full(pars_full,*args):
     """
     Wrapper of chi2 with SOC parameters.
     """
-    data,machine,args_minimization,max_eval = args
+    data,machine,args_minimization,max_eval,returnEnergy = args
     SOC_pars = pars_full[-2:]
     HSO = cfs.find_HSO(SOC_pars)
-    args_chi2 = (data,HSO,SOC_pars,machine,args_minimization,max_eval)
+    args_chi2 = (data,HSO,SOC_pars,machine,args_minimization,max_eval,returnEnergy)
     pars_tb = pars_full[:-2]
     return chi2(pars_tb,*args_chi2)
 
@@ -114,12 +116,14 @@ def chi2(pars_tb,*args):
     Compute square difference of bands with exp data.
     Made for fitting without SOC parameters -> HSO already computed.
     """
-    data, HSO, SOC_pars, machine, args_minimization, max_eval = args
+    data, HSO, SOC_pars, machine, args_minimization, max_eval, returnEnergy = args
     K1,K2,K3,K4,K5,K6 = args_minimization['Ks']
     full_pars = np.append(pars_tb,SOC_pars)
     result = 0
     # chi2 of bands distance: compute energy of new pars -> and K5
     tb_en, cond_en = cfs.energy(full_pars,HSO,data.fit_data,args_minimization['TMD'],conduction=True)
+    if returnEnergy:
+        return tb_en
     nbands = tb_en.shape[0]
     chi2_band_distance = 0
     specialIndices = [0,np.argmax(data.fit_data[:,3]),np.argmin(data.fit_data[:,4]),data.fit_data.shape[0]-1]
@@ -146,6 +150,7 @@ def chi2(pars_tb,*args):
     K2_M = np.sum( np.absolute( evecs_M[indILC,:][:,bandsM] )**2 )
     if args_minimization['TMD']=='WS2':
         K2_M *= 2       # to have same dimension to WSe2
+    # K3: occupation at G and K
     ## Gamma
     evals_G,evecs_G = np.linalg.eigh(Ham_bc[1])
     occ_ze, occ_z2 = orbital_character[args_minimization['TMD']]['G']
@@ -197,6 +202,7 @@ def chi2(pars_tb,*args):
         K5*K5_gap
     )
 
+    chi2_elements = (chi2_band_distance,K1_par_dis,K2_M,K3_DFT,K4_band_min,K5_gap)
     """ From here on just plotting and temporary save """
     home_dn = get_home_dn(machine)
     temp_fn = cfs.getFilename(
@@ -212,8 +218,7 @@ def chi2(pars_tb,*args):
         min_chi2 = result
         np.savez(
             temp_fn,
-            chi2=chi2_band_distance+K2_M,
-            result=result,
+            elements=chi2_elements,
             pars=full_pars
         )
     if evaluation_step>max_eval:
@@ -232,108 +237,108 @@ def chi2(pars_tb,*args):
         print("3->min: %.6f"%(K4*K4_band_min))
         print("---------------")
         print("4->gap: %.6f"%(K5*K5_gap))
-        #plotResults(np.append(pars_tb,SOC_pars),tb_en,data.fit_data,args_minimization,machine,result,show=False)
     return result
 
 """ Plotting """
-def plotResults(pars,ens,data,args_minimization,machine,result='',dn='',show=False,which='all'):
-    if which=='all':
-        plot1 = plot2 = plot3 = True
-    else:
-        plot1 = True if 'band' in which else False
-        plot2 = True if 'pars' in which else False
-        plot3 = True if 'orb' in which else False
-    home_dn = get_home_dn(machine)
-    if dn=='temp':
-        Dn = cfs.getFilename(('temp',*list(args_minimization.values())),dirname=home_dn+'Data/',floatPrecision=10)+'/'
-    else:
-        Dn = home_dn + 'Data/'
-    if plot1:
-        fig1 = cfs.getFilename(('bands',*list(args_minimization.values())),dirname=Dn,extension='.png',floatPrecision=10)
-        plot_bands(ens,data,args_minimization=args_minimization,title="chi2: %.8f"%result,figname=fig1 if not show else '',show=False,TMD=args_minimization['TMD'])
-    if plot2:
-        fig2 = cfs.getFilename(('pars',*list(args_minimization.values())),dirname=Dn,extension='.png',floatPrecision=10)
-        plot_parameters(pars,args_minimization,title="chi2: %.8f"%result,figname=fig2 if not show else '',show=False)
-    #
-    if plot3:
-        fig3 = cfs.getFilename(('orbitals',*list(args_minimization.values())),dirname=Dn,extension='.png',floatPrecision=10)
-        plot_orbitalContent(pars,args_minimization['TMD'],args_minimization=args_minimization,title="chi2: %.8f"%result,figname=fig3 if not show else '',show=show)
+def plotResults(pars,TMD,Ks,Bs,chi2_elements,pts=91):
+    pts = 91
+    cwd = os.getcwd()
+    master_folder = cwd[:40]
+    data = cfs.monolayerData(TMD,master_folder,pts=pts)
+    args_minimization = {
+        'TMD': TMD,
+        'pts': pts,
+        'Ks': list(Ks),
+        'Bs': list(Bs)
+    }
+    args_chi2 = (data,'loc',args_minimization,1e5,True)
+    tb_en = chi2_full(pars,*args_chi2)
+    legendInfo = (TMD,Ks,Bs,chi2_elements)
+    plot_bands(tb_en,data,legendInfo)
+    plot_parameters(pars,TMD,Bs,legendInfo)
+    plot_orbitalContent(pars,data.TMD,legendInfo)
+    plt.show()
 
-def plot_bands(tb_en,data,args_minimization=None,title='',figname='',show=False,TMD='WSe2'):
+def plot_bands(tb_en,data,legendInfo):
     """ Plot bands in comparison with ARPES data. """
-    fig = plt.figure(figsize=(20,20))
-    ax = fig.add_subplot()
-    for b in range(data.shape[1]-3):
-        targ = np.argwhere(np.isnan(data[:,3+b]))    #select only non-nan values
+    fit_data = data.fit_data
+    fig = plt.figure(figsize=(19,9))
+    gs = gridspec.GridSpec(
+        1, 2,
+        figure=fig,
+        width_ratios=[10, 1],
+        hspace=0
+    )
+    ax = fig.add_subplot(gs[0])
+    for b in range(fit_data.shape[1]-3):
+        targ = np.argwhere(np.isnan(fit_data[:,3+b]))    #select only non-nan values
         en_pars = copy.copy(tb_en[b,:])
         en_pars[targ] = np.nan
-        ax.plot(data[:,0],data[:,3+b],color='r',marker='o',label='ARPES' if b == 0 else '',zorder=1,
-                markersize=10,mew=1,mec='k',mfc='firebrick')
-        ax.plot(data[:,0],en_pars,color='skyblue',marker='s',ls='-',label='Fit' if b == 0 else '',zorder=3,
-                markersize=10,mew=1,mec='k',mfc='deepskyblue')
-        if 0:
-            #DFT_pars = np.array(cfs.initial_pt[TMD])
-            #HSO_DFT = cfs.find_HSO(DFT_pars[-2:])
-            #DFT_en = cfs.energy(DFT_pars,HSO_DFT,data,TMD)
-            ax.plot(xline,DFT_en[b,targ],color='g',marker='^',ls='-',label='DFT' if b == 0 else '',zorder=2,
-                    markersize=10,mew=1,mec='k',mfc='darkgreen')
+        ax.plot(
+            fit_data[:,0],
+            fit_data[:,3+b],
+            label='ARPES' if b == 0 else '',
+            zorder=1,
+            color='r',
+            marker='o',
+            markersize=10,
+            mew=1,
+            mec='k',
+            mfc='firebrick'
+        )
+        ax.plot(
+            fit_data[:,0],
+            en_pars,
+            ls='-',
+            label='Fit' if b == 0 else '',
+            zorder=3,
+            color='skyblue',
+            marker='s',
+            markersize=10,
+            mew=1,
+            mec='k',
+            mfc='deepskyblue'
+        )
     #
-    ks = [data[0,0],4/3*np.pi/cfs.dic_params_a_mono[TMD],data[-1,0]]
+    ks = [fit_data[0,0],4/3*np.pi/cfs.dic_params_a_mono[data.TMD],fit_data[-1,0]]
     ax.set_xticks(ks,[r"$\Gamma$",r"$K$",r"$M$"],size=20)
     for i in range(len(ks)):
         ax.axvline(ks[i],color='k',lw=0.5)
     ax.set_xlim(ks[0],ks[-1])
     ax.set_ylabel('energy (eV)',size=30)
     label_y = []
-    if data.shape[1]==9:
-        ticks_y = np.linspace(np.max(data[:,3])+0.2,np.min(data[~np.isnan(data[:,6]),6])-0.2,5)
+    if fit_data.shape[1]==9:
+        ticks_y = np.linspace(np.max(fit_data[:,3])+0.2,np.min(fit_data[~np.isnan(fit_data[:,6]),6])-0.2,5)
         for i in ticks_y:
             label_y.append("{:.1f}".format(i))
         ax.set_yticks(ticks_y,label_y,size=20)
     plt.legend(fontsize=20)
+    ax.set_title("Bands comparison",size=20)
 
-    if not args_minimization is None:   #Additional text with parameters
-        rp,rpz,rpxy,rl = args_minimization['Bs']
-        box_dic = dict(boxstyle='round',facecolor='white',alpha=1)
-        ax.text(
-            0.05,0.85,
-            "Bounds of parameters:\n"+"gen:  %d"%(rp*100)+"%\n"+"z:      %d"%(rpz*100) + "%\n"+"xy:    %d"%(rpxy*100) + "%\n"+"SOC:  %d"%(rl*100)+"%",
-            bbox = box_dic,
-            transform=ax.transAxes,
-            fontsize=15
-        )
-        Ks = args_minimization['Ks']
-        ax.text(
-            0.3,0.83,
-            "Chi2 parameters:\nK1:%.6f\nK2:%.6f\nK2b:%.6f\nK3:%.6f\nK4:%.6f\nK5:%.6f"%Ks,
-            bbox = box_dic,
-            transform=ax.transAxes,
-            fontsize=15
-        )
-    #
-    if not title=='':
-        ax.set_title(title)
-    if not figname=='':
-        print("Saving figure bands")
-        plt.savefig(figname)
-        plt.close(fig)
-    if show:
-        plt.show()
+    ax2 = fig.add_subplot(gs[1])
+    addLegendResult(legendInfo,ax2)
 
-def plot_parameters(full_pars,args_minimization,title='',figname='',show=False):
+    fig.tight_layout()
+
+def plot_parameters(pars,TMD,Bs,legendInfo):
     """ Plot parameters values and differece wrt DFT parameters. """
-    TMD = args_minimization['TMD']
-    rp,rpz,rpxy,rl = args_minimization['Bs']
+    rp,rpz,rpxy,rl = Bs
     rmax = max([rp,rpz,rpxy,rl])
-    lenP = len(full_pars)
+    lenP = len(pars)
     #
     DFT_values = cfs.initial_pt[TMD]
-    fig = plt.figure(figsize=(26,12))
-    ax1 = fig.add_subplot()
-    ax1.bar(np.arange(lenP),full_pars-DFT_values,
+    fig = plt.figure(figsize=(19,9))
+    gs = gridspec.GridSpec(
+        1, 2,
+        figure=fig,
+        width_ratios=[10, 1],
+        hspace=0
+    )
+    ax1 = fig.add_subplot(gs[0])
+    ax1.bar(np.arange(lenP),pars-DFT_values,
             color='r',width=0.4,align='edge',zorder=10)
     ax2 = ax1.twinx()
-    ax2.bar(np.arange(lenP),(full_pars-DFT_values)/abs(np.array(DFT_values))*100,
+    ax2.bar(np.arange(lenP),(pars-DFT_values)/abs(np.array(DFT_values))*100,
             color='b',
             align='edge',width=-0.4,zorder=11
            )
@@ -343,21 +348,23 @@ def plot_parameters(full_pars,args_minimization,title='',figname='',show=False):
             ls='dashed',
             lw=0.8
         )
-    #ax1 
-    ax1.set_ylim(-max(abs(full_pars-DFT_values)),max(abs(full_pars-DFT_values)))
-    ax1.set_ylabel("Absolute difference from DFT",size=18,color='r')
-    ax1.set_xticks(np.arange(lenP),cfs.list_formatted_names_all,size=15)
-    ax1.set_xlabel("Parameter name",size=18)
-    ax1.tick_params(axis='y', labelsize=15,labelcolor='r')
+    #ax1
+    s_ = 10
+    s_p = 15
+    ax1.set_ylim(-max(abs(pars-DFT_values)),max(abs(pars-DFT_values)))
+    ax1.set_ylabel("Absolute difference from DFT",size=s_p,color='r')
+    ax1.set_xticks(np.arange(lenP),cfs.list_formatted_names_all,size=s_)
+    ax1.set_xlabel("Parameter name",size=s_p)
+    ax1.tick_params(axis='y', labelsize=s_,labelcolor='r')
     ax1.set_xlim(-0.5,lenP-0.5)
     top_ax = ax1.secondary_xaxis('top')
-    top_ax.set_xticks(np.arange(lenP),["%d"%i for i in np.arange(lenP)],size=15)
-    top_ax.set_xlabel("Parameter index",size=18)
+    top_ax.set_xticks(np.arange(lenP),["%d"%i for i in np.arange(lenP)],size=s_)
+    top_ax.set_xlabel("Parameter index",size=s_p)
     #ax2
     ticks_y = np.linspace(-rmax*100,rmax*100,5)
     label_y = ["{:.1f}".format(i)+r"%" for i in ticks_y]
-    ax2.set_yticks(ticks_y,label_y,size=15,color='b')
-    ax2.set_ylabel("Relative distance from DFT",size=18,color='b')
+    ax2.set_yticks(ticks_y,label_y,size=s_,color='b')
+    ax2.set_ylabel("Relative distance from DFT",size=s_p,color='b')
     ax2.set_ylim(-rmax*100,rmax*100)
     # Colors
     cp = "g"
@@ -377,23 +384,16 @@ def plot_parameters(full_pars,args_minimization,title='',figname='',show=False):
         else:
             c = cp
         ax2.fill_between([ip-0.5,ip+0.5],[-rmax*100,-rmax*100],[rmax*100,rmax*100],alpha=.3,color=c,zorder=-5,lw=0)
-    box_dic = dict(boxstyle='round',facecolor='white',alpha=1)
-    ax2.text(0,rmax*80,r"Parameters with $p_z$ and $d_{z^2}$: %d "%(int(rpz*100))+'%',size=20,color=cpz,bbox=box_dic)
-    ax2.text(15,rmax*80,r"Parameters with $p_{xy}$ and $d_{x,y}$: %d "%(int(rpxy*100))+'%',size=20,color=cpxy,bbox=box_dic)
-    ax2.text(27,rmax*80,r"Other parameters: %d "%(int(rp*100))+'%',size=20,color=cp,bbox=box_dic)
-    ax2.text(36,rmax*80,r"Offset",size=20,color=cOff,bbox=box_dic)
-    ax2.text(39,rmax*80,r"SOC: %d "%(int(rl*100))+'%',size=20,color=cpl,bbox=box_dic)
-    if not title=='':
-        ax1.set_title(title,size=20)
-    if not figname=='':
-        print("Saving figure parameters")
-        plt.savefig(figname)
-        plt.close(fig)
-    if show:
-        plt.show()
 
-def plot_orbitalContent(full_pars,TMD,args_minimization=None,title='',figname='',show=False):
+    axl = fig.add_subplot(gs[1])
+    addLegendResult(legendInfo,axl)
+
+    fig.tight_layout()
+
+def plot_orbitalContent(pars,TMD,legendInfo):
     """ Plot orbital content in the BZ cut: G-K-M-G """
+
+    """ BZ cut points """
     Ngk = 200
     Nkm = int(Ngk/2)
     Nmg = int(Ngk/2*np.sqrt(3))
@@ -413,11 +413,11 @@ def plot_orbitalContent(full_pars,TMD,args_minimization=None,title='',figname=''
     for ik in range(Nmg+1):
         data_k[Ngk+Nkm+ik] = M + M/Nmg*ik
     """ Energies and evecs """
-    hopping = cfs.find_t(full_pars)
-    epsilon = cfs.find_e(full_pars)
-    offset = full_pars[-3]
+    hopping = cfs.find_t(pars)
+    epsilon = cfs.find_e(pars)
+    offset = pars[-3]
     #
-    HSO = cfs.find_HSO(full_pars[-2:])
+    HSO = cfs.find_HSO(pars[-2:])
     args_H = (hopping,epsilon,HSO,a_TMD,offset)
     #
     all_H = cfs.H_monolayer(data_k,*args_H)
@@ -436,25 +436,15 @@ def plot_orbitalContent(full_pars,TMD,args_minimization=None,title='',figname=''
                 for iorb in inds_orb:
                     orbitals[orb,ib,ik] += np.linalg.norm(evs[ik,iorb,ib])**2 + np.linalg.norm(evs[ik,iorb+11,ib])**2
     indM = Ngk+Nkm
-    print("OPO at M TVB1: %.5f"%(orbitals[2,13,indM]+orbitals[4,13,indM]))
-    print("OPO at M TVB2: %.5f"%(orbitals[2,12,indM]+orbitals[4,12,indM]))
-    print("OPO at M TVB3: %.5f"%(orbitals[2,11,indM]+orbitals[4,11,indM]))
-    print("OPO at M TVB4: %.5f"%(orbitals[2,10,indM]+orbitals[4,10,indM]))
-    print("Total: %.5f"%(np.sum(orbitals[[2,4],10:14,indM])))
-    if 0:       # Print orbitals at specific points
-        vk = evs[Ngk]
-        for ib in [12,13,14,15]:
-            print("Band %d"%ib)
-            v =vk[:,ib]
-            for iorb in range(22):
-                print("Orb #%d, %.4f"%(iorb,np.absolute(v[iorb])))
-            print("--------------------------")
-        print("Total values")
-        print(orbitals[:,13,Ngk+Nkm])
-        exit()
     """ Plot """
-    fig = plt.figure(figsize=(10,10))
-    ax = fig.add_subplot()
+    fig = plt.figure(figsize=(19,9))
+    gs = gridspec.GridSpec(
+        1, 2,
+        figure=fig,
+        width_ratios=[10, 1],
+        hspace=0
+    )
+    ax = fig.add_subplot(gs[0])
 
     color = ['red','brown','blue','green','aqua']
     labels = [r"$d_{xy}+d_{x^2-y^2}$",r"$d_{xz}+d_{yz}$",r"$d_{z^2}$",r"$p_x+p_y$",r"$p_z$"]
@@ -493,36 +483,129 @@ def plot_orbitalContent(full_pars,TMD,args_minimization=None,title='',figname=''
 
     ax.set_xticks([0,Ngk-1,Ngk+Nkm-1,Nk-1],[r"$\Gamma$",r"$K$",r"$M$",r"$\Gamma$"],size=20)
     ax.set_ylabel("Energy [eV]",size=20)
+    ax.set_title("Orbital content of bands",size=20)
 
-    if not args_minimization is None:   #Additional text with parameters
-        rp,rpz,rpxy,rl = args_minimization['Bs']
-        box_dic = dict(boxstyle='round',facecolor='white',alpha=1)
-        ax.text(
-            0.45,0.87,
-            "Bounds of parameters:\n"+"gen:  %d"%(rp*100)+"%\n"+"z:      %d"%(rpz*100) + "%\n"+"xy:    %d"%(rpxy*100) + "%\n"+"SOC:  %d"%(rl*100)+"%",
-            bbox = box_dic,
-            transform=ax.transAxes,
-            fontsize=15
-        )
-        Ks = args_minimization['Ks']
-        ax.text(
-            0.05,0.5,
-            "Chi2 parameters:\nK1:%.6f\nK2:%.6f\nK2b:%.6f\nK3:%.6f\nK4:%.6f\nK5:%.6f"%Ks,
-            bbox = box_dic,
-            transform=ax.transAxes,
-            fontsize=15
-        )
+    axl = fig.add_subplot(gs[1])
+    addLegendResult(legendInfo,axl)
 
     fig.tight_layout()
 
-    if not title=='':
-        ax.set_title(title,size=13)
-    if figname!='':
-        print("Saving figure orbitals")
-        fig.savefig(figname)
-    if show:
-        plt.show()
-    plt.close()
+def addLegendResult(legendInfo,ax):
+    TMD, Ks, Bs, chi2_elements = legendInfo
+    # Text
+    txt = TMD + '\n'
+    txt_Bs = ['gen', 'z  ', 'xy ', 'soc']
+    txt += '----------\n'
+    txt += 'Boundaries\n'
+    txt += '----------\n'
+    for i in range(4):
+        txt += txt_Bs[i] + ': %s'%Bs[i]+'\n'
+    txt += '---------\n'
+    txt += 'Constants\n'
+    txt += '---------\n'
+    for i in range(5):
+        txt += 'K%s: %6f'%(i+1,Ks[i])+'%\n'
+    txt += '---------------\n'
+    txt += 'Function values\n'
+    txt += '---------------\n'
+    txt_chiv = ['Chi2 energy bands','K1 pars distance','K2 M orb content','K3 G/K orb content','K4 minimum at K','K5 band gap']
+    for i in range(6):
+        txt += txt_chiv[i]+':\n    %.4f'%chi2_elements[i]+'\n'
+    #
+    box_dic = dict(boxstyle='round',facecolor='white',alpha=1)
+    ax.text(
+        0.0,0.,
+        txt,
+        bbox = box_dic,
+        transform=ax.transAxes,
+        fontsize=15,
+        fontfamily='monospace',
+    )
+    ax.axis('off')
+
+def plot_measure(measure, Ks, Bs, global_idx: int, tmd: str, cutoff: float):
+    """ Plot grid of results """
+    x_vals, y_vals, grid = build_grid(measure, Ks, Bs)
+
+    # Nan the large values
+    grid[grid>cutoff] = np.nan
+
+    # --- global minimum ---
+    min_measure = measure[global_idx]
+    min_Ks      = Ks[global_idx]
+    min_Bs      = Bs[global_idx]
+
+    print(f"Global measure minimum : {min_measure:.6g}  (index {global_idx})")
+    print(f"  Ks = {min_Ks}")
+    print(f"  Bs = {min_Bs}")
+
+    # --- figure ---
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    img = ax.pcolormesh(
+        x_vals, y_vals, grid,
+        shading="nearest",
+        cmap="viridis_r",
+    )
+
+    cbar = fig.colorbar(img, ax=ax)
+    cbar.set_label(r"$\min$ measure", fontsize=12)
+    cbar.ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.3g"))
+
+    # Mark the global minimum on the grid
+    ax.scatter(
+        min_Ks[1], min_Ks[2],
+        marker="*", s=220, color="red", zorder=5,
+        label="global minimum",
+    )
+
+    # --- legend with full parameter values ---
+    ks_str = "\n".join(f"  K{i} = {min_Ks[i]:.6g}" for i in range(len(min_Ks)))
+    bs_str = "\n".join(f"  B{i} = {min_Bs[i]:.6g}" for i in range(len(min_Bs)))
+    legend_text = (
+        f"measure min = {min_measure:.6g}\n"
+        f"Ks:\n{ks_str}\n"
+        f"Bs:\n{bs_str}"
+    )
+
+    ax.scatter([], [], marker="*", color="red", label=legend_text)
+    ax.legend(
+        fontsize=8,
+        loc="upper right",
+        framealpha=0.85,
+        handlelength=1.2,
+        borderpad=0.8,
+    )
+
+    ax.set_xlabel(r"$K_2$", fontsize=13)
+    ax.set_ylabel(r"$K_3$", fontsize=13)
+    ax.set_title(
+        f"{tmd} — measure map  "
+        r"($\min$ over remaining parameters)",
+        fontsize=13,
+    )
+
+    plt.tight_layout()
+
+    plt.show()
+
+def build_grid(chi2, Ks, Bs):
+    """ Build 2D grid:  x = Ks[:,1],  y = Ks[:,2],  z = min(chi2) over the rest """
+    x_vals = np.unique(Ks[:, 1])
+    y_vals = np.unique(Ks[:, 2])
+
+    grid = np.full((len(y_vals), len(x_vals)), np.nan)
+
+    x_idx = {v: i for i, v in enumerate(x_vals)}
+    y_idx = {v: i for i, v in enumerate(y_vals)}
+
+    for i in range(len(chi2)):
+        xi = x_idx[Ks[i, 1]]
+        yi = y_idx[Ks[i, 2]]
+        if np.isnan(grid[yi, xi]) or chi2[i] < grid[yi, xi]:
+            grid[yi, xi] = chi2[i]
+
+    return x_vals, y_vals, grid
 
 """ Bounds and other functions """
 def get_bounds(in_pt,args_minimization_bs):
