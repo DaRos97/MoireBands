@@ -38,15 +38,17 @@ import numpy as np
 
 VALID_TMDS   = ("WSe2", "WS2")
 N_KS         = 6
-N_BS         = 4
-N_PARAMS     = N_KS + N_BS   # 10 total
+BOUND_TYPE   = 'absolute'
+N_BS         = 5 if BOUND_TYPE=='absolute' else 4
+N_PARAMS     = N_KS + N_BS + 1
 N_PARS_ARRAY = 43
+N_ELEM_ARRAY = 6
 
 
 def parse_filename_params(stem: str, prefix: str) -> tuple[list[float], list[float]]:
     """
     Strip the leading prefix from stem and parse the remaining 10
-    underscore-separated floats into Ks (first 6) and Bs (last 4).
+    underscore-separated floats into Ks (first 6) and Bs (last 5).
 
     Parameters
     ----------
@@ -64,6 +66,8 @@ def parse_filename_params(stem: str, prefix: str) -> tuple[list[float], list[flo
 
     values = []
     for p in parts:
+        if p == BOUND_TYPE:
+            continue
         try:
             values.append(float(p))
         except ValueError:
@@ -125,9 +129,6 @@ def merge(input_dir: Path, tmd: str, output_path: Path):
         sys.exit("[ERROR] No valid files were loaded.")
 
     print(f"\nSuccessfully loaded {n} / {len(files)} file(s).")
-    print(f"  Ks shape : ({n}, {N_KS})")
-    print(f"  Bs shape : ({n}, {N_BS})")
-    print(f"  pars shape : ({n}, {len(pars_list[0])})")
 
     # --- write HDF5 ---
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -166,7 +167,7 @@ def main():
     if not args.input.is_dir():
         sys.exit(f"[ERROR] Input path is not a directory: {args.input}")
 
-    output_path = Path(f"Data/merged_{args.tmd}.h5")
+    output_path = Path(f"Data/merged_{args.tmd}_{BOUND_TYPE}.h5")
     merge(args.input, args.tmd, output_path)
 
 if __name__ == "__main__":

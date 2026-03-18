@@ -19,8 +19,14 @@ evaluation_step = 0
 """ Indices of parameters acording to type and orbital """
 indOff = [40,]
 indSOC = [41,42,]
+# Orbital indices
 indPz = [3,5,12,15,19,20,24,26,31,32,34,36,37,38]
 indPxy = [4,6,13,14,16,17,25,27,33,35,39]
+# Type of parameter indices
+indEps = list(np.arange(7))
+indT1 = list(np.arange(7,28))
+indT5 = list(np.arange(28,36))
+indT6 = list(np.arange(36,40))
 
 """ Indices of orbitals """
 xz_i = 0
@@ -76,27 +82,29 @@ def get_args(TMD,ind):
     dict: 'pts', 'Ks', 'Bs'
     """
     # Parameters of constraints
-    lK1 = [1e-6,1e-5,1e-4]         # coefficient of parameters distance from DFT
-    lK2 = np.linspace(1e-3,1,8)        # coefficient of band content at M
-    lK3 = np.linspace(1e-3,1,8)               # coefficient of orbital content of G and K from DFT
-    lK4 = [1,]         # coefficient of minimum of conduction band at K
-    lK5 = [1,]          # coefficient of gap value
-    lK6 = [10,]             # weight of high symmetry points: G,K,near-M-crossing and M
+    lK1 = [0,1e-5]         # coefficient of parameters distance from DFT
+    lK2 = np.logspace(-7,1,10,base=2)        # coefficient of band content at M
+    lK3 = np.logspace(-7,1,10,base=2)               # coefficient of orbital content of G and K from DFT
+    lK4 = [0.5,1,]         # coefficient of minimum of conduction band at K
+    lK5 = [0.1,0.5]          # coefficient of gap value
+    lK6 = [1,5]             # weight of high symmetry points: G,K,near-M-crossing and M
     # Bounds
-    lrp = [10,]         #tb bounds for general orbitals
-    lrpz = [10,]         #tb bounds for z orbitals -> indices 6 and 9
-    lrpxy = [10,]         #tb bounds for xy orbitals -> indices 7,8 and 10,11
-    lrl = [0,]          #SOC bounds
+    boundType = 'absoute'      # or 'relative'
+    if boundType=='relative':
+        Bs = (10,10,10,0)       # pgen, pz, pxy, psoc
+    elif boundType=='absolute':
+        Bs = (5,2,4,1,0)          # peps, pt1, pt5, pt6, psoc. 0 means out of minimization
     # Points in fit
-    pts = [91,]     # better is it is a number n*3 + 1 with n integer
-    listPar = list(itertools.product(*[pts,lK1,lK2,lK3,lK4,lK5,lK6,lrp,lrpz,lrpxy,lrl]))
+    pts = 91     # better is it is a number n*3 + 1 with n integer
+    listPar = list(itertools.product(*[lK1,lK2,lK3,lK4,lK5,lK6]))
     print("Index %d / %d"%(ind,len(listPar)))
     listPar = listPar[ind]
     args = {
-        'TMD':TMD,
-        'pts':listPar[0],
-        'Ks':tuple(listPar[1:7]),
-        'Bs':tuple(listPar[7:]),
+        'TMD': TMD,
+        'pts': pts,
+        'Ks':  tuple(listPar),
+        'boundType': boundType,
+        'Bs':  Bs,
     }
     return args
 
@@ -206,7 +214,7 @@ def chi2(pars_tb,*args):
     """ From here on just plotting and temporary save """
     home_dn = get_home_dn(machine)
     temp_fn = cfs.getFilename(
-        ('res',args_minimization['TMD'],args_minimization['Ks'],args_minimization['Bs']),
+        ('res',args_minimization['TMD'],args_minimization['Ks'],args_minimization['boundType'],args_minimization['Bs']),
         dirname=home_dn+'Data/',
         floatPrecision=10,
         extension='.npz'
@@ -214,7 +222,7 @@ def chi2(pars_tb,*args):
     global min_chi2
     global evaluation_step
     evaluation_step += 1
-    if result < min_chi2 and abs(result-min_chi2)>1e-4:   #remove old temp and add new one
+    if result < min_chi2:
         min_chi2 = result
         np.savez(
             temp_fn,
@@ -222,7 +230,7 @@ def chi2(pars_tb,*args):
             pars=full_pars
         )
     if evaluation_step>max_eval:
-        print("Reached max number of evaluations")
+        print("Reached max number of evaluations, exiting minimization with result %.4f"%min_chi2)
         exit()
     if machine=='loc' and evaluation_step%1000==1:
         print("New intermediate figure")
@@ -232,11 +240,12 @@ def chi2(pars_tb,*args):
         print("1->par: %.6f"%(K1*K1_par_dis))
         print("---------------")
         print("2->orb: %.6f"%(K2*K2_M))
-        print("2b->: %.6f"%(K3*K3_DFT))
         print("---------------")
-        print("3->min: %.6f"%(K4*K4_band_min))
+        print("3->orb: %.6f"%(K3*K3_DFT))
         print("---------------")
-        print("4->gap: %.6f"%(K5*K5_gap))
+        print("4->min: %.6f"%(K4*K4_band_min))
+        print("---------------")
+        print("5->gap: %.6f"%(K5*K5_gap))
     return result
 
 """ Plotting """
@@ -523,7 +532,7 @@ def addLegendResult(legendInfo,ax):
     )
     ax.axis('off')
 
-def plot_measure(measure, Ks, Bs, global_idx: int, tmd: str, cutoff: float):
+def plot_measure(measure, Ks, Bs, global_idx: int, tmd: str, cutoff: float, title: str = ''):
     """ Plot grid of results """
     x_vals, y_vals, grid = build_grid(measure, Ks, Bs)
 
@@ -543,7 +552,9 @@ def plot_measure(measure, Ks, Bs, global_idx: int, tmd: str, cutoff: float):
     fig, ax = plt.subplots(figsize=(8, 6))
 
     img = ax.pcolormesh(
-        x_vals, y_vals, grid,
+        x_vals,
+        y_vals,
+        grid,
         shading="nearest",
         cmap="viridis_r",
     )
@@ -579,9 +590,7 @@ def plot_measure(measure, Ks, Bs, global_idx: int, tmd: str, cutoff: float):
 
     ax.set_xlabel(r"$K_2$", fontsize=13)
     ax.set_ylabel(r"$K_3$", fontsize=13)
-    ax.set_title(
-        f"{tmd} — measure map  "
-        r"($\min$ over remaining parameters)",
+    ax.set_title(f"{tmd} : measure = {title}",
         fontsize=13,
     )
 
@@ -589,42 +598,67 @@ def plot_measure(measure, Ks, Bs, global_idx: int, tmd: str, cutoff: float):
 
     plt.show()
 
-def build_grid(chi2, Ks, Bs):
-    """ Build 2D grid:  x = Ks[:,1],  y = Ks[:,2],  z = min(chi2) over the rest """
+def build_grid(measure, Ks, Bs):
+    """ Build 2D grid:
+    x = Ks[:,1],
+    y = Ks[:,2],
+    z = min(measure) over the rest
+    """
     x_vals = np.unique(Ks[:, 1])
     y_vals = np.unique(Ks[:, 2])
+    print(x_vals)
+    print(y_vals)
 
     grid = np.full((len(y_vals), len(x_vals)), np.nan)
 
     x_idx = {v: i for i, v in enumerate(x_vals)}
     y_idx = {v: i for i, v in enumerate(y_vals)}
 
-    for i in range(len(chi2)):
+    for i in range(len(measure)):
         xi = x_idx[Ks[i, 1]]
         yi = y_idx[Ks[i, 2]]
-        if np.isnan(grid[yi, xi]) or chi2[i] < grid[yi, xi]:
-            grid[yi, xi] = chi2[i]
+        if np.isnan(grid[yi, xi]) or measure[i] < grid[yi, xi]:
+            grid[yi, xi] = measure[i]
 
     return x_vals, y_vals, grid
 
 """ Bounds and other functions """
-def get_bounds(in_pt,args_minimization_bs):
-    rp, rpz, rpxy, rl = args_minimization_bs
-    Bounds = []
-    for i in range(in_pt.shape[0]):     #tb parameters
-        if i == indOff: #offset
-            temp = (-3,0)
-            continue
-        if i in indSOC: #SOC
-            r = rl*abs(in_pt[i])
-        elif i in indPz:
-            r = rpz*abs(in_pt[i])
-        elif i in indPxy:
-            r = rpxy*abs(in_pt[i])
-        else:
-            r = rp*abs(in_pt[i])
-        temp = (in_pt[i]-r,in_pt[i]+r)
-        Bounds.append(temp)
+def get_bounds(in_pt,args_minimization):
+    if args_minimization['boundType']=='relative':
+        rp, rpz, rpxy, rl = args_minimization['Bs']
+        Bounds = []
+        for i in range(in_pt.shape[0]):     #tb parameters
+            if i in indOff: #offset
+                temp = (-3,0)
+            elif i in indSOC: #SOC
+                r = rl*abs(in_pt[i])
+            elif i in indPz:
+                r = rpz*abs(in_pt[i])
+            elif i in indPxy:
+                r = rpxy*abs(in_pt[i])
+            else:
+                r = rp*abs(in_pt[i])
+            temp = (in_pt[i]-r,in_pt[i]+r)
+            Bounds.append(temp)
+    elif args_minimization['boundType']=='absolute':
+        peps, pt1, pt5, pt6, pl = args_minimization['Bs']
+        Bounds = []
+        for i in range(in_pt.shape[0]):     #tb parameters
+            if i in indOff: #offset
+                temp = (-3,0)
+            elif i in indSOC: #SOC
+                temp = (-pl, pl)
+            elif i in indEps:
+                temp = (-peps, peps)
+            elif i in indT1:
+                temp = (-pt1, pt1)
+            elif i in indT5:
+                temp = (-pt5, pt5)
+            elif i in indT6:
+                temp = (-pt6, pt6)
+            else:
+                raise ValueError("Index not in any list for bounds: "+str(i))
+            Bounds.append(temp)
     return Bounds
 
 def compute_parameter_distance(pars,TMD):

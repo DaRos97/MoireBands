@@ -47,18 +47,30 @@ if disp:
           "\n K_3: ","{:.6f}".format(args_minimization['Ks'][2]),
           "\n K_4: ","{:.6f}".format(args_minimization['Ks'][3]),
           "\n K_5: ","{:.6f}".format(args_minimization['Ks'][4]),
-          "\n Bound pars: %.2f"%(args_minimization['Bs'][0]*100)+"%",
-          "\n Bound z-pars: %.2f"%(args_minimization['Bs'][1]*100)+"%",
-          "\n Bound xy-pars: %.2f"%(args_minimization['Bs'][2]*100)+"%",
-          "\n Bound SOC: %.2f"%(args_minimization['Bs'][3]*100)+"%",
-          )
+          "\n K_5: ","{:.6f}".format(args_minimization['Ks'][5])
+    )
+    if args_minimization['boundType']=='relative':
+        print(
+            "\n Bound general pars: %.2f"%(args_minimization['Bs'][0]*100)+"%",
+            "\n Bound z-pars:       %.2f"%(args_minimization['Bs'][1]*100)+"%",
+            "\n Bound xy-pars:      %.2f"%(args_minimization['Bs'][2]*100)+"%",
+            "\n Bound SOC:          %.2f"%(args_minimization['Bs'][3]*100)+"%"
+        )
+    elif args_minimization['boundType']=='absolute':
+        print(
+            " Bound epsilon: (-%d,%d)"%(args_minimization['Bs'][0],args_minimization['Bs'][0]),
+            "\n Bound t1:      (-%d,%d)"%(args_minimization['Bs'][1],args_minimization['Bs'][1]),
+            "\n Bound t5:      (-%d,%d)"%(args_minimization['Bs'][2],args_minimization['Bs'][2]),
+            "\n Bound t6:      (-%d,%d)"%(args_minimization['Bs'][3],args_minimization['Bs'][3]),
+            "\n Bound SOC:     (-%d,%d)"%(args_minimization['Bs'][4],args_minimization['Bs'][4]),
+        )
     print(" Using ",pts," points of interpolated data.")
     print("-"*15)
 
 """ Fitting """
 DFT_values = np.array(cfs.initial_pt[TMD])  #DFT values of tb parameters. Order is: e, t, offset, SOC
-Bounds_full = utils.get_bounds(DFT_values,args_minimization['Bs'])
-if args_minimization['Bs'][3]==0:     # SOC bounds set to 0
+Bounds_full = utils.get_bounds(DFT_values,args_minimization)
+if args_minimization['Bs'][-1]==0:     # SOC bounds set to 0
     print("Fitting only tb (excluding SOC)")
     print("-"*15)
     HSO = cfs.find_HSO(DFT_values[-2:])
