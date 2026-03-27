@@ -13,7 +13,8 @@ from matplotlib.lines import Line2D
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 #fnWSe2 = '../Inputs/tb_WSe2_B:5_K:0.001_0.005_0_1_0.5_10.npy'
-fnWSe2 = '../Inputs/tb_WSe2_B:5_K:0.00005_0.1_0_1_0.1_10.npy'
+#fnWSe2 = '../Inputs/tb_WSe2_B:5_K:0.00005_0.1_0_1_0.1_10.npy'
+fnWSe2 = '../Inputs/tb_WSe2_abs_8_4_5_2_0_K_0.0001_0.13_0.005_1_0.01_5.npy'
 fit_pars = np.load(fnWSe2)
 
 save_E_int_fit = True
@@ -72,6 +73,7 @@ normK_ARPES = np.linspace(0,kEnd,nK_int,endpoint=True)
 """ Intensity matrix of fit. """
 # Evals and evecs
 listK_fitI, norm_fitI = cfs.get_kList('G-K-M',nK_int,endpoint=True,returnNorm=True)
+nK_int = len(listK_fitI)
 pars_en = ('intensity_fit_en',nK_int,TMD)
 en_fn = cfs.getFilename(pars_en,dirname='Data/',extension='.npz')
 if not Path(en_fn).is_file():
@@ -121,6 +123,7 @@ intensity_fit /= np.max(intensity_fit)
 """ Orbital occupations DFT and fit """
 nK_orb = 200
 listK_orb, norm_orb = cfs.get_kList('G-K-M',nK_orb,endpoint=True,returnNorm=True)
+nK_orb = len(listK_orb)
 pars_fn = ('orbitals',nK_orb,TMD)
 orb_fn = cfs.getFilename(pars_fn,dirname='Data/',extension='.npz')
 if not Path(orb_fn).is_file():
@@ -426,12 +429,6 @@ ax.set_ylim(
 ks = [ARPES_bands[0,0],4/3*np.pi/cfs.dic_params_a_mono[TMD],ARPES_bands[-1,0]]
 ax.set_xticks(ks,[r"$\Gamma$",r"$K$",r"$M$"],size=s_norm)
 
-if 0:   #""" Plot TMD hoppings """
-    ax = fig.add_subplot(gs[0,1])
-    img = plt.imread("hoppings.png")  # easiest way
-    ax.imshow(img)
-    ax.axis("off")
-
 plt.subplots_adjust(
     bottom = 0.064,
     top = 0.983,
@@ -444,8 +441,7 @@ plt.subplots_adjust(
 plt.show()
 
 if 1:
-    fig.savefig('Data/fig_monolayer.svg')
-else:
-    fig.savefig('Data/fig_monolayer.png', dpi=600)#, compress_level=0)
+    fig.savefig('Data/Figures/fig_monolayer.svg')
+    fig.savefig('Data/Figures/fig_monolayer.png', dpi=600)#, compress_level=0)
 
 

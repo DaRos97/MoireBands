@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import matplotlib.gridspec as gridspec
 import matplotlib.ticker as ticker
+import matplotlib.patches as mpatches
 import itertools
 import copy
 
@@ -249,7 +250,7 @@ def chi2(pars_tb,*args):
     return result
 
 """ Plotting """
-def plotResults(pars,TMD,Ks,Bs,chi2_elements,pts=91):
+def plotResults(pars,TMD,Ks,boundType,Bs,chi2_elements,pts=91):
     pts = 91
     cwd = os.getcwd()
     master_folder = cwd[:40]
@@ -258,20 +259,23 @@ def plotResults(pars,TMD,Ks,Bs,chi2_elements,pts=91):
         'TMD': TMD,
         'pts': pts,
         'Ks': list(Ks),
+        'boundType':boundType,
         'Bs': list(Bs)
     }
     args_chi2 = (data,'loc',args_minimization,1e5,True)
     tb_en = chi2_full(pars,*args_chi2)
-    legendInfo = (TMD,Ks,Bs,chi2_elements)
-    plot_bands(tb_en,data,legendInfo)
-    plot_parameters(pars,TMD,Bs,legendInfo)
+    legendInfo = (TMD,Ks,boundType,Bs,chi2_elements)
+    if boundType=='relative':
+        plot_parameters_relative(pars,TMD,Bs,legendInfo)
+    else:
+        plot_parameters_absolute(pars,TMD,Bs,legendInfo)
     plot_orbitalContent(pars,data.TMD,legendInfo)
+    plot_bands(tb_en,data,legendInfo)
     plt.show()
-
 def plot_bands(tb_en,data,legendInfo):
     """ Plot bands in comparison with ARPES data. """
     fit_data = data.fit_data
-    fig = plt.figure(figsize=(19,9))
+    fig = plt.figure(figsize=(15,9))
     gs = gridspec.GridSpec(
         1, 2,
         figure=fig,
@@ -309,30 +313,36 @@ def plot_bands(tb_en,data,legendInfo):
             mfc='deepskyblue'
         )
     #
+    s_m = 15
+    s_ = 20
+    s_p = 30
     ks = [fit_data[0,0],4/3*np.pi/cfs.dic_params_a_mono[data.TMD],fit_data[-1,0]]
-    ax.set_xticks(ks,[r"$\Gamma$",r"$K$",r"$M$"],size=20)
+    ax.set_xticks(ks,[r"$\Gamma$",r"$K$",r"$M$"],size=s_)
     for i in range(len(ks)):
         ax.axvline(ks[i],color='k',lw=0.5)
     ax.set_xlim(ks[0],ks[-1])
-    ax.set_ylabel('energy (eV)',size=30)
+    ax.set_ylabel('Energy [eV]',size=s_)
     label_y = []
     if fit_data.shape[1]==9:
         ticks_y = np.linspace(np.max(fit_data[:,3])+0.2,np.min(fit_data[~np.isnan(fit_data[:,6]),6])-0.2,5)
         for i in ticks_y:
             label_y.append("{:.1f}".format(i))
-        ax.set_yticks(ticks_y,label_y,size=20)
+        ax.set_yticks(ticks_y,label_y,size=s_m)
     plt.legend(fontsize=20)
-    ax.set_title("Bands comparison",size=20)
+    ax.set_title("Bands comparison",size=s_p)
 
     ax2 = fig.add_subplot(gs[1])
     addLegendResult(legendInfo,ax2)
-
-    fig.tight_layout()
-
-def plot_parameters(pars,TMD,Bs,legendInfo):
+    plt.subplots_adjust(
+        left = 0.083,
+        bottom = 0.045,
+        right = 0.893,
+        top = 0.95,
+        wspace = 0.06,
+        hspace = 0.2
+    )
+def plot_parameters_relative(pars,TMD,Bs,legendInfo):
     """ Plot parameters values and differece wrt DFT parameters. """
-    rp,rpz,rpxy,rl = Bs
-    rmax = max([rp,rpz,rpxy,rl])
     lenP = len(pars)
     #
     DFT_values = cfs.initial_pt[TMD]
@@ -370,6 +380,8 @@ def plot_parameters(pars,TMD,Bs,legendInfo):
     top_ax.set_xticks(np.arange(lenP),["%d"%i for i in np.arange(lenP)],size=s_)
     top_ax.set_xlabel("Parameter index",size=s_p)
     #ax2
+    rp,rpz,rpxy,rl = Bs
+    rmax = max([rp,rpz,rpxy,rl])
     ticks_y = np.linspace(-rmax*100,rmax*100,5)
     label_y = ["{:.1f}".format(i)+r"%" for i in ticks_y]
     ax2.set_yticks(ticks_y,label_y,size=s_,color='b')
@@ -398,7 +410,105 @@ def plot_parameters(pars,TMD,Bs,legendInfo):
     addLegendResult(legendInfo,axl)
 
     fig.tight_layout()
+def plot_parameters_absolute(pars,TMD,Bs,legendInfo):
+    """ Plot absolute values of barameters with different bounds.
+    """
+    DFT_pars = cfs.initial_pt[TMD]
+    npars = pars.shape[0]
 
+    fig = plt.figure(figsize=(19,9))
+    gs = gridspec.GridSpec(
+        1, 2,
+        figure=fig,
+        width_ratios=[10, 1],
+        hspace=0
+    )
+    fig.patch.set_facecolor("#F7F7F7")
+    ax = fig.add_subplot(gs[0])
+    ax.set_facecolor("#F7F7F7")
+
+    x     = np.arange(npars)
+    # group background bands
+    group_colors = ["#4C72B0","#DD8452","#55A868","#C44E52","#8172B3","#64B5CD"]
+    group_bounds = [(0,6),(7,27),(28,35),(36,39),(40,40),(41,42)]
+    group_labels = [
+    "Epsilon", "t_1", "t_5",
+    "t_6", "", "SOC",
+    ]
+    for gi, (start, end) in enumerate(group_bounds):
+        ax.axvspan(start - 0.5, end + 0.5, color=group_colors[gi],
+                   alpha=0.07, zorder=0)
+    param_colors = [""] * npars
+    param_bound  = [None] * npars
+    has_bound = [0, 1, 2, 3, 5]
+    b_idx = 0
+    for gi, (start, end) in enumerate(group_bounds):
+        for i in range(start, end + 1):
+            param_colors[i] = group_colors[gi]
+        if gi in has_bound:
+            for i in range(start, end + 1):
+                param_bound[i] = Bs[b_idx]
+            b_idx += 1
+    bar_w = 0.8
+    for i in range(npars):
+        val = pars[i]
+        ref = DFT_pars[i]
+        c   = param_colors[i]
+        # ── bar ──────────────────────────────────────────────────────────
+        ax.bar(i, abs(val), width=bar_w, bottom=min(0, val),
+               color=c, alpha=0.80, linewidth=0.3, edgecolor="white", zorder=3)
+        # ── reference line: bold tick across the full bar width ──────────
+        hw = bar_w * 0.48
+        #ax.plot([i - hw, i + hw], [ref, ref],
+        #        color="white", lw=2.5, zorder=5, solid_capstyle="butt")
+        ax.plot([i - hw, i + hw], [ref, ref],
+                color="#111",  lw=1.2, zorder=6, solid_capstyle="butt",
+                linestyle='-')#(0, (3, 2)))   # short dash so it reads as a marker
+        # ── value label (rotated, inside or just outside) ─────────────────
+        label = f"{val:+.2f}"
+        if abs(val) > 0.20:
+            ax.text(i, val / 2, label, ha="center", va="center",
+                    fontsize=8, color="white", fontweight="bold",
+                    rotation=90, zorder=7)
+        else:
+            yo  = val + (0.035 if val >= 0 else -0.035)
+            va_ = "bottom" if val >= 0 else "top"
+            ax.text(i, yo, label, ha="center", va=va_,
+                    fontsize=8, color="#333", rotation=90, zorder=7)
+        # ── bound markers ─────────────────────────────────────────────────
+        if param_bound[i] is not None:
+            b = param_bound[i]
+            for sign in (1, -1):
+                ax.plot([i - 1/2, i + 1/2], [sign*b, sign*b],
+                        color="#111", lw=1.4, ls="-", zorder=5, alpha=0.75)
+    # ── axes ──────────────────────────────────────────────────────────────
+    s_ = 12
+    s_p = 15
+    ax.set_xticks(x)
+    ax.set_xticklabels(cfs.list_formatted_names_all, rotation=55, ha="right",
+                       fontsize=s_, fontfamily="monospace")
+    ax.set_xlim(-0.4, npars - 0.6)
+    ax.set_ylabel("Value", fontsize=s_p, labelpad=6)
+    ax.axhline(0, color="#555", lw=0.8, zorder=4)
+    ax.set_title("Parameter Overview — 43 parameters across 6 groups",
+                 fontsize=20, fontweight="bold", pad=10)
+    ax.spines[["top","right"]].set_visible(False)
+    ax.tick_params(bottom=False)
+    ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+    ax.grid(axis="y", ls=":", lw=0.5, color="#bbb", zorder=0)
+    # group separators + labels
+    ylim_top = ax.get_ylim()[1]
+    for gi, (start, end) in enumerate(group_bounds[:-1]):
+        ax.axvline(end + 0.5, color="#aaa", lw=0.7, zorder=2)
+    for gi, (start, end) in enumerate(group_bounds):
+        ax.text((start+end)/2, ylim_top*0.97, group_labels[gi],
+                ha="center", va="top", fontsize=s_,
+                color=group_colors[gi], fontweight="bold", zorder=7)
+
+    axl = fig.add_subplot(gs[1])
+    addLegendResult(legendInfo,axl)
+
+    fig.tight_layout()
 def plot_orbitalContent(pars,TMD,legendInfo):
     """ Plot orbital content in the BZ cut: G-K-M-G """
 
@@ -446,7 +556,10 @@ def plot_orbitalContent(pars,TMD,legendInfo):
                     orbitals[orb,ib,ik] += np.linalg.norm(evs[ik,iorb,ib])**2 + np.linalg.norm(evs[ik,iorb+11,ib])**2
     indM = Ngk+Nkm
     """ Plot """
-    fig = plt.figure(figsize=(19,9))
+    fig = plt.figure(figsize=(15,9))
+    s_m = 15
+    s_ = 20
+    s_p = 30
     gs = gridspec.GridSpec(
         1, 2,
         figure=fig,
@@ -477,7 +590,7 @@ def plot_orbitalContent(pars,TMD,legendInfo):
                    )
     legend = ax.legend(handles=leg,
                        loc=(0.7,0.45),
-                       fontsize=20,
+                       fontsize=s_,
                        handletextpad=0.35,
                        handlelength=0.5
                        )
@@ -490,36 +603,42 @@ def plot_orbitalContent(pars,TMD,legendInfo):
     ax.axvline(Ngk+Nkm,color='k',lw=1,zorder=-1)
     ax.axhline(0,color='k',lw=1,zorder=-1)
 
-    ax.set_xticks([0,Ngk-1,Ngk+Nkm-1,Nk-1],[r"$\Gamma$",r"$K$",r"$M$",r"$\Gamma$"],size=20)
-    ax.set_ylabel("Energy [eV]",size=20)
-    ax.set_title("Orbital content of bands",size=20)
+    ax.set_xticks([0,Ngk-1,Ngk+Nkm-1,Nk-1],[r"$\Gamma$",r"$K$",r"$M$",r"$\Gamma$"],size=s_)
+    ax.set_ylabel("Energy [eV]",size=s_)
+    ax.tick_params(axis='y',labelsize=s_m)
+    ax.set_title("Orbital content of bands",size=s_p)
 
     axl = fig.add_subplot(gs[1])
     addLegendResult(legendInfo,axl)
-
-    fig.tight_layout()
-
+    plt.subplots_adjust(
+        left = 0.083,
+        bottom = 0.045,
+        right = 0.893,
+        top = 0.95,
+        wspace = 0.06,
+        hspace = 0.2
+    )
 def addLegendResult(legendInfo,ax):
-    TMD, Ks, Bs, chi2_elements = legendInfo
+    TMD, Ks, boundType, Bs, chi2_elements = legendInfo
     # Text
     txt = TMD + '\n'
-    txt_Bs = ['gen', 'z  ', 'xy ', 'soc']
-    txt += '----------\n'
-    txt += 'Boundaries\n'
-    txt += '----------\n'
-    for i in range(4):
+    txt_Bs = ['gen', 'z  ', 'xy ', 'soc'] if boundType=='relative' else ['eps','t_1','t_5','t_6','soc']
+    txt += '-'*10 + '\n'
+    txt += 'Boundaries: '+boundType+'\n'
+    txt += '-'*10 + '\n'
+    for i in range(len(Bs)):
         txt += txt_Bs[i] + ': %s'%Bs[i]+'\n'
-    txt += '---------\n'
+    txt += '-'*10 + '\n'
     txt += 'Constants\n'
-    txt += '---------\n'
-    for i in range(5):
-        txt += 'K%s: %6f'%(i+1,Ks[i])+'%\n'
-    txt += '---------------\n'
+    txt += '-'*10 + '\n'
+    for i in range(6):
+        txt += 'K%s: %6f'%(i+1,Ks[i])+'\n'
+    txt += '-'*10 + '\n'
     txt += 'Function values\n'
-    txt += '---------------\n'
+    txt += '-'*10 + '\n'
     txt_chiv = ['Chi2 energy bands','K1 pars distance','K2 M orb content','K3 G/K orb content','K4 minimum at K','K5 band gap']
     for i in range(6):
-        txt += txt_chiv[i]+':\n    %.4f'%chi2_elements[i]+'\n'
+        txt += txt_chiv[i]+':\n    %.6f'%chi2_elements[i]+'\n'
     #
     box_dic = dict(boxstyle='round',facecolor='white',alpha=1)
     ax.text(
@@ -531,8 +650,7 @@ def addLegendResult(legendInfo,ax):
         fontfamily='monospace',
     )
     ax.axis('off')
-
-def plot_measure(measure, Ks, Bs, global_idx: int, tmd: str, cutoff: float, title: str = ''):
+def plot_measure(measure, Ks, Bs, global_idx: int, tmd: str, cutoff: float, title: str, fig, ax):
     """ Plot grid of results """
     x_vals, y_vals, grid = build_grid(measure, Ks, Bs)
 
@@ -548,9 +666,6 @@ def plot_measure(measure, Ks, Bs, global_idx: int, tmd: str, cutoff: float, titl
     print(f"  Ks = {min_Ks}")
     print(f"  Bs = {min_Bs}")
 
-    # --- figure ---
-    fig, ax = plt.subplots(figsize=(8, 6))
-
     img = ax.pcolormesh(
         x_vals,
         y_vals,
@@ -558,6 +673,8 @@ def plot_measure(measure, Ks, Bs, global_idx: int, tmd: str, cutoff: float, titl
         shading="nearest",
         cmap="viridis_r",
     )
+    #ax.set_xscale('log',base=2)
+    #ax.set_yscale('log',base=2)
 
     cbar = fig.colorbar(img, ax=ax)
     cbar.set_label(r"$\min$ measure", fontsize=12)
@@ -571,7 +688,7 @@ def plot_measure(measure, Ks, Bs, global_idx: int, tmd: str, cutoff: float, titl
     )
 
     # --- legend with full parameter values ---
-    ks_str = "\n".join(f"  K{i} = {min_Ks[i]:.6g}" for i in range(len(min_Ks)))
+    ks_str = "\n".join(f"  K{i+1} = {min_Ks[i]:.6g}" for i in range(len(min_Ks)))
     bs_str = "\n".join(f"  B{i} = {min_Bs[i]:.6g}" for i in range(len(min_Bs)))
     legend_text = (
         f"measure min = {min_measure:.6g}\n"
@@ -593,11 +710,6 @@ def plot_measure(measure, Ks, Bs, global_idx: int, tmd: str, cutoff: float, titl
     ax.set_title(f"{tmd} : measure = {title}",
         fontsize=13,
     )
-
-    plt.tight_layout()
-
-    plt.show()
-
 def build_grid(measure, Ks, Bs):
     """ Build 2D grid:
     x = Ks[:,1],
@@ -606,8 +718,6 @@ def build_grid(measure, Ks, Bs):
     """
     x_vals = np.unique(Ks[:, 1])
     y_vals = np.unique(Ks[:, 2])
-    print(x_vals)
-    print(y_vals)
 
     grid = np.full((len(y_vals), len(x_vals)), np.nan)
 

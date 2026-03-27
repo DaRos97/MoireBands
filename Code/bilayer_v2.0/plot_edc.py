@@ -14,13 +14,11 @@ import utils
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-maxMeasure = 0.2#0.026
-
 """ Dirname and parameters load """
 sample='S11'
-if len(sys.argv)!=2:
-    print("usage: python plot_edc.py arg1\n",
-          "With: arg1 filename of set of data to plot.")
+if len(sys.argv)!=3:
+    print("usage: python plot_edc.py arg1 arg2\n",
+          "With: arg1 filename of set of data to plot, arg2 max value.")
     exit()
 fn = sys.argv[1]
 if not Path(fn).is_file():
@@ -28,6 +26,7 @@ if not Path(fn).is_file():
 BZpoint = fn.split('/')[-1][8]
 if BZpoint not in {'K','G'}:
     raise ValueError("Not a good filename for the edc: ",fn)
+maxMeasure = float(sys.argv[2])
 
 """ Data columns """
 data = pd.read_hdf(fn, key="results").to_numpy()
@@ -77,6 +76,9 @@ if BZpoint=='G':
     maskDis = (m_dis < maxMeasure) & maskNan
     data_dis = data_dis[maskDis]
 
+    Vmin = 0
+    phimin = 0
+
     """ Minima """
 
     """ V-phi """
@@ -91,6 +93,11 @@ if BZpoint=='G':
             vals_pos = data_pos[mask_pos][:, mpos_col]
             if len(vals_pos) > 0:
                 min_pos[i, j] = np.min(vals_pos)
+            if abs(V-Vmin)<1e-7 and abs(phimin-phi)<1e-7:
+                indmin = np.argmin(vals_pos)
+                print(data_pos[mask_pos][indmin,wp_col])
+                print(data_pos[mask_pos][indmin,wd_col])
+            #
             mask_dis = (
                 (data_dis[:, V_col] == V) &
                 (data_dis[:, phi_col] == phi)

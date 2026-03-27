@@ -11,7 +11,7 @@ The data is processed in three steps:
         In this step I also chose a number of points I want for the merged data and interpolate all the bands to have this equi-distanced set.
         The merged data is the one used in the fitting of the tight-binding parameters.
 
-## Fit procedure
+## Fit procedure    -> needs update
 We start from the DFT-derived values of the tb parameters (40+1(offset)+2(SOC)). 
 We save the intermediate results.
 
@@ -19,10 +19,10 @@ The final function we minimize has:
 - `chi2` of bands distance from experiment one -> standard chi2 with coefficient 1
 - Constraint `K1`: distance of fitting parameters wrt to DFT ones with coefficient Ppar
 - Constraint `K2`: orbital content at Gamma, K and M TVB to be OPO, IPO and IPO respectively
-- Constraint `K2b`: orbital content at K BCB to be OPO
-- Constraint `K3`: minimum of conduction band at K
-- Constraint `K4`: difference of band gap at K wrt DFT one
-- Constraint `K5`: special points with higher importance for the fit, namely G, K, min{K-M}, M of TVB
+- Constraint `K3`: orbital content at K BCB to be OPO
+- Constraint `K4`: minimum of conduction band at K
+- Constraint `K5`: difference of band gap at K wrt DFT one
+- Constraint `K6`: special points with higher importance for the fit, namely G, K, min{K-M}, M of TVB
 
 Bounds to parameters:
 - rp: percentage difference for general orbitals
@@ -48,17 +48,18 @@ It sequentially plots bands, orbitals and parameters of the final solution.
 ## Results
 
 ### WSe2
-First grid:
-- K1: 1e-6, 1e-5, 1e-4
-- K2: 0.001:1/8
-- K3: 0.001:1/8
-- K4:K6 = 1, 1, 10
+Need K6 higher than 1 -> 5 is fine. Minimum of conduction -> K4=1 is fine
+Bound 5 seems too stringent for epsilon -> new batch with bounds (7,3,4,1,0)
 
-Second grid:
-- K1: 1e-6, 1e-5, 1e-4
-- K2: 0.01:1/10
-- K3: 0.01:1/10
-- K4:K6 = 1, 1, 10
+### Data
+Best WSe2 in Data3/, filtered to not saturate bounds, index 1 (not 0) of chi2 measure
+Best WS2 in Data2/ (local, not mafalda because minimization continued and saturated epsilon), index 0 of chi2 and chi2+K2_M measures.
+
+Bounds:
+8,4,5,2,0 for both monolayers
+Parameters:
+    WSe2:   (1e-4,  0.13,   0.005,  1,  0.01,   5)
+    WS2 :   (0,     0.125,  0.011,  1,  0.01,   5)
 
 
 

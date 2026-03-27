@@ -15,7 +15,7 @@ def get_parameters(chunk_id,BZpoint,n_chunks=128):
     """ Get chunks of parameters to compute. """
     if BZpoint=='G':
         listVg = np.linspace(0.001,0.025,25)            # Moirè potential amplitude -> every 1 meV
-        listPhi = np.linspace(165,180,16) /180*np.pi    # Moiré potential phase -> every 1 °
+        listPhi = np.linspace(160,180,21) /180*np.pi    # Moiré potential phase -> every 1 °
         listW1p = np.linspace(-2.000, 2.000,41)         # Interlayer coupling p -> every 10 meV in fine grid, every 50 meV in large grid
         listW1d = np.linspace(-2.000, 2.000,41)         # Interlayer coupling d -> every 10 meV in fine grid, every 50 meV in large grid
         filename = cfs.getFilename(
