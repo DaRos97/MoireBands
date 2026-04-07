@@ -19,31 +19,28 @@ From the ARPES exp we have, for S11 [eV]:
     - p1=-0.6899, p2=-0.7831, p3=-1.3500        (units of S3, offset of 0.47 eV)
     - d1=0.0932, d2=0.6601
 
-Inputs: `tb_WSe2_B:5_K:0.001_0.005_0_1_0.5_10.npy` and `tb_WS2_B:5_K:0.01_0.01_0_1_0.5_10.npy`
-Datasets (all with (7,106) moiré at K):
-    - Large grid (128): 1:25/25, 160:180/21, -2:2/41,        -2:2/41    -> minimum close to w1p=-2,w1d=0.5
-    - Latge grid (128): 1:25/25, 160:180/21, -3:-1/41,       0.2:0.7/11 -> minimum of position still at the boundary
-    - Large grid (128): 5:25/21, 165:180/16, -4:-2.5/76,     0.4:0.6/21 -> still ad boundary of wp
-    - Large grid (500): 5:25/11, 166:180/8,  -8:-4/81,       0.4:0.6/21 -> found the wp minimum at -5.88
-    - Finer grid (500): 1:25/25, 160:180/21, -6.2:-5.5/71,   0.4:0.6/21 -> best interlayer at (-5.88,0.48), best moiré potential at (17,172:176)
-    - Large plot (200): 8:25/18, 0:358/180,  -5.98:-5.78/21, 0.4:0.6/21, theta=2.8 -> too coarse
-
-Inputs: `tb_WSe2_B:5_K:0.001_0.005_0_1_0.5_10.npy` and `tb_WS2_B:5_K:0.0001_0.01_0_1_0.1_10.npy`
-Datasets (all with (7,106) moiré at K):
-    - Large grid (270): 1:25/25,  165:180/16, -2:2/41,      -2:2/41    -> (3h40) minimum at (-1.8,0.8)
-    - Finer grid (270): 8:25/18,  165:180/16, -2.5:-1.5/51, 0.5:1/26   -> minimum of position still on boundary (-2.5,0.9)
-    - Finer grid (56) : 12:22/11, 165:180/16, -4:-2.5/31,   0.8:1.3/11 ->
-
-Inputs: `tb_WSe2_B:5_K:0.00005_0.1_0_1_0.1_10.npy` and `tb_WS2_B:5_K:0.0001_0.1_0_1_0.1_5.npy`
-Datasets (all with (7,106) moiré at K):
-    - Large grid   (80): 12:22/11,  164:180/9,  -4:0/81,        0:2/41       -> two minima (-1.1,0.4) and (-0.51,1.05)
-    - Fine grid  1  (88): 1:25/25,  165:180/16, -1.3:-0.9/41,   0.2:0.6/41   -> minimum of V not well defined, and 0 not reached
-    - Finer grid 1 (200): 5:25/41,  165:180/16, -1.15:-1.05/21, 0.36:0.46/21 -> 
-    - Finer grid 1 (200): 8:20/25,  165:180/16, -1.12:-1.06/31, 0.38:0.44/41 -> two minima (-1.086,0.412) at (14,168) and (-1.096,0.42) at (12.5,176)
-    - Fine grid  2 (200): 1:25/25,  165:180/16, -0.7:-0.3/41,   0.8:1.2/41   ->
-    - Finer grid 2 (200): 11:23/25, 170:180/11, -0.5:-0.44/31,  1:1.06/31    -> minima (-0.472,1.030) at (19.5,173)
-
-    - angle variation 1 (200): 1:25/49, 165:180/16, -1.15:-1.05/51, 0.36:0.46/51 -> 
+Inputs: `../Inputs/tb_WSe2_abs_8_4_5_2_0_K_0.0001_0.13_0.005_1_0.01_5.npy` and `../Inputs/tb_WS2_abs_8_4_5_2_0_K_0_0.125_0.011_1_0.01_5.npy`
+All datasets are with (7.7,106) moiré potential at K
+Datasets at theta_deviation=0:
+    - Large grid   (127 chunks): 1:25/25,  160:180/21,  -2:2/41,            -2:2/41
+        +   Symmetry of wp(d)->-wp(d)
+        +   2 minima
+    - Medium grid  (127 chunks): 5:22/18,  160:180/21,  -2.5:-1.92/30,      0.3:1.3/51
+        +   Made a mistake in the wp range, should have been -1.29
+        +   Only one of the 2 peaks is found, the lower one: (-2.1,0.53)
+    - Small grid 1 (127 chunks): 10:22/13, 165:180/16,  -2:-2.2/41,         0.4:0.6/41
+        +   Minimum at (-2.075,0.525)
+    - Small grid 2 (127 chunks): 10:22/13, 165:180/16,  -1.4:-1.6/41,       1.05:1.25/41
+        +   Minimum at (-1.555,1.145)
+    - Fine grid 1 (127 chunks):  16:21/51, 165:180/16,  -2.090:-2.065/26,   0.520:0.535/16
+        +   Minimum at (wp,wd)=(-2.075 eV, 0.525 eV) and (V,phi)=(19.6 meV, 173°)
+    - Fine grid 2 (127 chunks):  15:20/51, 165:180/16,  -1.565:-1.540/26,   1.135:1.150/16
+        +   Minimum at (wp,wd)=(-1.556 eV, 1.143 eV) and (V,phi)=(16.5 meV, 175°)
+    - All phases  (300 chunks):  15:20/51, 1:359/360,   -1.565:-1.550/16,   1.135:1.150/16
+        +   Periodicity of 120° as expected
+        +   Should have considered a larger lower bound on V -> ~10 probably enough
+    - Paper plot  (300 chunks):  10:20/51, 1:359/360    -1.580:-1.530/11,   1.120:1.170/11
+        +   
 
 ### K
 In this situation there is no role of interlayer coupling, so we just look at the distance between main band and moiré bands.
@@ -52,19 +49,27 @@ From the ARPES exp we have, for S11 [eV]:
     - p=-0.8990 eV      (units of S11)
     - p=-0.4290 eV      (units of S3, offset of 0.47 eV)
 
-Inputs: `tb_WSe2_B:5_K:0.001_0.005_0_1_0.5_10.npy` and `tb_WS2_B:5_K:0.01_0.01_0_1_0.5_10.npy`
-Datasets (all with (17,174) moiré at G and (-5.88,0.48) intelayer):
-    - theta = 2.8 (200): 1:30/30, 0:359/360 -> double parabola of minima!
-    - theta = 2.5 (80) : 1:30/30, 0:359/360 -> change of phase
-    - theta = 3.1 (80) : 1:30/30, 0:359/360 -> parabola shiftedby ~10 meV and no good results
+Inputs: `../Inputs/tb_WSe2_abs_8_4_5_2_0_K_0.0001_0.13_0.005_1_0.01_5.npy` and `../Inputs/tb_WS2_abs_8_4_5_2_0_K_0_0.125_0.011_1_0.01_5.npy`
+All datasets are with (16.5,175) moiré at G and (-1.556,1.143) intelayer coupling
+Datasets:
+    - Theta_dev=0, 0.001:0.020/20,   0:359/360
+        +   120° periodicity centered around 120-240 and 360
+        +    Minimum increasing with V -> in contraddiction with gap at some point
+    - Theta_dev=0,    0.001:0.020/191,   0:359/360
+        +   120° periodicity centered around 120-240 and 360
+        +   More precise version of the above, same results
+    - Theta_dev=0.3,  0.001:0.020/191,   0:359/360
+        +   120° periodicity centered around 120-240 and 360
+        +   No good results, measure is quite distant from ARPES
+    - Theta_dev=-0.3, 0.001:0.020/191,   0:359/360
+        +   120° periodicity centered around 120-240 and 360
+        +   Parabolic minimum wrt ARPES
 
-Inputs: `tb_WSe2_B:5_K:0.00005_0.1_0_1_0.1_10.npy` and `tb_WS2_B:5_K:0.0001_0.1_0_1_0.1_5.npy`
-Datasets (all with (14,169) moiré at G and (-1.10,0.42) intelayer):
-    - theta = 2.8 (96): 1:20/39, 0:359/360 ->
-
+## Gap
+We compute also the gap values, in particular to constrain the moirè potential and phase at K.
+`gap.py`
 
 
 ### TODO
 - Nice EDC plot for paper
-- Solve problem of edc at K
 

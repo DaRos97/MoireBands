@@ -32,6 +32,7 @@ from pathlib import Path
 
 machine = cfs.get_machine(os.getcwd())
 n_chunks = 128
+computeGap = True
 
 """ Parameters and options """
 if len(sys.argv)!=3:
@@ -55,13 +56,15 @@ if BZpoint=='G':
     Vk,phiK = (0.0077,106/180*np.pi)
     kList = np.array([np.zeros(2),])
     columns = ["Vg", "phiG", "w1p", "w1d", "p1", "p2", "p3"]
+    columnsGap = ["Vg", "phiG", "w1p", "w1d", "gap"]
     argsFn = (Vk,phiK)
 elif BZpoint=='K':
-    Vg,phiG = (0.017,174/180*np.pi)
-    w1p = -5.880
-    w1d = 0.480
+    Vg,phiG = (0.0165,175/180*np.pi)
+    w1p = -1.556
+    w1d = 1.143
     kList = np.array([[4*np.pi/3/cfs.dic_params_a_mono['WSe2'],0],])
-    columns=["Vk", "phiK", "p1", "p2"]
+    columns = ["Vk", "phiK", "p1", "p2"]
+    columnsGap = ["Vk", "phiK", "gap"]
     argsFn = (Vg,phiG,w1p,w1d)
 spreadE = 0.03      # in eV
 #
@@ -84,10 +87,16 @@ if disp:    #print what parameters we're using
         print("Interlayer coupling: w1p=%.4f, w1d=%.4f"%(w1p,w1d))
     print("Number of mini-BZs circles: ",nShells)
     print("Energy spreading: %.3f eV"%spreadE)
+    if computeGap:
+        print("-"*15)
+        print("COMPUTING ALSO THE BAND GAP")
+    print("-"*15)
 
 """ Computation """
 parameters_chunk, listFn = utils.get_parameters(ind,BZpoint,n_chunks=n_chunks)
 results = []
+if computeGap:
+    resultsGap = []
 for pars in parameters_chunk:
     if BZpoint=='G':
         Vg, phiG, w1p, w1d = pars
@@ -96,9 +105,9 @@ for pars in parameters_chunk:
     elif BZpoint=='K':
         Vk, phiK = pars
         if disp:
-            Vk = 0.0085
+            Vk = 0.0077
             phiK = 106/180*np.pi
-            print("Vk: %.3f\tphiK: %.1f"%(Vk,phiK/np.pi*180))
+            print("Vk: %.4f\tphiK: %.1f"%(Vk,phiK/np.pi*180))
     parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
     args_diag = (nShells, nCells, kList, monolayer_fns, parsInterlayer, theta, (Vg,Vk,phiG,phiK), '', False, False)
     positions,success = utils.EDC(
@@ -108,18 +117,22 @@ for pars in parameters_chunk:
         spreadE=spreadE,
         machine=machine,
         plotBands=False,
-        plotFit=disp
+        plotFit=False
     )
     if success:
-        if BZpoint=='G':
-            results.append((Vg,phiG,w1p,w1d,*positions))
-        elif BZpoint=='K':
-            results.append((Vk,phiK,*positions))
+        if computeGap:
+            gap = utils.computeGap(
+                args_diag,
+                sample,
+                BZpoint=BZpoint,
+                plotBandsGap=False,
+            )
+            resultsGap.append((*pars,gap))
+        results.append((*pars,*positions))
     else:
-        if BZpoint=='G':
-            results.append((Vg,phiG,w1p,w1d,np.nan,np.nan,np.nan))
-        elif BZpoint=='K':
-            results.append((Vk,phiK,np.nan,np.nan))
+        results.append((*pars,np.full(2 if BZpoint=='K' else 3,np.nan)))
+        if computeGap:
+            resultsGap.append((*pars,np.nan))
 
 """ Save to file: hdf5 """
 df = pd.DataFrame(
@@ -142,6 +155,27 @@ df.to_hdf(
     complevel=5,
     complib="blosc"
 )
+if computeGap:
+    dfGap = pd.DataFrame(
+        resultsGap,
+        columns=columnsGap
+    )
+    dirnameGap = cfs.getFilename(
+        ('edcGap'+BZpoint,theta_deviation,nShells,spreadE,*argsFn),
+        dirname=utils.get_home_dn(machine)+"Data/",
+        floatPrecision=3,
+    ) + '_' + listFn + '/'
+    if not Path(dirnameGap).is_dir():
+        os.system("mkdir "+dirnameGap)
+    output_file = dirnameGap + "chunk_%d_%d.h5"%(ind,n_chunks)
+    dfGap.to_hdf(
+        output_file,
+        key="results",
+        mode="w",
+        format="table",      # allows later append/select
+        complevel=5,
+        complib="blosc"
+    )
 
 print("Finished %s chunk %d/%d"%(BZpoint,ind,n_chunks))
 

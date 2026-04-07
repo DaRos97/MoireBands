@@ -28,7 +28,7 @@ def get_parameters(chunk_id,BZpoint,n_chunks=128):
         grid = product(listVg, listPhi, listW1p, listW1d)
         total_jobs = len(listVg)*len(listPhi)*len(listW1p)*len(listW1d)
     elif BZpoint=='K':
-        listVk = np.linspace(0.001,0.020,20)     # Considered values of moirè potential -> every 1 meV
+        listVk = np.linspace(0.001,0.040,196)     # Considered values of moirè potential -> every 1 meV
         listPhiK = np.linspace(0,359,360) /180*np.pi
         filename = cfs.getFilename(
             ( listVk[0],listVk[-1],len(listVk),int(listPhiK[0]/np.pi*180),int(listPhiK[-1]/np.pi*180),len(listPhiK) )
@@ -199,12 +199,46 @@ def plotBandsResult(args_diag,sample,BZpoint):
     nBands = 2
     weights = np.zeros(e_.shape)
     for i in range(pts):
-        ab = np.absolute(ev_[i])**2
+        ab = np.absolute(ev_[i])**1
         weights[i,:] = np.sum(ab[:22,:],axis=0) + 0.05*np.sum(ab[22*nCells:22*(1+nCells),:],axis=0)
     for n in range(nTVB-nBands*nCells,nTVB):
         ax.plot(kList[:,0],e_[:,n],color='r',lw=0.5)
         ax.scatter(kList[:,0],e_[:,n],s=weights[:,n]*50,color='b')
     plt.show()
+
+""" Gap """
+def computeGap(args_diag,sample,BZpoint,plotBandsGap=False):
+    """ Plot bands around the BZ point """
+    args = list(args_diag)
+    pts = 51
+    kList = np.zeros((pts,2))
+    kList[:,0] = np.linspace(0,0.12,pts)
+    if BZpoint=='K':
+        kList[:,0] += 4*np.pi/3/cfs.dic_params_a_mono['WSe2']
+    args[2] = kList
+    args[-1] = plotBandsGap
+    e_, ev_ = diagonalize_matrix(*args,machine='loc')
+    nCells = args[1]
+    nTVB = 28*nCells
+    gap = np.min(e_[:,nTVB-1]-e_[:,nTVB-2])
+    if plotBandsGap:
+        print("gap: ",gap)
+        """ Figure """
+        fig = plt.figure(figsize=(10,10))
+        ax = fig.add_subplot()
+        nBands = 1
+        argGap = np.argmin(e_[:,nTVB-1]-e_[:,nTVB-2])
+        weights = np.zeros(e_.shape)
+        for i in range(pts):
+            ab = np.absolute(ev_[i])**2
+            weights[i,:] = np.sum(ab[:22,:],axis=0) + 0.05*np.sum(ab[22*nCells:22*(1+nCells),:],axis=0)
+        for n in range(nTVB-nBands*nCells,nTVB):
+            ax.plot(kList[:,0],e_[:,n],color='r',lw=0.5)
+            ax.scatter(kList[:,0],e_[:,n],s=weights[:,n]*50,color='b')
+        ax.plot([kList[argGap,0],kList[argGap,0]],[e_[argGap,nTVB-1],e_[argGap,nTVB-2]],color='g',lw=2)
+        plt.show()
+        exit()
+    return gap
 
 """ Moiré functions """
 def diagonalize_matrix(*args,machine='loc'):
