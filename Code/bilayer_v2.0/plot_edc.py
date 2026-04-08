@@ -28,6 +28,16 @@ if BZpoint not in {'K','G'}:
     raise ValueError("Not a good filename for the edc: ",fn)
 maxMeasure = float(sys.argv[2])
 
+""" Check on gap """
+dn = fn[:-len(fn.split('/')[-1])]
+newFn = fn.split('/')[-1][:8]+'Gap'+fn.split('/')[-1][8:]
+gapFn = dn + newFn
+gapData = False
+if Path(gapFn).is_file():
+    gapData = True
+    print("Importing gaps")
+    gaps = pd.read_hdf(gapFn, key="results").to_numpy()
+
 """ Data columns """
 data = pd.read_hdf(fn, key="results").to_numpy()
 data[:,1] = data[:,1]/np.pi*180     # rad to deg
@@ -131,14 +141,16 @@ else:
     positions = data[:, [p1_col, p2_col]]
     ARPES_positions = cfs.dic_params_edcK_positions[sample] - cfs.dic_params_offset[sample]
     distances = positions[:,0] - positions[:,1]
-    ARPES_distance = ARPES_positions[0]-ARPES_positions[1]
+    ARPES_distance = ARPES_positions[0] - ARPES_positions[1]
 
     m_dis = np.absolute(distances-ARPES_distance)
     data_dis = np.column_stack([data, m_dis])
     maskDis = (m_dis < maxMeasure) & maskNan
     data_dis = data_dis[maskDis]
+    gaps = gaps[maskNan]
 
     min_dis = np.full((len(V_all), len(phi_all)), np.nan)
+    gap_grid = np.full((len(V_all), len(phi_all)), np.nan)
     for i, V in enumerate(V_all):
         for j, phi in enumerate(phi_all):
             mask_pos = (
@@ -146,8 +158,10 @@ else:
                 (data_dis[:, phi_col] == phi)
             )
             vals_dis = data_dis[mask_pos][:, -1]
+            vals_gap = gaps[mask_pos][:, -1]
             if len(vals_dis) > 0:
                 min_dis[i, j] = np.min(vals_dis)
+                gap_grid[i, j] = vals_gap
 
 """ Figure """
 if BZpoint=='G':
@@ -167,7 +181,7 @@ if BZpoint=='G':
 
     ax.set_xlabel(r"$\phi$",size=s_)
     ax.set_ylabel(r"$V$ [eV]",size=s_)
-    ax.set_ylim(0,0.025)
+    ax.set_ylim(0,0.020)
     ax.set_title("Positions Measure",size=s_2)
     cbar = fig.colorbar(im, ax=ax)
     cbar.set_label(r"Minimum measure over $w_p$ and $w_d$",
@@ -184,7 +198,7 @@ if BZpoint=='G':
 
     ax.set_xlabel(r"$\phi$",size=s_)
     ax.set_title("Distances Measure",size=s_2)
-    ax.set_ylim(0,0.025)
+    ax.set_ylim(0,0.020)
     cbar = fig.colorbar(im, ax=ax)
     cbar.set_label(r"Minimum measure over $w_p$ and $w_d$",
                    fontsize=s_)
@@ -230,14 +244,35 @@ if BZpoint=='G':
         hspace = 0.14
     )
 else:
-    fig = plt.figure(figsize=(10, 5))
-    ax = fig.add_subplot()
     s_ = 15
     s_2 = 20
-
     gPhi,gV = np.meshgrid(phi_all,V_all)
 
-    im = ax.pcolormesh(
+    if gapData:
+        fig = plt.figure(figsize=(10, 10))
+        ax1 = fig.add_subplot(121)
+        #
+        ax2 = fig.add_subplot(122)
+        ax2.set_title("Gaps")
+        im = ax2.pcolormesh(
+            gPhi,gV,
+            gap_grid,
+            cmap='viridis_r',
+            vmin=0,
+            vmax=maxMeasure
+        )
+
+        ax2.set_xlabel(r"$\phi$ [°]",size=s_)
+        ax2.set_ylabel(r"$V$ [eV]",size=s_)
+        ax2.tick_params(axis='both',labelsize=s_)
+        cbar = fig.colorbar(im, ax=ax2)
+        cbar.set_label("Gap value",size=s_)
+        cbar.ax2.tick_params(labelsize=s_)
+    else:
+        fig = plt.figure(figsize=(10, 5))
+        ax1 = fig.add_subplot()
+
+    im = ax1.pcolormesh(
         gPhi,gV,
         min_dis,
         cmap='plasma_r',
@@ -245,12 +280,12 @@ else:
         vmax=maxMeasure
     )
 
-    ax.set_xlabel(r"$\phi$ [°]",size=s_)
-    ax.set_ylabel(r"$V$ [eV]",size=s_)
-    ax.tick_params(axis='both',labelsize=s_)
-    cbar = fig.colorbar(im, ax=ax)
+    ax1.set_xlabel(r"$\phi$ [°]",size=s_)
+    ax1.set_ylabel(r"$V$ [eV]",size=s_)
+    ax1.tick_params(axis='both',labelsize=s_)
+    cbar = fig.colorbar(im, ax=ax1)
     cbar.set_label("Distance measure from ARPES",size=s_)
-    cbar.ax.tick_params(labelsize=s_)
+    cbar.ax1.tick_params(labelsize=s_)
 
     fig.tight_layout()
 

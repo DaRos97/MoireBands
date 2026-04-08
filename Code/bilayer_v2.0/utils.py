@@ -28,8 +28,8 @@ def get_parameters(chunk_id,BZpoint,n_chunks=128):
         grid = product(listVg, listPhi, listW1p, listW1d)
         total_jobs = len(listVg)*len(listPhi)*len(listW1p)*len(listW1d)
     elif BZpoint=='K':
-        listVk = np.linspace(0.001,0.040,196)     # Considered values of moirè potential -> every 1 meV
-        listPhiK = np.linspace(0,359,360) /180*np.pi
+        listVk = np.linspace(0.001,0.040,128)     # Considered values of moirè potential -> every 1 meV
+        listPhiK = np.linspace(0,359,1) /180*np.pi
         filename = cfs.getFilename(
             ( listVk[0],listVk[-1],len(listVk),int(listPhiK[0]/np.pi*180),int(listPhiK[-1]/np.pi*180),len(listPhiK) )
         )

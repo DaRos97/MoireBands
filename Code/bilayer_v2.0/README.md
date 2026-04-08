@@ -64,6 +64,8 @@ Datasets:
     - Theta_dev=-0.3, 0.001:0.020/191,   0:359/360
         +   120° periodicity centered around 120-240 and 360
         +   Parabolic minimum wrt ARPES
+    - Theta_dev=0,    0.001:0.040/196,   0:359/360, with gap
+        +   
 
 ## Gap
 We compute also the gap values, in particular to constrain the moirè potential and phase at K.
