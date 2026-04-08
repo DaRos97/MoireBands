@@ -32,7 +32,6 @@ from pathlib import Path
 
 machine = cfs.get_machine(os.getcwd())
 n_chunks = 128
-computeGap = True
 
 """ Parameters and options """
 if len(sys.argv)!=3:
@@ -48,6 +47,7 @@ if machine=='maf':
 if ind<0 or ind>=n_chunks:
     raise ValueError("Index out of range: ",ind)
 disp = machine=='loc'
+computeGap = BZpoint=='K'
 
 """ Fixed parametetrs """
 theta_deviation = 0      #Change here for \pm 0.3 degrees
@@ -104,7 +104,7 @@ for pars in parameters_chunk:
             print("Vg: %.3f\tphiG: %.1f\tw1p: %.3f\t w1d: %.3f"%(Vg,phiG/np.pi*180,w1p,w1d))
     elif BZpoint=='K':
         Vk, phiK = pars
-        if disp:
+        if 0:#disp:
             Vk = 0.0077
             phiK = 106/180*np.pi
             print("Vk: %.4f\tphiK: %.1f"%(Vk,phiK/np.pi*180))
@@ -130,7 +130,7 @@ for pars in parameters_chunk:
             resultsGap.append((*pars,gap))
         results.append((*pars,*positions))
     else:
-        results.append((*pars,np.full(2 if BZpoint=='K' else 3,np.nan)))
+        results.append((*pars,*np.full(2 if BZpoint=='K' else 3,np.nan)))
         if computeGap:
             resultsGap.append((*pars,np.nan))
 
@@ -142,7 +142,7 @@ df = pd.DataFrame(
 dirname = cfs.getFilename(
     ('edc'+BZpoint,theta_deviation,nShells,spreadE,*argsFn),
     dirname=utils.get_home_dn(machine)+"Data/",
-    floatPrecision=3,
+    floatPrecision=4,
 ) + '_' + listFn + '/'
 if not Path(dirname).is_dir():
     os.system("mkdir "+dirname)
@@ -163,7 +163,7 @@ if computeGap:
     dirnameGap = cfs.getFilename(
         ('edcGap'+BZpoint,theta_deviation,nShells,spreadE,*argsFn),
         dirname=utils.get_home_dn(machine)+"Data/",
-        floatPrecision=3,
+        floatPrecision=4,
     ) + '_' + listFn + '/'
     if not Path(dirnameGap).is_dir():
         os.system("mkdir "+dirnameGap)

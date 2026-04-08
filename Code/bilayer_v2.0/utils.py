@@ -14,10 +14,10 @@ import lmfit      #for fitting weights in EDC
 def get_parameters(chunk_id,BZpoint,n_chunks=128):
     """ Get chunks of parameters to compute. """
     if BZpoint=='G':
-        listVg = np.linspace(0.001,0.025,25)            # Moirè potential amplitude -> every 1 meV
-        listPhi = np.linspace(160,180,21) /180*np.pi    # Moiré potential phase -> every 1 °
-        listW1p = np.linspace(-2.000, 2.000,41)         # Interlayer coupling p -> every 10 meV in fine grid, every 50 meV in large grid
-        listW1d = np.linspace(-2.000, 2.000,41)         # Interlayer coupling d -> every 10 meV in fine grid, every 50 meV in large grid
+        listVg = np.linspace(0.010,0.020,51)            # Moirè potential amplitude -> every 1 meV
+        listPhi = np.linspace(0,359,360) /180*np.pi    # Moiré potential phase -> every 1 °
+        listW1p = np.linspace(-1.580,-1.530,11)         # Interlayer coupling p -> every 10 meV in fine grid, every 50 meV in large grid
+        listW1d = np.linspace( 1.120, 1.170,11)         # Interlayer coupling d -> every 10 meV in fine grid, every 50 meV in large grid
         filename = cfs.getFilename(
             (
             listVg[0],listVg[-1],len(listVg),int(listPhi[0]/np.pi*180),int(listPhi[-1]/np.pi*180),len(listPhi),
@@ -28,8 +28,8 @@ def get_parameters(chunk_id,BZpoint,n_chunks=128):
         grid = product(listVg, listPhi, listW1p, listW1d)
         total_jobs = len(listVg)*len(listPhi)*len(listW1p)*len(listW1d)
     elif BZpoint=='K':
-        listVk = np.linspace(0.001,0.040,128)     # Considered values of moirè potential -> every 1 meV
-        listPhiK = np.linspace(0,359,1) /180*np.pi
+        listVk = np.linspace(0.001,0.040,196)     # Considered values of moirè potential -> every 1 meV
+        listPhiK = np.linspace(0,359,360) /180*np.pi
         filename = cfs.getFilename(
             ( listVk[0],listVk[-1],len(listVk),int(listPhiK[0]/np.pi*180),int(listPhiK[-1]/np.pi*180),len(listPhiK) )
         )

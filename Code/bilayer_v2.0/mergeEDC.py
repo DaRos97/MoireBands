@@ -36,7 +36,7 @@ chunk, listFn = utils.get_parameters(0,BZpoint,n_chunks=n_chunks)
 dirname = cfs.getFilename(
     ('edc'+BZpoint,theta_deviation,nShells,spreadE,*args),
     dirname=utils.get_home_dn(machine)+"Data/",
-    floatPrecision=3
+    floatPrecision=4
 ) + '_' + listFn + '/'
 
 files = sorted(glob.glob(dirname+"*_%d.h5"%n_chunks))
@@ -44,7 +44,7 @@ files = sorted(glob.glob(dirname+"*_%d.h5"%n_chunks))
 output_file = cfs.getFilename(
     ('full_edc'+BZpoint,theta_deviation,nShells,spreadE,*args),
     dirname=utils.get_home_dn(machine)+"Data/",
-    floatPrecision=3
+    floatPrecision=4
 ) + '_' + listFn +  ".h5"
 
 """ Loop and store """
@@ -71,7 +71,7 @@ print("Merged %d chunk files of edc%s."%(len(files),BZpoint))
 dirnameGap = cfs.getFilename(
     ('edcGap'+BZpoint,theta_deviation,nShells,spreadE,*args),
     dirname=utils.get_home_dn(machine)+"Data/",
-    floatPrecision=3
+    floatPrecision=4
 ) + '_' + listFn + '/'
 if Path(dirnameGap).is_dir():
     files = sorted(glob.glob(dirnameGap+"*_%d.h5"%n_chunks))
@@ -79,7 +79,7 @@ if Path(dirnameGap).is_dir():
     output_file = cfs.getFilename(
         ('full_edcGap'+BZpoint,theta_deviation,nShells,spreadE,*args),
         dirname=utils.get_home_dn(machine)+"Data/",
-        floatPrecision=3
+        floatPrecision=4
     ) + '_' + listFn +  ".h5"
 
     """ Loop and store """
