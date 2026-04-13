@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-fn = 'dataGM/fig2_withInterlayer.npz'       #Change filename to your location
+fn = 'Data/energies_S11_0_0_0_2.8000_P_-1.5560_1.1430_0_400.npz'       #Change filename to your location
 
 """ There are 400 points from Gamma to K to K': kPts=200 is K
 Chose a final point you prefer between 200 (K-point) and 400 (K'-point) """

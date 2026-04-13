@@ -26,10 +26,10 @@ spread_E = 0.030        #eV
 
 theta = 2.8
 
-VG = 0.017       # eV           # Not needed here but for book-keeping
+Vg = 0.0165       # eV           # Not needed here but for book-keeping
 phiG = 175/180*np.pi        #rad    # Not needed here but for book-keeping
-w1p = -1.5         # eV
-w1d = 0.4         # eV
+w1p = -1.556         # eV
+w1d = 1.143         # eV
 stacking = 'P'
 w2p = w2d = 0
 parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
@@ -37,7 +37,7 @@ parsInterlayer = {'stacking':stacking,'w1p':w1p,'w2p':w2p,'w1d':w1d,'w2d':w2d}
 """ Other useless pars """
 nShells = 0
 nCells = 1
-monolayer_fns = {'WSe2':master_folder+'Inputs/tb_WSe2_B:5_K:0.001_0.005_0_1_0.5_10.npy','WS2':master_folder+'Inputs/tb_WS2_B:5_K:0.0001_0.01_0_1_0.1_10.npy'}
+monolayer_fns = {'WSe2':master_folder+'Inputs/tb_WSe2_abs_8_4_5_2_0_K_0.0001_0.13_0.005_1_0.01_5.npy','WS2':master_folder+'Inputs/tb_WS2_abs_8_4_5_2_0_K_0_0.125_0.011_1_0.01_5.npy'}
 Vk = Vg = phiG = phiK = 0
 moire_pars = (Vg,Vk,phiG,phiK)
 
