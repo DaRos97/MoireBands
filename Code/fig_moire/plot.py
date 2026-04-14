@@ -8,10 +8,34 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import utils
+import itertools
+
+machine = cfs.get_machine(os.getcwd())
+
+if machine=='maf':
+    ind = int(sys.argv[1])
+    Vks = [0.0200,0.0150,0.0077]
+    spreadings = ['Gauss','Lorentz']
+    sEs = [0.015, 0.030, 0.010]
+    sKs = [0.01,0.1,0.001]
+    dEs = 0.01,0.005
+    shades = [0,0.1,0.2]
+    pows = [1, 1.5, 2]
+    listPar = list(itertools.product(*[Vks,spreadings,sEs,sKs,dEs,shades,pows]))
+    print("Index %d / %d"%(ind,len(listPar)))
+    Vk, typeSpread, spreadE, spreadK, deltaE, shadeFactorWS2, powFactor = listPar[ind]
+else:
+    Vk = 0.020
+    typeSpread = 'Gauss'    # 'Gauss' or 'Lorentz', works for both k and E
+    spreadE = 0.015      # in eV
+    spreadK = 0.01     # in 1/a
+    deltaE = 0.01       # in eV, sets the energy grid
+    shadeFactorWS2 = 0.0     # shade factor of WS2 -> 0 (not visible at all) to 1 (same relevance as WSe2)
+    powFactor = 1.       # exponent of weights -> 2 is the usual mod square of eigenvectors which should be the weight of ARPES spectra. For lower values we enhance the intensity of the side bands
 
 
-fnWSe2 = '../Inputs/tb_WSe2_B:5_K:0.00005_0.1_0_1_0.1_10.npy'
-fnWS2 = '../Inputs/tb_WS2_B:5_K:0.0001_0.1_0_1_0.1_5.npy'
+fnWSe2 = '../Inputs/tb_WSe2_abs_8_4_5_2_0_K_0.0001_0.13_0.005_1_0.01_5.npy'
+fnWS2 = '../Inputs/tb_WS2_abs_8_4_5_2_0_K_0_0.125_0.011_1_0.01_5.npy'
 
 """ Save energy and intensities """
 saveE = True
@@ -22,32 +46,34 @@ kPlusKGKp = 0.2
 kPlusKMKp = 0.6
 kDelta = 5e-3
 theta = 2.8     # twisting angle, in deg
-Vk = 0.007              # eV
-phiK = 106/180*np.pi       # rad
-Vg = 0.020              # eV
-phiG = 173/180*np.pi        # rad
-w1p = -0.47     # eV
-w1d = 1.03      # eV
-#Vg = 0.014              # eV
-#phiG = 169/180*np.pi        # rad
-#w1p = -1.1      # eV
-#w1d = 0.42       # eV
+#Vk = 0.02#0.0077              # eV
+phiK = 120#106/180*np.pi       # rad
+if 0:
+    Vg = 0.0196              # eV
+    phiG = 173/180*np.pi        # rad
+    w1p = -2.075     # eV
+    w1d = 0.525      # eV
+else:
+    Vg = 0.0165              # eV
+    phiG = 175/180*np.pi        # rad
+    w1p = -1.556      # eV
+    w1d = 1.143       # eV
 
-print(Vg,phiG,w1p,w1d)
+print(Vg,phiG/np.pi*180,w1p,w1d)
 
 """ Parameters of intensity matrix -> changing any of these you need to re-evaluate the intensities """
-typeSpread = 'Gauss'    # 'Gauss' or 'Lorentz', works for both k and E
-spreadK = 0.01     # in 1/a
-spreadE = 0.015      # in eV
+#typeSpread = 'Gauss'    # 'Gauss' or 'Lorentz', works for both k and E
+#spreadK = 0.01     # in 1/a
+#spreadE = 0.015      # in eV
 E_max = 0           # in eV
 E_min = -2.5        # in eV
-deltaE = 0.01       # in eV, sets the energy grid
-shadeFactorWS2 = 0.0     # shade factor of WS2 -> 0 (not visible at all) to 1 (same relevance as WSe2)
-powFactor = 1.       # exponent of weights -> 2 is the usual mod square of eigenvectors which should be the weight of ARPES spectra. For lower values we enhance the intensity of the side bands
+#deltaE = 0.01       # in eV, sets the energy grid
+#shadeFactorWS2 = 0.0     # shade factor of WS2 -> 0 (not visible at all) to 1 (same relevance as WSe2)
+#powFactor = 1.       # exponent of weights -> 2 is the usual mod square of eigenvectors which should be the weight of ARPES spectra. For lower values we enhance the intensity of the side bands
 minimumBand = 15    # lowest considered band for spreading      #bands are 0 to 43, with TVB at 27
 
 """ Parameters of final plot """
-shadeFactorE = 0.2 # Add a linar shading depending on the energy. Starts at 1 at E_max and goes to this factor at E_min
+shadeFactorE = 0.1 # Add a linar shading depending on the energy. Starts at 1 at E_max and goes to this factor at E_min
 
 """ Actual computation """
 
@@ -145,10 +171,11 @@ else:
 """ Plotting """
 fig = plt.figure(figsize=(18,6))
 ax1 = fig.add_subplot(121)      # K->G->Kp plot
+factors = np.linspace(1, shadeFactorE, len(eList))
 ax1.pcolormesh(
     normKGKp,
     eList,
-    spreadKGKp.T,
+    spreadKGKp.T * factors[::-1,np.newaxis],
     cmap='Greys',
     shading="auto"
 )
@@ -157,13 +184,17 @@ ax2 = fig.add_subplot(122)      # K->Kp plot
 ax2.pcolormesh(
     normKMKp,
     eList,
-    spreadKMKp.T,
+    spreadKMKp.T * factors[::-1,np.newaxis],
     cmap='Greys',
     shading='auto'
 )
 
 fig.tight_layout()
-plt.show()
+if machine=='maf':
+    plot_fn = cfs.getFilename(('figMoire',)+args_w_data,dirname='Figures/',extension='.png')
+    plt.savefig(plot_fn, dpi=300)
+else:
+    plt.show()
 
 """ Run this part to save as .csv file the last plotted intensities and the momentum/energy values"""
 if 0:
