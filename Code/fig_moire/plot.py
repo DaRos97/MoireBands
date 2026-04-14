@@ -1,7 +1,12 @@
 import sys,os
 import numpy as np
 cwd = os.getcwd()
-master_folder = cwd[:40]
+if cwd[6:11] == 'dario':
+    master_folder = cwd[:40]
+elif cwd[:20] == '/home/users/r/rossid':
+    master_folder = cwd[:20] + '/git/MoireBands/Code/'
+elif cwd[:13] == '/users/rossid':
+    master_folder = cwd[:13] + '/git/MoireBands/Code/'
 sys.path.insert(1, master_folder)
 import CORE_functions as cfs
 from pathlib import Path
@@ -23,7 +28,7 @@ if machine=='maf':
     pows = [1, 1.5, 2]
     listPar = list(itertools.product(*[Vks,spreadings,sEs,sKs,dEs,shades,pows]))
     print("Index %d / %d"%(ind,len(listPar)))
-    Vk, typeSpread, spreadE, spreadK, deltaE, shadeFactorWS2, powFactor = listPar[ind]
+    Vk, typeSpread, spreadE, spreadK, deltaE, shadeFactorWS2, powFactor = listPar[ind-1]
 else:
     Vk = 0.020
     typeSpread = 'Gauss'    # 'Gauss' or 'Lorentz', works for both k and E
