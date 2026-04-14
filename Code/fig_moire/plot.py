@@ -11,13 +11,13 @@ sys.path.insert(1, master_folder)
 import CORE_functions as cfs
 from pathlib import Path
 import matplotlib.pyplot as plt
-from tqdm import tqdm
 import utils
 import itertools
 
 machine = cfs.get_machine(os.getcwd())
 
 if machine=='maf':
+    tqdm = cfs.tqdm
     ind = int(sys.argv[1])
     Vks = [0.0200,0.0150,0.0077]
     spreadings = ['Gauss','Lorentz']
@@ -30,6 +30,7 @@ if machine=='maf':
     print("Index %d / %d"%(ind,len(listPar)))
     Vk, typeSpread, spreadE, spreadK, deltaE, shadeFactorWS2, powFactor = listPar[ind-1]
 else:
+    from tqdm import tqdm
     Vk = 0.020
     typeSpread = 'Gauss'    # 'Gauss' or 'Lorentz', works for both k and E
     spreadE = 0.015      # in eV
@@ -39,8 +40,8 @@ else:
     powFactor = 1.       # exponent of weights -> 2 is the usual mod square of eigenvectors which should be the weight of ARPES spectra. For lower values we enhance the intensity of the side bands
 
 
-fnWSe2 = '../Inputs/tb_WSe2_abs_8_4_5_2_0_K_0.0001_0.13_0.005_1_0.01_5.npy'
-fnWS2 = '../Inputs/tb_WS2_abs_8_4_5_2_0_K_0_0.125_0.011_1_0.01_5.npy'
+fnWSe2 = master_folder + 'Inputs/tb_WSe2_abs_8_4_5_2_0_K_0.0001_0.13_0.005_1_0.01_5.npy'
+fnWS2 = master_folder + 'Inputs/tb_WS2_abs_8_4_5_2_0_K_0_0.125_0.011_1_0.01_5.npy'
 
 """ Save energy and intensities """
 saveE = True
